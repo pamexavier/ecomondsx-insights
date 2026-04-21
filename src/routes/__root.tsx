@@ -29,11 +29,19 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "EcomondsX — Tendências em construção civil sustentável" },
+      {
+        name: "description",
+        content:
+          "Plataforma de monitoramento contínuo de tendências em construção civil sustentável. Curadoria por IA, automação via n8n.",
+      },
+      { name: "author", content: "EcomondsX" },
+      { property: "og:title", content: "EcomondsX — Inteligência Sustentável" },
+      {
+        property: "og:description",
+        content:
+          "Tendências que moldam o futuro da obra. Monitoramento em tempo real, curadoria por IA.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
