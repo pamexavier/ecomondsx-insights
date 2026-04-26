@@ -1,77 +1,164 @@
-import type { Trend } from "@/lib/mock-trends";
+import { useRef } from "react";
+import { cn } from "@/lib/utils";
 
-interface Props {
+export interface Trend {
+  id: string;
+  tag: string;
+  title: string;
+  excerpt?: string;
+  source: string;
+  relevance: number; // 0-100
+  publishedAt: string;
+  url?: string;
+}
+
+interface TrendCardProps {
   trend: Trend;
   index: number;
 }
 
-export function TrendCard({ trend, index }: Props) {
-  const num = String(index + 1).padStart(2, "0");
-  return (
-    <article
-      className="group relative overflow-hidden bg-card border border-border p-6 min-h-[260px] flex flex-col transition-all duration-300 hover:border-primary hover:bg-surface animate-fade-up"
-      style={{ animationDelay: `${index * 80 + 200}ms` }}
+const TAG_COLORS: Record<string, string> = {
+  energia: "text-amber-400 border-amber-400/30",
+  hídrico: "text-blue-400 border-blue-400/30",
+  materiais: "text-emerald-400 border-emerald-400/30",
+  certificação: "text-violet-400 border-violet-400/30",
+  tecnologia: "text-cyan-400 border-cyan-400/30",
+  regulação: "text-rose-400 border-rose-400/30",
+};
+
+function formatTime(iso: string) {
+  try {
+    return new Date(iso).toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+export function TrendCard({ trend, index }: TrendCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLSpanElement>(null);
+
+  const tagColor = TAG_COLORS[trend.tag.toLowerCase()] ?? "text-primary border-primary/30";
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!cardRef.current || !glowRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    glowRef.current.style.setProperty("--mx", `${x}px`);
+    glowRef.current.style.setProperty("--my", `${y}px`);
+  }
+
+  function handleMouseEnter() {
+    if (glowRef.current) glowRef.current.style.opacity = "1";
+  }
+
+  function handleMouseLeave() {
+    if (glowRef.current) glowRef.current.style.opacity = "0";
+  }
+
+  const content = (
+    <div
+      ref={cardRef}
+      className={cn(
+        "group relative flex flex-col overflow-hidden border border-border bg-card p-6 transition-[border-color] duration-300",
+        "hover:border-primary/40",
+        "animate-fade-up"
+      )}
+      style={{ animationDelay: `${index * 60}ms` }}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Top glow line on hover */}
-      <span className="absolute top-0 left-0 h-px w-0 bg-primary transition-all duration-500 group-hover:w-full" />
+      {/* Linha de acento no topo */}
+      <span className="absolute left-0 top-0 h-px w-0 bg-primary transition-all duration-500 group-hover:w-full" />
 
-      {/* Watermark number */}
+      {/* Glow que segue o mouse */}
       <span
-        className="text-display pointer-events-none absolute -right-2 -bottom-6 text-[120px] font-extrabold leading-none text-foreground/[0.04] select-none"
-        aria-hidden
-      >
-        {num}
-      </span>
+        ref={glowRef}
+        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300"
+        style={{
+          background:
+            "radial-gradient(circle 100px at var(--mx, 50%) var(--my, 50%), hsl(var(--primary) / .07), transparent)",
+        }}
+      />
 
-      <div className="flex items-center justify-between text-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        <span className="border border-border-strong px-2 py-1 text-primary">
-          {trend.category}
-        </span>
-        <span>#{num}</span>
+      {/* Tag */}
+      <div
+        className={cn(
+          "text-mono mb-3 flex items-center gap-2 text-[9px] uppercase tracking-[0.2em]",
+          tagColor
+        )}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse-dot" />
+        {trend.tag}
       </div>
 
-      <h3 className="text-display mt-5 text-xl font-bold leading-tight text-foreground">
+      {/* Título */}
+      <h3 className="text-display flex-1 text-sm font-bold leading-snug text-foreground">
         {trend.title}
       </h3>
 
-      <p className="text-mono mt-3 text-sm leading-relaxed text-muted-foreground line-clamp-3">
-        {trend.description}
-      </p>
+      {/* Excerpt se existir */}
+      {trend.excerpt && (
+        <p className="text-mono mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+          {trend.excerpt}
+        </p>
+      )}
 
-      <div className="mt-auto pt-6 relative z-10">
-        <div className="flex items-center justify-between text-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
-          <span>Relevância</span>
-          <span className="text-primary">{trend.relevance}%</span>
+      {/* Barra de relevância */}
+      <div className="mt-5">
+        <div className="text-mono mb-1.5 flex items-center justify-between text-[9px] uppercase tracking-[0.15em] text-muted-foreground">
+          <span>Relevância IA</span>
+          <span className="text-primary/70">{trend.relevance}%</span>
         </div>
-        <div className="h-px w-full bg-border relative overflow-hidden">
-          <span
-            className="absolute inset-y-0 left-0 bg-primary"
-            style={{ width: `${trend.relevance}%` }}
+        <div className="h-px w-full bg-border">
+          <div
+            className="h-px bg-primary transition-all duration-1000"
+            style={{
+              width: `${trend.relevance}%`,
+              transitionDelay: `${index * 60 + 400}ms`,
+            }}
           />
         </div>
       </div>
-    </article>
+
+      {/* Rodapé */}
+      <div className="text-mono mt-4 flex items-center justify-between text-[9px] text-muted-foreground/50">
+        <span>{trend.source}</span>
+        <span>{formatTime(trend.publishedAt)}</span>
+      </div>
+    </div>
   );
+
+  if (trend.url) {
+    return (
+      <a href={trend.url} target="_blank" rel="noopener noreferrer" className="block">
+        {content}
+      </a>
+    );
+  }
+
+  return content;
 }
 
 export function TrendCardSkeleton({ index }: { index: number }) {
   return (
     <div
-      className="bg-card border border-border p-6 min-h-[260px] flex flex-col animate-pulse"
+      className="animate-fade-up border border-border bg-card p-6"
       style={{ animationDelay: `${index * 60}ms` }}
     >
-      <div className="flex justify-between">
-        <div className="h-5 w-20 bg-surface" />
-        <div className="h-5 w-8 bg-surface" />
+      <div className="h-2.5 w-16 bg-surface animate-pulse" />
+      <div className="mt-4 h-4 w-full bg-surface animate-pulse" />
+      <div className="mt-2 h-4 w-3/4 bg-surface animate-pulse" />
+      <div className="mt-6 h-px w-full bg-surface animate-pulse" />
+      <div className="mt-4 flex justify-between">
+        <div className="h-2.5 w-20 bg-surface animate-pulse" />
+        <div className="h-2.5 w-10 bg-surface animate-pulse" />
       </div>
-      <div className="mt-5 h-6 w-4/5 bg-surface" />
-      <div className="mt-2 h-6 w-3/5 bg-surface" />
-      <div className="mt-4 space-y-2">
-        <div className="h-3 w-full bg-surface" />
-        <div className="h-3 w-11/12 bg-surface" />
-        <div className="h-3 w-2/3 bg-surface" />
-      </div>
-      <div className="mt-auto h-px w-full bg-surface" />
     </div>
   );
 }
