@@ -154,6 +154,10 @@
 }
 
 @layer utilities {
+  @keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
   .text-display {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
