@@ -199,7 +199,7 @@ function Dashboard() {
           </article>
 
           {/* Keywords */}
-          <aside className="bg-card border border-border p-8 animate-fade-up" style={{ animationDelay: "120ms" }}>
+          <KeywordMarquee keywords={data?.keywords ?? []} duration={45} />
             <div className="flex items-center gap-2 text-mono text-[10px] uppercase tracking-[0.25em] text-primary">
               <span className="h-1.5 w-1.5 bg-primary animate-pulse-dot" />
               Palavras-chave em alta
