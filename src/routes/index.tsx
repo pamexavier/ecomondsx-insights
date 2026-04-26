@@ -57,9 +57,9 @@ function Dashboard() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <EcomondsLogo size={36} />
-            <div className="flex items-baseline gap-1">
+            <div className="flex items-baseline">
               <span className="text-display text-xl font-extrabold tracking-tight">
-                Ecomonds
+                Ecominds
               </span>
               <span className="text-display text-xl font-extrabold text-primary text-glow">
                 X
@@ -235,7 +235,7 @@ function Dashboard() {
           <div className="flex items-center gap-3">
             <EcomondsLogo size={24} />
             <span className="text-mono text-xs text-muted-foreground">
-              EcomondsX — Inteligência Sustentável
+              EcomindsX — Inteligência Sustentável
             </span>
           </div>
           <div className="text-mono text-xs text-muted-foreground flex items-center gap-2">
