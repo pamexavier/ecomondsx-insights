@@ -235,7 +235,7 @@ function Dashboard() {
           <div className="flex items-center gap-3">
             <EcomondsLogo size={24} />
             <span className="text-mono text-xs text-muted-foreground">
-              EcomondsX © 2025 — Inteligência Sustentável
+              EcomondsX — Inteligência Sustentável
             </span>
           </div>
           <div className="text-mono text-xs text-muted-foreground flex items-center gap-2">
