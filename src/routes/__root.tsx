@@ -29,14 +29,14 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "EcomondsX — Tendências em construção civil sustentável" },
+      { title: "EcomindsX — Tendências em construção civil sustentável" },
       {
         name: "description",
         content:
           "Plataforma de monitoramento contínuo de tendências em construção civil sustentável. Curadoria por IA, automação via n8n.",
       },
-      { name: "author", content: "EcomondsX" },
-      { property: "og:title", content: "EcomondsX — Inteligência Sustentável" },
+      { name: "author", content: "EcomindsX" },
+      { property: "og:title", content: "EcomindsX — Inteligência Sustentável" },
       {
         property: "og:description",
         content:
