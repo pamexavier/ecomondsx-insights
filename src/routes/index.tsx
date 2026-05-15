@@ -105,14 +105,15 @@ function Dashboard() {
           <div className="flex items-center gap-2 border border-border-strong px-3 py-1.5">
             <span className="h-1.5 w-1.5 bg-primary animate-pulse-dot" />
             <span className="text-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Live Intelligence
+              News
             </span>
             <a
-              href="/inteligencia"
-              className="text-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors ml-4"
-            >
-              Inteligência de Projeto
-            </a>
+                 href="/inteligencia"
+  className="text-mono text-[10px] uppercase tracking-[0.2em] text-primary ml-2 px-2 py-0.5 border border-primary transition-colors hover:brightness-125"
+  style={{ boxShadow: "0 0 8px rgba(0,255,100, 0.5)" }}
+>
+  Inteligência de Projeto →
+</a>
           </div>
         </div>
       </header>
