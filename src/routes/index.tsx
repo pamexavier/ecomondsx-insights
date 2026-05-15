@@ -109,7 +109,7 @@ function Dashboard() {
             </span>
             <a
               href="/inteligencia"
-              className="text-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors hidden md:block ml-4"
+              className="text-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors ml-4"
             >
               Inteligência de Projeto
             </a>
