@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as InteligenciaRouteImport } from './routes/inteligencia'
+import { Route as AcervoRouteImport } from './routes/acervo'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiTendenciasRouteImport } from './routes/api.tendencias'
 
 const InteligenciaRoute = InteligenciaRouteImport.update({
   id: '/inteligencia',
   path: '/inteligencia',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcervoRoute = AcervoRouteImport.update({
+  id: '/acervo',
+  path: '/acervo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,30 +37,34 @@ const ApiTendenciasRoute = ApiTendenciasRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/acervo': typeof AcervoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/acervo': typeof AcervoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/acervo': typeof AcervoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/inteligencia' | '/api/tendencias'
+  fullPaths: '/' | '/acervo' | '/inteligencia' | '/api/tendencias'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/inteligencia' | '/api/tendencias'
-  id: '__root__' | '/' | '/inteligencia' | '/api/tendencias'
+  to: '/' | '/acervo' | '/inteligencia' | '/api/tendencias'
+  id: '__root__' | '/' | '/acervo' | '/inteligencia' | '/api/tendencias'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcervoRoute: typeof AcervoRoute
   InteligenciaRoute: typeof InteligenciaRoute
   ApiTendenciasRoute: typeof ApiTendenciasRoute
 }
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/inteligencia'
       fullPath: '/inteligencia'
       preLoaderRoute: typeof InteligenciaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acervo': {
+      id: '/acervo'
+      path: '/acervo'
+      fullPath: '/acervo'
+      preLoaderRoute: typeof AcervoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcervoRoute: AcervoRoute,
   InteligenciaRoute: InteligenciaRoute,
   ApiTendenciasRoute: ApiTendenciasRoute,
 }
