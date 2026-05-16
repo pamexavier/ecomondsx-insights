@@ -28,9 +28,8 @@ function Dashboard() {
   const [data, setData] = useState<TrendsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
-  // 1. Novo estado para filtro
   const [filtroAtivo, setFiltroAtivo] = useState<string | null>(null);
-  // 2. Filtra trends
+  
   const trendsFiltradas = filtroAtivo
     ? data?.trends.filter((t) => t.category === filtroAtivo)
     : data?.trends;
@@ -91,57 +90,55 @@ function Dashboard() {
         className="pointer-events-none absolute inset-x-0 top-0 h-[600px]"
         style={{ background: "var(--gradient-radial-glow)" }}
       />
-
-      {/* Header */}
+      
+      {/* HEADER CORRIGIDO */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <EcomondsLogo size={38} />
             <div className="flex items-baseline">
-              <span className="text-display text-xl font-extrabold tracking-tight">Ecominds</span>
-              <span className="text-display text-xl font-extrabold text-primary text-glow">X</span>
+              <span className="text-display text-lg sm:text-xl font-extrabold tracking-tight">Ecominds</span>
+              <span className="text-display text-lg sm:text-xl font-extrabold text-primary text-glow">X</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 border border-border-strong px-3 py-1.5">
-            <span className="h-1.5 w-1.5 bg-primary animate-pulse-dot" />
-            <span className="text-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              News
-            </span>
+          <div className="flex items-center border border-border-strong px-2 py-1 sm:px-3 sm:py-1.5">
             <a
-                 href="/inteligencia"
-  className="text-mono text-[10px] uppercase tracking-[0.2em] text-primary ml-2 px-2 py-0.5 border border-primary transition-colors hover:brightness-125"
-  style={{ boxShadow: "0 0 8px rgba(0,255,100, 0.5)" }}
->
-  Inteligência de Projeto →
-</a>
+              href="/inteligencia"
+              className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary px-2 py-0.5 border border-primary transition-colors hover:brightness-125 whitespace-nowrap"
+              style={{ boxShadow: "0 0 8px rgba(0,255,100, 0.5)" }}
+            >
+              {/* Mostra "Inteligência de Projeto" no PC e apenas "Inteligência" no celular */}
+              <span className="hidden sm:inline">Inteligência de Projeto </span>
+              <span className="inline sm:hidden">Inteligência </span>
+              →
+            </a>
           </div>
         </div>
       </header>
 
       <main className="relative mx-auto max-w-7xl px-6 pb-24">
-  {/* Hero */}
-  <section className="pt-16 md:pt-24">
-    {/* Título Superior / Nome do Produto */}
-    <div className="animate-fade-up flex items-center gap-2 text-mono text-[21px] uppercase tracking-[0.25em] text-primary mb-5">
-      <span className="h-px w-8 bg-primary" /> Vector-X
-    </div>
-    
-    <h1 className="text-display max-w-4xl text-5xl md:text-7xl font-extrabold leading-[0.90] animate-fade-up">
-      O FUTURO da construção 
-      <br /> 
-      <span className="text-primary text-glow">decodificado.</span>
-    </h1>
+        {/* Hero */}
+        <section className="pt-16 md:pt-24">
+          <div className="animate-fade-up flex items-center gap-2 text-mono text-[21px] uppercase tracking-[0.25em] text-primary mb-5">
+            <span className="h-px w-8 bg-primary" /> Vector-X
+          </div>
+          
+          <h1 className="text-display max-w-4xl text-5xl md:text-7xl font-extrabold leading-[0.90] animate-fade-up">
+            O FUTURO da construção 
+            <br /> 
+            <span className="text-primary text-glow">decodificado.</span>
+          </h1>
           <p
-  className="text-mono mt-8 max-w-2xl text-sm md:text-base leading-relaxed text-muted-foreground animate-fade-up border-l-2 border-primary/40 pl-5"
-  style={{ animationDelay: "180ms" }}
->
-  Monitoramos sinais do mundo inteiro — <span className="text-foreground font-medium">novos materiais, eficiência energética, soluções hídricas, automação, IA aplicada, métodos construtivos e tecnologias emergentes.</span>{" "}
-  Filtramos o ruído e entregamos apenas o que importa:{" "}
-  <span className="text-foreground font-medium">
-    informação técnica, aplicável e relevante  
-  </span>{" "}
- para quem projeta o futuro da construção.
-</p>
+            className="text-mono mt-8 max-w-2xl text-sm md:text-base leading-relaxed text-muted-foreground animate-fade-up border-l-2 border-primary/40 pl-5"
+            style={{ animationDelay: "180ms" }}
+          >
+            Monitoramos sinais do mundo inteiro — <span className="text-foreground font-medium">novos materiais, eficiência energética, soluções hídricas, automação, IA aplicada, métodos construtivos e tecnologias emergentes.</span>{" "}
+            Filtramos o ruído e entregamos apenas o que importa:{" "}
+            <span className="text-foreground font-medium">
+              informação técnica, aplicável e relevante  
+            </span>{" "}
+            para quem projeta o futuro da construção.
+          </p>
         </section>
 
         {/* Stats */}
@@ -157,15 +154,17 @@ function Dashboard() {
           <div className="flex items-end justify-between border-b border-border pb-4 mb-8">
             <h2 className="text-display text-2xl font-bold">Sinais em alta</h2>
           </div>
- <div className="mt-12">
-          <KeywordMarquee
-            keywords={data?.keywords ?? []}
-            duration={45}
-            activeKeyword={filtroAtivo}
-            onSelect={(kw) => setFiltroAtivo(prev => prev === kw ? null : kw)}
-          />
-        </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          
+          <div className="mt-12">
+            <KeywordMarquee
+              keywords={data?.keywords ?? []}
+              duration={45}
+              activeKeyword={filtroAtivo}
+              onSelect={(kw) => setFiltroAtivo(prev => prev === kw ? null : kw)}
+            />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-8">
             {loading
               ? Array.from({ length: 6 }).map((_, i) => (
                   <TrendCardSkeleton key={i} index={i} />
@@ -192,25 +191,28 @@ function Dashboard() {
         </div>
       </main>
 
-      {/* MODAL DE DETALHES */}
+     {/* MODAL DE DETALHES */}
       {selectedNews && (
         <div className="fixed inset-0 z-50 flex items-center justify-end bg-background/60 backdrop-blur-sm p-4">
           <div className="h-full w-full max-w-2xl bg-card border-l border-border p-8 md:p-12 overflow-y-auto animate-in slide-in-from-right duration-300 relative shadow-2xl">
-            <button
-              onClick={() => setSelectedNews(null)}
-              className="absolute top-6 right-6 text-muted-foreground hover:text-primary text-mono text-xs p-2 border border-border"
-            >
-              [ ESC ] FECHAR
-            </button>
+            
+            {/* Header do modal flexível (Categoria na esquerda, Botão na direita) */}
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div className="text-mono text-[10px] uppercase tracking-[0.3em] text-primary flex-1 mt-2">
+                {selectedNews.categoria} // {selectedNews.fonte}
+              </div>
 
-            <div className="text-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-6">
-              {selectedNews.categoria} // {selectedNews.fonte}
+              <button
+                onClick={() => setSelectedNews(null)}
+                className="shrink-0 text-muted-foreground hover:text-primary text-mono text-xs p-2 border border-border"
+              >
+                [ ESC ] FECHAR
+              </button>
             </div>
 
             <h2 className="text-display text-3xl md:text-5xl font-extrabold leading-tight mb-8">
               {selectedNews.title}
             </h2>
-
             <div className="space-y-6">
 
               {/* Resumo Executivo */}

@@ -8,13 +8,14 @@ interface TrendCardProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Material: "text-emerald-400 border-emerald-400/30",
-  Regulação: "text-rose-400 border-rose-400/30",
-  Tecnologia: "text-cyan-400 border-cyan-400/30",
-  Mercado: "text-amber-400 border-amber-400/30",
-  Energia: "text-amber-400 border-amber-400/30",
-  Hídrico: "text-blue-400 border-blue-400/30",
+  material: "text-emerald-400 border-emerald-400/30",
+  regulação: "text-rose-400 border-rose-400/30",
+  tecnologia: "text-cyan-400 border-cyan-400/30",
+  mercado: "text-amber-400 border-amber-400/30",
+  energia: "text-amber-400 border-amber-400/30",
+  hídrico: "text-blue-400 border-blue-400/30",
 };
+
 
 function formatTime(iso?: string) {
   if (!iso) return "—";
