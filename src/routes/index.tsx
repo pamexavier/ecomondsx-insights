@@ -28,6 +28,7 @@ function Dashboard() {
   const [data, setData] = useState<TrendsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
+  const [loadingDetalhes, setLoadingDetalhes] = useState(false);
   const [filtroAtivo, setFiltroAtivo] = useState<string | null>(null);
 
   const trendsFiltradas = filtroAtivo
@@ -42,11 +43,13 @@ function Dashboard() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
 
+        // motivo removido — campo pesado exibido só no modal
         const { data: noticias, error } = await supabase
           .from("noticias")
-          .select("*")
+          .select("id, titulo, titulo_pt, resumo_executivo, resumo_pt, categoria, fonte, atualizado_em, pub_date")
           .gte("atualizado_em", hoje.toISOString())
-          .order("atualizado_em", { ascending: false });
+          .order("atualizado_em", { ascending: false })
+          .limit(12);
 
         if (error) throw error;
 
@@ -57,9 +60,8 @@ function Dashboard() {
               id: n.id,
               title: n.titulo_pt || n.titulo,
               description: n.resumo_executivo || n.resumo_pt || "Análise em processamento...",
-              relevance: Math.floor(Math.random() * (99 - 85 + 1)) + 85,
               category: n.categoria || "Geral",
-              trend: "up",
+              trend: "up" as const,
             })),
             stats: {
               activeTrends: noticias.length,
@@ -69,7 +71,7 @@ function Dashboard() {
             },
             highlight: {
               title: noticias[0]?.titulo_pt || noticias[0]?.titulo,
-              excerpt: noticias[0]?.resumo_executivo || noticias[0]?.resumo_pt || noticias[0]?.motivo,
+              excerpt: noticias[0]?.resumo_executivo || noticias[0]?.resumo_pt,
               source: noticias[0]?.fonte,
               publishedAt: noticias[0]?.pub_date || noticias[0]?.atualizado_em,
             },
@@ -87,6 +89,31 @@ function Dashboard() {
     }
     fetchSupabaseData();
   }, []);
+
+  // Detalhes completos carregados sob demanda ao abrir o modal
+  // motivo incluído aqui — onde é realmente exibido
+  const handleSelectNews = async (news: any) => {
+    setSelectedNews(news);
+    setLoadingDetalhes(true);
+    try {
+      const { data: detalhes, error } = await supabase
+        .from("noticias")
+        .select("o_que_e, impacto_real, como_aplicar, contras, quando_usar, motivo")
+        .eq("id", news.id)
+        .single();
+
+      if (error) throw error;
+      if (detalhes) {
+        setSelectedNews((prev: any) =>
+          prev?.id === news.id ? { ...prev, ...detalhes } : prev
+        );
+      }
+    } catch (err) {
+      console.error("Erro ao buscar detalhes da notícia:", err);
+    } finally {
+      setLoadingDetalhes(false);
+    }
+  };
 
   const semSinaisHoje = !loading && (!data?.trends || data.trends.length === 0);
 
@@ -109,7 +136,6 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center border border-border-strong px-2 py-1 sm:px-3 sm:py-1.5">
-            {/* CORRIGIDO: Transformado em um <Link> válido do tanstack */}
             <Link
               to="/inteligencia"
               className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary px-2 py-0.5 border border-primary transition-colors hover:brightness-125 whitespace-nowrap"
@@ -138,7 +164,7 @@ function Dashboard() {
             className="text-mono mt-8 max-w-2xl text-sm md:text-base leading-relaxed text-muted-foreground animate-fade-up border-l-2 border-primary/40 pl-5"
             style={{ animationDelay: "180ms" }}
           >
-            Monitoramos sinais do mundo inteiro —{" "}
+            Monitoramos sinais do world inteiro —{" "}
             <span className="text-foreground font-medium">
               novos materiais, eficiência energética, soluções hídricas, automação, IA aplicada, métodos construtivos e tecnologias emergentes.
             </span>{" "}
@@ -207,7 +233,7 @@ function Dashboard() {
                   : trendsFiltradas?.map((t, i) => (
                       <div
                         key={t.id}
-                        onClick={() => setSelectedNews(t)}
+                        onClick={() => handleSelectNews(t)}
                         className="cursor-pointer transition-all hover:translate-y-[-4px]"
                       >
                         <TrendCard trend={t} index={i} />
@@ -271,66 +297,77 @@ function Dashboard() {
                 </p>
               </div>
 
-              {selectedNews.o_que_e && (
-                <div className="space-y-2">
-                  <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
-                    <span className="h-px w-4 bg-primary" /> O que é na prática
-                  </h4>
-                  <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.o_que_e}</p>
+              {loadingDetalhes ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-2 w-32 bg-muted-foreground/20 animate-pulse" />
+                      <div className="h-16 bg-muted-foreground/10 animate-pulse" />
+                    </div>
+                  ))}
                 </div>
-              )}
+              ) : (
+                <>
+                  {selectedNews.o_que_e && (
+                    <div className="space-y-2">
+                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
+                        <span className="h-px w-4 bg-primary" /> O que é na prática
+                      </h4>
+                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.o_que_e}</p>
+                    </div>
+                  )}
 
-              {selectedNews.impacto_real && (
-                <div className="relative p-5 border border-primary/30 bg-primary/5">
-                  <span className="absolute -top-3 left-4 bg-card px-2 text-mono text-[10px] text-primary uppercase">
-                    Impacto Real
-                  </span>
-                  <p className="text-foreground leading-relaxed text-sm font-medium">{selectedNews.impacto_real}</p>
-                </div>
-              )}
+                  {selectedNews.impacto_real && (
+                    <div className="relative p-5 border border-primary/30 bg-primary/5">
+                      <span className="absolute -top-3 left-4 bg-card px-2 text-mono text-[10px] text-primary uppercase">
+                        Impacto Real
+                      </span>
+                      <p className="text-foreground leading-relaxed text-sm font-medium">{selectedNews.impacto_real}</p>
+                    </div>
+                  )}
 
-              {selectedNews.como_aplicar && (
-                <div className="space-y-2">
-                  <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
-                    <span className="h-px w-4 bg-primary" /> Como aplicar em obra
-                  </h4>
-                  <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.como_aplicar}</p>
-                </div>
-              )}
+                  {selectedNews.como_aplicar && (
+                    <div className="space-y-2">
+                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
+                        <span className="h-px w-4 bg-primary" /> Como aplicar em obra
+                      </h4>
+                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.como_aplicar}</p>
+                    </div>
+                  )}
 
-              {selectedNews.contras && (
-                <div className="space-y-2">
-                  <h4 className="text-mono text-[10px] uppercase tracking-widest text-rose-400 font-bold flex items-center gap-2">
-                    <span className="h-px w-4 bg-rose-400" /> Limitações e riscos
-                  </h4>
-                  <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.contras}</p>
-                </div>
-              )}
+                  {selectedNews.contras && (
+                    <div className="space-y-2">
+                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-rose-400 font-bold flex items-center gap-2">
+                        <span className="h-px w-4 bg-rose-400" /> Limitações e riscos
+                      </h4>
+                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.contras}</p>
+                    </div>
+                  )}
 
-              {selectedNews.quando_usar && (
-                <div className="space-y-2">
-                  <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
-                    <span className="h-px w-4 bg-primary" /> Quando usar
-                  </h4>
-                  <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.quando_usar}</p>
-                </div>
-              )}
+                  {selectedNews.quando_usar && (
+                    <div className="space-y-2">
+                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
+                        <span className="h-px w-4 bg-primary" /> Quando usar
+                      </h4>
+                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.quando_usar}</p>
+                    </div>
+                  )}
 
-              {selectedNews.motivo && (
-                <div className="space-y-2">
-                  <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
-                    <span className="h-px w-4 bg-primary" /> Por que isso é relevante
-                  </h4>
-                  <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.motivo}</p>
-                </div>
+                  {selectedNews.motivo && (
+                    <div className="space-y-2">
+                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
+                        <span className="h-px w-4 bg-primary" /> Por que isso é relevante
+                      </h4>
+                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.motivo}</p>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="pt-8 border-t border-border flex flex-col gap-4">
                 <div className="text-mono text-[10px] text-muted-foreground">
                   PUBLICADO EM: {formatTime(selectedNews.pub_date || selectedNews.atualizado_em)}
                 </div>
-                
-                {/* CORRIGIDO: Convertido em uma tag <a> HTML válida e fechada de forma correta */}
                 <a
                   href={selectedNews.link}
                   target="_blank"
