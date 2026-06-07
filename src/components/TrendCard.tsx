@@ -16,7 +16,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   hídrico: "text-blue-400 border-blue-400/30",
 };
 
-
 function formatTime(iso?: string) {
   if (!iso) return "—";
 
@@ -90,6 +89,12 @@ export function TrendCard({ trend, index }: TrendCardProps) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
+      {/* Corner brackets */}
+      <span className="absolute top-2 left-2 w-3 h-3 border-t border-l border-primary/0 group-hover:border-primary/70 transition-all duration-300 group-hover:top-3 group-hover:left-3" />
+      <span className="absolute top-2 right-2 w-3 h-3 border-t border-r border-primary/0 group-hover:border-primary/70 transition-all duration-300 group-hover:top-3 group-hover:right-3" />
+      <span className="absolute bottom-2 left-2 w-3 h-3 border-b border-l border-primary/0 group-hover:border-primary/70 transition-all duration-300 group-hover:bottom-3 group-hover:left-3" />
+      <span className="absolute bottom-2 right-2 w-3 h-3 border-b border-r border-primary/0 group-hover:border-primary/70 transition-all duration-300 group-hover:bottom-3 group-hover:right-3" />
+
       {/* Linha topo */}
       <span className="absolute left-0 top-0 h-px w-0 bg-primary transition-all duration-500 group-hover:w-full" />
 
@@ -125,10 +130,22 @@ export function TrendCard({ trend, index }: TrendCardProps) {
         {trend.description}
       </p>
 
+      {/* Métricas */}
+      {(trend as any).metricas?.items?.length > 0 && (
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {(trend as any).metricas.items.slice(0, 3).map((m: any, i: number) => (
+            <div key={i} className="border border-border bg-surface/40 p-2 text-center">
+              <p className="text-primary text-sm font-bold leading-none mb-1">{m.valor}</p>
+              <p className="text-mono text-[9px] text-muted-foreground leading-tight uppercase tracking-wide">{m.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Relevância */}
       <div className="mt-5">
         <div className="text-mono mb-1.5 flex items-center justify-between text-[9px] uppercase tracking-[0.15em] text-muted-foreground">
-          <span>Relevância IA</span>
+          <span>Curadoria</span>
 
           <span className="text-primary/70">
             {trend.relevance}%

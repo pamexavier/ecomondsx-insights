@@ -213,7 +213,7 @@ function Acervo() {
       const { data, error } = await supabase
         .from("noticias")
         .select("o_que_e, impacto_real, como_aplicar, contras, quando_usar, motivo")
-        .eq("id", news.id)
+        .eq("tipo", "aberto")
         .single();
 
       if (error) throw error;
