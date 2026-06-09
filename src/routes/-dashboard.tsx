@@ -27,9 +27,14 @@ export default function Dashboard() {
   const [loadingDetalhes, setLoadingDetalhes] = useState(false);
   const [filtroAtivo, setFiltroAtivo] = useState<string | null>(null);
 
+  const [categoriasRadar, setCategoriasRadar] = useState<{ nome: string; total: number }[]>([]);
+  const [loadingCategorias, setLoadingCategorias] = useState(false);
+  const [filtroCatRadar, setFiltroCatRadar] = useState<string | null>(null);
+
   const location = useLocation();
   const isRadar = location.pathname === "/radar";
 
+  // O banco já entrega a massa de dados filtrada dinamicamente
   const trendsFiltradas = filtroAtivo
     ? data?.trends.filter((t) => t.category === filtroAtivo)
     : data?.trends;
@@ -38,19 +43,27 @@ export default function Dashboard() {
     async function fetchSupabaseData() {
       try {
         setLoading(true);
-
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-
         const tipoFiltro = isRadar ? "radar" : "estrategia";
 
-        const { data: noticias, error } = await supabase
+        let query = supabase
           .from("noticias")
-          .select("id, titulo, titulo_pt, resumo_executivo, resumo_pt, categoria, fonte, atualizado_em, pub_date, metricas, score_tecnico")
-          .gte("atualizado_em", hoje.toISOString())
-          .eq("tipo", tipoFiltro)
-          .order("atualizado_em", { ascending: false })
-          .limit(12);
+          .select("id, titulo, titulo_pt, resumo_executivo, resumo_pt, categoria, fonte, atualizado_em, pub_date, metricas, score_tecnico, link")
+          .eq("tipo", tipoFiltro);
+
+        // Se houver categoria selecionada no Radar, traz TODO o histórico dela sem travas
+        if (isRadar && filtroCatRadar) {
+          query = query.eq("categoria", filtroCatRadar);
+        } else {
+          // Se não houver filtro, isola estritamente o dia de HOJE para o feed inicial
+          const hoje = new Date();
+          hoje.setHours(0, 0, 0, 0);
+          
+          query = query
+            .gte("atualizado_em", hoje.toISOString())
+            .limit(3); // Mantém o teto de 3 para o pulso do dia
+        }
+
+        const { data: noticias, error } = await query.order("atualizado_em", { ascending: false });
 
         if (error) throw error;
 
@@ -63,11 +76,10 @@ export default function Dashboard() {
               description: n.resumo_executivo || n.resumo_pt || "Análise em processamento...",
               category: n.categoria || "Geral",
               trend: "up" as const,
-              relevance: n.score_tecnico ?? 0, 
+              relevance: n.score_tecnico ?? 0,
             })),
             stats: {
               activeTrends: noticias.length,
-              // Fallback removido
               monitoredSources: new Set(noticias.map((n) => n.fonte)).size,
               lastUpdate: noticias[0]?.atualizado_em,
               avgRelevance: noticias.length
@@ -93,16 +105,43 @@ export default function Dashboard() {
       }
     }
     fetchSupabaseData();
-  }, [location.pathname, isRadar]);
+  }, [location.pathname, isRadar, filtroCatRadar]);
+
+  // Carrega contadores das categorias do Radar
+  useEffect(() => {
+    if (!isRadar) return;
+    setLoadingCategorias(true);
+    supabase
+      .from("noticias")
+      .select("categoria")
+      .eq("tipo", "radar")
+      .not("categoria", "is", null)
+      .then(({ data }) => {
+        const contagem: Record<string, number> = {};
+        (data ?? []).forEach((n: any) => {
+          const cat = n.categoria?.trim();
+          if (cat) contagem[cat] = (contagem[cat] || 0) + 1;
+        });
+        setCategoriasRadar(
+          Object.entries(contagem)
+            .map(([nome, total]) => ({ nome, total }))
+            .sort((a, b) => b.total - a.total)
+        );
+        setLoadingCategorias(false);
+      });
+  }, [isRadar]);
 
   const handleSelectNews = async (news: any) => {
     setSelectedNews(news);
     setLoadingDetalhes(true);
+    const tipoFiltro = isRadar ? "radar" : "estrategia";
+
     try {
       const { data: detalhes, error } = await supabase
         .from("noticias")
         .select("o_que_e, impacto_real, como_aplicar, contras, quando_usar, motivo")
         .eq("id", news.id)
+        .eq("tipo", tipoFiltro)
         .single();
 
       if (error) throw error;
@@ -112,7 +151,7 @@ export default function Dashboard() {
         );
       }
     } catch (err) {
-      console.error("Erro ao buscar detalhes da notícia:", err);
+      console.error("Erro ao buscar detalhes:", err);
     } finally {
       setLoadingDetalhes(false);
     }
@@ -131,8 +170,6 @@ export default function Dashboard() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
-          
-          {/* Logo linkado para a home */}
           <Link to="/" className="flex items-center gap-2 sm:gap-3">
             <EcomondsLogo size={38} />
             <div className="flex items-baseline">
@@ -142,22 +179,18 @@ export default function Dashboard() {
           </Link>
 
           <div className="flex items-center border border-border-strong px-2 py-1 sm:px-3 sm:py-1.5 gap-4">
-            {/* Link Radar */}
             <Link
               to="/radar"
               className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-muted-foreground px-2 py-0.5 hover:text-primary transition-colors whitespace-nowrap"
             >
               Radar
             </Link>
-            
-            {/* Link Acervo (Novo) */}
             <Link
               to="/acervo"
               className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-muted-foreground px-2 py-0.5 hover:text-primary transition-colors whitespace-nowrap"
             >
               Acervo
             </Link>
-
             <Link
               to="/inteligencia"
               className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary px-2 py-0.5 border border-primary transition-colors hover:brightness-125 whitespace-nowrap"
@@ -174,15 +207,15 @@ export default function Dashboard() {
       <main className="relative mx-auto max-w-7xl px-6 pb-24">
         {/* Hero */}
         <section className="pt-16 md:pt-24">
-          <div className="animate-fade-up flex items-center gap-2 text-mono text-[21px] uppercase tracking-[0.25em] text-primary mb-5">
+          <div className="animate-fade-up flex items-center gap-2 text-mono text-[11px] uppercase tracking-[0.25em] text-primary mb-5">
             <span className="h-px w-8 bg-primary" /> {isRadar ? "Radar Global" : "Vector-X"}
           </div>
           <h1 className="text-display max-w-4xl text-5xl md:text-7xl font-extrabold leading-[0.90] animate-fade-up">
             {isRadar ? (
               <>
-                O que está sendo
+                Tendências globais
                 <br />
-                <span className="text-primary text-glow">construído amanhã.</span>
+                <span className="text-primary text-glow">na CONSTRUÇÃO.</span>
               </>
             ) : (
               <>
@@ -210,18 +243,81 @@ export default function Dashboard() {
           <StatCard index={3} label="Destaque" value={data?.keywords?.[0] ?? "—"} hint="Categoria do dia" />
         </section>
 
+        {/* Categorias do Radar */}
+        {isRadar && (
+          <section className="mt-16">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+                Categorias
+              </span>
+              <span className="h-px flex-1 bg-border" />
+              {filtroCatRadar && (
+                <button
+                  onClick={() => setFiltroCatRadar(null)}
+                  className="text-mono text-[10px] uppercase tracking-[0.2em] text-rose-400 border border-rose-400/30 px-3 py-1 hover:bg-rose-400/10 transition-colors"
+                >
+                  ✕ Limpar
+                </button>
+              )}
+            </div>
+
+            {loadingCategorias ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-24 bg-card border border-border animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {categoriasRadar.map((cat) => {
+                  const ativo = filtroCatRadar === cat.nome;
+                  return (
+                    <button
+                      key={cat.nome}
+                      onClick={() => setFiltroCatRadar((prev) => prev === cat.nome ? null : cat.nome)}
+                      className={[
+                        "group relative flex flex-col justify-between p-5 text-left transition-all duration-200 border focus:outline-none",
+                        ativo
+                          ? "border-primary bg-primary/10 shadow-[0_0_24px_-4px_var(--color-primary,hsl(var(--primary)))]"
+                          : "border-border bg-card hover:border-primary/50 hover:bg-primary/5",
+                      ].join(" ")}
+                    >
+                      <span className={["absolute top-0 left-0 right-0 h-px transition-all duration-300", ativo ? "bg-primary" : "bg-transparent group-hover:bg-primary/30"].join(" ")} />
+                      <span className={["text-mono text-[10px] uppercase tracking-[0.2em] font-bold transition-colors", ativo ? "text-primary" : "text-foreground group-hover:text-primary"].join(" ")}>
+                        {cat.nome}
+                      </span>
+                      <div className="flex items-end justify-between mt-4">
+                        <span className={["text-display text-2xl font-extrabold tabular-nums transition-colors", ativo ? "text-primary text-glow" : "text-muted-foreground group-hover:text-foreground"].join(" ")}>
+                          {cat.total}
+                        </span>
+                        <span className="text-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
+                          sinais
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Trends Grid */}
         <section className="mt-20">
           <div className="flex items-end justify-between border-b border-border pb-4 mb-8">
-            <h2 className="text-display text-2xl font-bold">Sinais de hoje</h2>
+            <h2 className="text-display text-2xl font-bold">
+              {filtroCatRadar
+                ? <><span className="text-primary">#</span>{filtroCatRadar}</>
+                : "Sinais de hoje"
+              }
+            </h2>
             {!loading && !semSinaisHoje && (
               <span className="text-mono text-[10px] text-muted-foreground uppercase tracking-widest">
-                {data?.trends.length} sinais
+                {trendsFiltradas?.length ?? 0} sinais
               </span>
             )}
           </div>
 
-          {/* Empty State */}
           {semSinaisHoje ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="text-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-4 flex items-center gap-2">
@@ -232,7 +328,7 @@ export default function Dashboard() {
                 Nenhum sinal detectado hoje.
               </h3>
               <p className="text-muted-foreground text-sm max-w-sm mb-8 leading-relaxed">
-                Enquanto o radar trabalha, explore o acervo completo de tendências anteriores.
+                Mientras o radar trabalha, explore o acervo completo de tendências anteriores.
               </p>
               <Link
                 to="/acervo"
@@ -243,17 +339,19 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              <div className="mb-8">
-                <KeywordMarquee
-                  keywords={data?.keywords ?? []}
-                  activeKeyword={filtroAtivo}
-                  onSelect={(kw) => setFiltroAtivo(prev => prev === kw ? null : kw)}
-                />
-              </div>
+              {!isRadar && (
+                <div className="mb-8">
+                  <KeywordMarquee
+                    keywords={data?.keywords ?? []}
+                    activeKeyword={filtroAtivo}
+                    onSelect={(kw) => setFiltroAtivo(prev => prev === kw ? null : kw)}
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {loading
-                  ? Array.from({ length: 6 }).map((_, i) => (
+                  ? Array.from({ length: 3 }).map((_, i) => (
                       <TrendCardSkeleton key={i} index={i} />
                     ))
                   : trendsFiltradas?.map((t, i) => (
@@ -271,7 +369,7 @@ export default function Dashboard() {
         </section>
 
         {/* Botão Acervo */}
-        {!semSinaisHoje && !loading && (
+        {!isRadar && !semSinaisHoje && !loading && (
           <section className="mt-20 border-t border-border pt-12 flex flex-col items-center text-center gap-4">
             <div className="text-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
               Quer ir mais fundo?
@@ -394,14 +492,16 @@ export default function Dashboard() {
                 <div className="text-mono text-[10px] text-muted-foreground">
                   PUBLICADO EM: {formatTime(selectedNews.pub_date || selectedNews.atualizado_em)}
                 </div>
-                <a
-                  href={selectedNews.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center bg-primary text-primary-foreground px-6 py-4 font-bold text-mono text-xs tracking-tighter hover:bg-primary/90 transition-colors"
-                >
-                  ACESSAR FONTE ORIGINAL NA ÍNTEGRA →
-                </a>
+                {selectedNews.link && (
+                  <a
+                    href={selectedNews.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center bg-primary text-primary-foreground px-6 py-4 font-bold text-mono text-xs tracking-tighter hover:bg-primary/90 transition-colors"
+                  >
+                    ACESSAR FONTE ORIGINAL NA ÍNTEGRA →
+                  </a>
+                )}
               </div>
             </div>
           </div>
