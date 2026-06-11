@@ -132,6 +132,13 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Previne scroll horizontal no mobile */
+  body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
   ::selection {
     background: oklch(0.74 0.18 155 / 0.3);
     color: var(--color-foreground);
@@ -166,7 +173,17 @@
   @keyframes marquee {
     0%   { transform: translateX(0); }
     100% { transform: translateX(-50%); }
-}
+  }
+
+  /* Esconde scrollbar no header mobile */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   .text-display {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
@@ -232,5 +249,64 @@
   .animate-circuit {
     stroke-dasharray: 4 4;
     animation: circuit-flow 2s linear infinite;
+  }
+
+  /* Modal animations */
+  @keyframes slide-in-from-bottom {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-in-from-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-in {
+    animation-duration: 0.3s;
+    animation-fill-mode: both;
+  }
+
+  .slide-in-from-bottom {
+    animation-name: slide-in-from-bottom;
+  }
+
+  .slide-in-from-right {
+    animation-name: slide-in-from-right;
+  }
+
+  @media (min-width: 640px) {
+    .sm\:slide-in-from-right {
+      animation-name: slide-in-from-right;
+    }
+  }
+
+  /* Break words para títulos longos no mobile */
+  .break-words {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Ajustes para telas pequenas */
+  @media (max-width: 640px) {
+    .container-padding {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+    
+    /* Melhora touch targets */
+    button, 
+    [role="button"],
+    .cursor-pointer {
+      min-height: 44px;
+    }
   }
 }

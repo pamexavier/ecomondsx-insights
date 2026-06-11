@@ -167,74 +167,76 @@ export default function Dashboard() {
         style={{ background: "var(--gradient-radial-glow)" }}
       />
 
-      {/* Header */}
+      {/* Header responsivo com scroll horizontal no mobile */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 sm:px-6 py-2 sm:py-4">
           
-          {/* Logo Vector-X */}
-          <Link to="/" className="flex items-center gap-2 sm:gap-3 group transition-opacity hover:opacity-80">
-            <EcomondsLogo size={38} />
+          {/* Logo Vector-X - mais compacta no mobile */}
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 group transition-opacity hover:opacity-80 shrink-0">
+            <EcomondsLogo size={32} />
             <div className="flex flex-col justify-center">
-              <span className="text-display text-lg sm:text-xl font-extrabold tracking-tight text-foreground leading-none uppercase">
+              <span className="text-display text-sm sm:text-xl font-extrabold tracking-tight text-foreground leading-none uppercase">
                 Vector-X
               </span>
-              <span className="text-mono text-[8px] uppercase tracking-[0.3em] text-muted-foreground mt-1.5 opacity-70">
+              <span className="text-mono text-[6px] sm:text-[8px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground mt-1 opacity-70">
                 By EcomindsX
               </span>
             </div>
           </Link>
 
-          {/* Navegação */}
-          <div className="flex items-center border border-border-strong px-2 py-1 sm:px-3 sm:py-1.5 gap-4">
-            <Link
-              to="/radar"
-              className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-muted-foreground px-2 py-0.5 hover:text-primary transition-colors whitespace-nowrap"
-            >
-              Radar
-            </Link>
-            <Link
-              to="/acervo"
-              className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-muted-foreground px-2 py-0.5 hover:text-primary transition-colors whitespace-nowrap"
-            >
-              Acervo
-            </Link>
+          {/* Navegação - scroll horizontal no mobile */}
+          <div className="overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2 sm:gap-3 px-1">
+              <Link
+                to="/radar"
+                className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-muted-foreground px-2 py-1 hover:text-primary transition-colors whitespace-nowrap"
+              >
+                Radar
+              </Link>
+              <Link
+                to="/acervo"
+                className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-muted-foreground px-2 py-1 hover:text-primary transition-colors whitespace-nowrap"
+              >
+                Acervo
+              </Link>
 
-            {/* Wellness Hub — destaque próprio */}
-            <Link
-              to="/wellness"
-              className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap px-2 sm:px-3 py-0.5 transition-all hover:brightness-125"
-              style={{
-                color: "#5EEAD4",
-                border: "1px solid rgba(94,234,212,0.5)",
-                borderRadius: "999px",
-                boxShadow: "0 0 10px rgba(94,234,212,0.25), inset 0 0 8px rgba(94,234,212,0.06)",
-              }}
-            >
-              <span className="hidden sm:inline">Wellness Hub </span>
-              <span className="inline sm:hidden">Wellness </span>
-              ✦
-            </Link>
+              {/* Wellness Hub */}
+              <Link
+                to="/wellness"
+                className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap px-2 sm:px-3 py-1 transition-all hover:brightness-125"
+                style={{
+                  color: "#5EEAD4",
+                  border: "1px solid rgba(94,234,212,0.5)",
+                  borderRadius: "999px",
+                  boxShadow: "0 0 10px rgba(94,234,212,0.25), inset 0 0 8px rgba(94,234,212,0.06)",
+                }}
+              >
+                <span className="hidden sm:inline">Wellness Hub </span>
+                <span className="inline sm:hidden">Wellness </span>
+                ✦
+              </Link>
 
-            <Link
-              to="/inteligencia"
-              className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary px-2 py-0.5 border border-primary transition-colors hover:brightness-125 whitespace-nowrap"
-              style={{ boxShadow: "0 0 8px rgba(0,255,100, 0.5)" }}
-            >
-              <span className="hidden sm:inline">Inteligência de Projeto </span>
-              <span className="inline sm:hidden">Inteligência </span>
-              →
-            </Link>
+              <Link
+                to="/inteligencia"
+                className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary px-2 py-1 border border-primary transition-colors hover:brightness-125 whitespace-nowrap"
+                style={{ boxShadow: "0 0 8px rgba(0,255,100, 0.5)" }}
+              >
+                <span className="hidden sm:inline">Inteligência de Projeto </span>
+                <span className="inline sm:hidden">Inteligência </span>
+                →
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-7xl px-6 pb-24">
+      <main className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-24">
         {/* Hero */}
-        <section className="pt-16 md:pt-24">
-          <div className="animate-fade-up flex items-center gap-2 text-mono text-[11px] uppercase tracking-[0.25em] text-primary mb-5">
-            <span className="h-px w-8 bg-primary" /> {isRadar ? "Radar Global" : "Vector-X"}
+        <section className="pt-12 sm:pt-16 md:pt-24">
+          <div className="animate-fade-up flex items-center gap-2 text-mono text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-primary mb-4 sm:mb-5">
+            <span className="h-px w-6 sm:w-8 bg-primary" /> {isRadar ? "Radar Global" : "Vector-X"}
           </div>
-          <h1 className="text-display max-w-4xl text-5xl md:text-7xl font-extrabold leading-[0.90] animate-fade-up">
+          <h1 className="text-display max-w-4xl text-3xl sm:text-5xl md:text-7xl font-extrabold leading-[1.1] sm:leading-[0.90] animate-fade-up">
             {isRadar ? (
               <>
                 Tendências globais
@@ -250,7 +252,7 @@ export default function Dashboard() {
             )}
           </h1>
           <p
-            className="text-mono mt-8 max-w-2xl text-sm md:text-base leading-relaxed text-muted-foreground animate-fade-up border-l-2 border-primary/40 pl-5"
+            className="text-mono mt-6 sm:mt-8 max-w-2xl text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground animate-fade-up border-l-2 border-primary/40 pl-4 sm:pl-5"
             style={{ animationDelay: "180ms" }}
           >
             {isRadar
@@ -260,7 +262,7 @@ export default function Dashboard() {
         </section>
 
         {/* Stats */}
-        <section className="mt-14 grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <section className="mt-10 sm:mt-14 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           <StatCard index={0} label="Sinais Hoje" value={data ? String(data.stats.activeTrends) : "—"} hint="Detectados hoje" live />
           <StatCard index={1} label="Fontes" value={data ? String(data.stats.monitoredSources) : "—"} hint="Monitoramento Global" />
           <StatCard index={2} label="Sync" value={data?.stats.lastUpdate ? formatTime(data.stats.lastUpdate).split(" às ")[1] : "—"} hint="Último pulso" />
@@ -269,16 +271,16 @@ export default function Dashboard() {
 
         {/* Categorias do Radar */}
         {isRadar && (
-          <section className="mt-16">
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+          <section className="mt-12 sm:mt-16">
+            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+              <span className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
                 Categorias
               </span>
               <span className="h-px flex-1 bg-border" />
               {filtroCatRadar && (
                 <button
                   onClick={() => setFiltroCatRadar(null)}
-                  className="text-mono text-[10px] uppercase tracking-[0.2em] text-rose-400 border border-rose-400/30 px-3 py-1 hover:bg-rose-400/10 transition-colors"
+                  className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-rose-400 border border-rose-400/30 px-2 sm:px-3 py-1 hover:bg-rose-400/10 transition-colors"
                 >
                   ✕ Limpar
                 </button>
@@ -286,35 +288,34 @@ export default function Dashboard() {
             </div>
 
             {loadingCategorias ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-24 bg-card border border-border animate-pulse" />
+                  <div key={i} className="h-20 sm:h-24 bg-card border border-border animate-pulse" />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                 {categoriasRadar.map((cat) => {
                   const ativo = filtroCatRadar === cat.nome;
                   return (
                     <button
                       key={cat.nome}
                       onClick={() => setFiltroCatRadar((prev) => prev === cat.nome ? null : cat.nome)}
-                      className={[
-                        "group relative flex flex-col justify-between p-5 text-left transition-all duration-200 border focus:outline-none",
+                      className={`group relative flex flex-col justify-between p-3 sm:p-5 text-left transition-all duration-200 border focus:outline-none ${
                         ativo
                           ? "border-primary bg-primary/10 shadow-[0_0_24px_-4px_var(--color-primary,hsl(var(--primary)))]"
-                          : "border-border bg-card hover:border-primary/50 hover:bg-primary/5",
-                      ].join(" ")}
+                          : "border-border bg-card hover:border-primary/50 hover:bg-primary/5"
+                      }`}
                     >
-                      <span className={["absolute top-0 left-0 right-0 h-px transition-all duration-300", ativo ? "bg-primary" : "bg-transparent group-hover:bg-primary/30"].join(" ")} />
-                      <span className={["text-mono text-[10px] uppercase tracking-[0.2em] font-bold transition-colors", ativo ? "text-primary" : "text-foreground group-hover:text-primary"].join(" ")}>
+                      <span className={`absolute top-0 left-0 right-0 h-px transition-all duration-300 ${ativo ? "bg-primary" : "bg-transparent group-hover:bg-primary/30"}`} />
+                      <span className={`text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.2em] font-bold transition-colors ${ativo ? "text-primary" : "text-foreground group-hover:text-primary"}`}>
                         {cat.nome}
                       </span>
-                      <div className="flex items-end justify-between mt-4">
-                        <span className={["text-display text-2xl font-extrabold tabular-nums transition-colors", ativo ? "text-primary text-glow" : "text-muted-foreground group-hover:text-foreground"].join(" ")}>
+                      <div className="flex items-end justify-between mt-3 sm:mt-4">
+                        <span className={`text-display text-xl sm:text-2xl font-extrabold tabular-nums transition-colors ${ativo ? "text-primary text-glow" : "text-muted-foreground group-hover:text-foreground"}`}>
                           {cat.total}
                         </span>
-                        <span className="text-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
+                        <span className="text-mono text-[8px] sm:text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
                           sinais
                         </span>
                       </div>
@@ -327,36 +328,36 @@ export default function Dashboard() {
         )}
 
         {/* Trends Grid */}
-        <section className="mt-20">
-          <div className="flex items-end justify-between border-b border-border pb-4 mb-8">
-            <h2 className="text-display text-2xl font-bold">
+        <section className="mt-16 sm:mt-20">
+          <div className="flex items-end justify-between border-b border-border pb-3 sm:pb-4 mb-6 sm:mb-8">
+            <h2 className="text-display text-xl sm:text-2xl font-bold">
               {filtroCatRadar
                 ? <><span className="text-primary">#</span>{filtroCatRadar}</>
                 : "Sinais de hoje"
               }
             </h2>
             {!loading && !semSinaisHoje && (
-              <span className="text-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+              <span className="text-mono text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-widest">
                 {trendsFiltradas?.length ?? 0} sinais
               </span>
             )}
           </div>
 
           {semSinaisHoje ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="text-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-4 flex items-center gap-2">
+            <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center">
+              <div className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-4 flex items-center gap-2">
                 <span className="h-1.5 w-1.5 bg-muted-foreground rounded-full" />
                 Radar em standby
               </div>
-              <h3 className="text-display text-2xl font-bold mb-4">
+              <h3 className="text-display text-xl sm:text-2xl font-bold mb-4">
                 Nenhum sinal detectado hoje.
               </h3>
-              <p className="text-muted-foreground text-sm max-w-sm mb-8 leading-relaxed">
+              <p className="text-muted-foreground text-xs sm:text-sm max-w-sm mb-6 sm:mb-8 leading-relaxed">
                 Mientras o radar trabalha, explore o acervo completo de tendências anteriores.
               </p>
               <Link
                 to="/acervo"
-                className="text-mono text-[10px] uppercase tracking-[0.2em] bg-primary text-primary-foreground px-6 py-3 hover:bg-primary/90 transition-colors"
+                className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] bg-primary text-primary-foreground px-4 sm:px-6 py-2 sm:py-3 hover:bg-primary/90 transition-colors"
               >
                 Explorar acervo →
               </Link>
@@ -364,7 +365,7 @@ export default function Dashboard() {
           ) : (
             <>
               {!isRadar && (
-                <div className="mb-8">
+                <div className="mb-6 sm:mb-8">
                   <KeywordMarquee
                     keywords={data?.keywords ?? []}
                     activeKeyword={filtroAtivo}
@@ -373,7 +374,7 @@ export default function Dashboard() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                 {loading
                   ? Array.from({ length: 3 }).map((_, i) => (
                       <TrendCardSkeleton key={i} index={i} />
@@ -394,19 +395,19 @@ export default function Dashboard() {
 
         {/* Botão Acervo */}
         {!isRadar && !semSinaisHoje && !loading && (
-          <section className="mt-20 border-t border-border pt-12 flex flex-col items-center text-center gap-4">
-            <div className="text-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+          <section className="mt-16 sm:mt-20 border-t border-border pt-10 sm:pt-12 flex flex-col items-center text-center gap-3 sm:gap-4">
+            <div className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
               Quer ir mais fundo?
             </div>
-            <h3 className="text-display text-2xl font-bold">
+            <h3 className="text-display text-xl sm:text-2xl font-bold">
               Todo o histórico de sinais em um só lugar.
             </h3>
-            <p className="text-muted-foreground text-sm max-w-sm leading-relaxed">
+            <p className="text-muted-foreground text-xs sm:text-sm max-w-sm leading-relaxed">
               Filtre por categoria, período e mergulhe no acervo completo de tendências detectadas.
             </p>
             <Link
               to="/acervo"
-              className="mt-2 text-mono text-[10px] uppercase tracking-[0.2em] border border-primary/30 text-primary px-8 py-4 hover:border-primary transition-colors"
+              className="mt-2 text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] border border-primary/30 text-primary px-6 sm:px-8 py-3 sm:py-4 hover:border-primary transition-colors"
               style={{ boxShadow: "0 0 8px rgba(0,255,100, 0.2)" }}
             >
               Explorar Sinais Anteriores →
@@ -415,95 +416,133 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* MODAL DE DETALHES */}
+      {/* MODAL DE DETALHES - VERSÃO RESPONSIVA */}
       {selectedNews && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-background/60 backdrop-blur-sm p-4">
-          <div className="h-full w-full max-w-2xl bg-card border-l border-border p-8 md:p-12 overflow-y-auto animate-in slide-in-from-right duration-300 relative shadow-2xl">
-            <div className="flex items-start justify-between gap-4 mb-6">
-              <div className="text-mono text-[10px] uppercase tracking-[0.3em] text-primary flex-1 mt-2">
-                {selectedNews.categoria} // {selectedNews.fonte}
+        <div className="fixed inset-0 z-50 flex items-center justify-center sm:justify-end bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+          {/* Overlay para fechar */}
+          <div className="absolute inset-0" onClick={() => setSelectedNews(null)} />
+          
+          {/* Modal content - fullscreen no mobile, lateral no desktop */}
+          <div className="relative flex flex-col bg-card shadow-2xl w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-2xl sm:rounded-l-2xl border-0 sm:border-l border-border animate-in duration-300 slide-in-from-bottom sm:slide-in-from-right">
+            
+            {/* Header fixo no topo */}
+            <div className="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border p-4 sm:p-6 z-10">
+              <div className="flex items-start justify-between gap-3">
+                <div className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-primary flex-1 break-words">
+                  {selectedNews.categoria}
+                  {selectedNews.fonte && (
+                    <span className="hidden sm:inline"> // {selectedNews.fonte}</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setSelectedNews(null)}
+                  className="shrink-0 text-muted-foreground hover:text-primary text-mono text-[10px] sm:text-xs px-3 py-1.5 border border-border rounded-sm"
+                >
+                  ✕ FECHAR
+                </button>
               </div>
-              <button
-                onClick={() => setSelectedNews(null)}
-                className="shrink-0 text-muted-foreground hover:text-primary text-mono text-xs p-2 border border-border"
-              >
-                [ ESC ] FECHAR
-              </button>
+              
+              {/* Fonte no mobile (abaixo do título) */}
+              {selectedNews.fonte && (
+                <div className="text-mono text-[8px] uppercase tracking-[0.15em] text-muted-foreground mt-2 sm:hidden">
+                  {selectedNews.fonte}
+                </div>
+              )}
             </div>
 
-            <h2 className="text-display text-3xl md:text-5xl font-extrabold leading-tight mb-8">
-              {selectedNews.title}
-            </h2>
+            {/* Conteúdo rolável */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-5 sm:space-y-6">
+              
+              {/* Título */}
+              <h2 className="text-display text-2xl sm:text-3xl md:text-4xl font-extrabold leading-tight text-foreground">
+                {selectedNews.title}
+              </h2>
 
-            <div className="space-y-6">
-              <div className="relative p-6 bg-surface/50 border border-border">
-                <span className="absolute -top-3 left-4 bg-card px-2 text-mono text-[10px] text-muted-foreground uppercase">
+              {/* Badges */}
+              <div className="flex flex-wrap gap-2">
+                {(selectedNews as any).nivel_maturidade && (
+                  <span className="text-mono text-[8px] sm:text-[9px] uppercase tracking-[0.15em] text-primary border border-primary/30 px-2 py-1 rounded-sm">
+                    {String((selectedNews as any).nivel_maturidade).toUpperCase()}
+                  </span>
+                )}
+              </div>
+
+              {/* Resumo Executivo */}
+              <div className="relative p-4 sm:p-6 bg-surface/30 border border-border rounded-sm">
+                <span className="absolute -top-2.5 left-3 sm:left-4 bg-card px-2 text-mono text-[8px] sm:text-[10px] text-muted-foreground uppercase">
                   Resumo Executivo
                 </span>
-                <p className="text-foreground leading-relaxed text-lg italic">
+                <p className="text-foreground leading-relaxed text-sm sm:text-base italic">
                   "{selectedNews.resumo_executivo || selectedNews.description}"
                 </p>
               </div>
 
+              {/* Loading de detalhes */}
               {loadingDetalhes ? (
                 <div className="space-y-4">
-                  {Array.from({ length: 3 }).map((_, i) => (
+                  {[1, 2, 3].map((i) => (
                     <div key={i} className="space-y-2">
-                      <div className="h-2 w-32 bg-muted-foreground/20 animate-pulse" />
-                      <div className="h-16 bg-muted-foreground/10 animate-pulse" />
+                      <div className="h-2 w-24 bg-muted-foreground/20 animate-pulse rounded" />
+                      <div className="h-12 bg-muted-foreground/10 animate-pulse rounded" />
                     </div>
                   ))}
                 </div>
               ) : (
                 <>
+                  {/* O que é na prática */}
                   {selectedNews.o_que_e && (
                     <div className="space-y-2">
-                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
+                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
                         <span className="h-px w-4 bg-primary" /> O que é na prática
                       </h4>
                       <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.o_que_e}</p>
                     </div>
                   )}
 
+                  {/* Impacto Real */}
                   {selectedNews.impacto_real && (
-                    <div className="relative p-5 border border-primary/30 bg-primary/5">
-                      <span className="absolute -top-3 left-4 bg-card px-2 text-mono text-[10px] text-primary uppercase">
+                    <div className="relative p-4 border border-primary/30 bg-primary/5 rounded-sm">
+                      <span className="absolute -top-2.5 left-3 sm:left-4 bg-card px-2 text-mono text-[8px] sm:text-[10px] text-primary uppercase">
                         Impacto Real
                       </span>
                       <p className="text-foreground leading-relaxed text-sm font-medium">{selectedNews.impacto_real}</p>
                     </div>
                   )}
 
+                  {/* Como aplicar em obra */}
                   {selectedNews.como_aplicar && (
                     <div className="space-y-2">
-                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
+                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
                         <span className="h-px w-4 bg-primary" /> Como aplicar em obra
                       </h4>
                       <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.como_aplicar}</p>
                     </div>
                   )}
 
+                  {/* Limitações e riscos */}
                   {selectedNews.contras && (
                     <div className="space-y-2">
-                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-rose-400 font-bold flex items-center gap-2">
+                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-rose-400 font-bold flex items-center gap-2">
                         <span className="h-px w-4 bg-rose-400" /> Limitações e riscos
                       </h4>
                       <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.contras}</p>
                     </div>
                   )}
 
+                  {/* Quando usar */}
                   {selectedNews.quando_usar && (
                     <div className="space-y-2">
-                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
+                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
                         <span className="h-px w-4 bg-primary" /> Quando usar
                       </h4>
                       <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.quando_usar}</p>
                     </div>
                   )}
 
+                  {/* Por que isso é relevante */}
                   {selectedNews.motivo && (
                     <div className="space-y-2">
-                      <h4 className="text-mono text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
+                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
                         <span className="h-px w-4 bg-primary" /> Por que isso é relevante
                       </h4>
                       <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.motivo}</p>
@@ -512,8 +551,9 @@ export default function Dashboard() {
                 </>
               )}
 
-              <div className="pt-8 border-t border-border flex flex-col gap-4">
-                <div className="text-mono text-[10px] text-muted-foreground">
+              {/* Footer */}
+              <div className="pt-6 border-t border-border space-y-4">
+                <div className="text-mono text-[9px] sm:text-[10px] text-muted-foreground">
                   PUBLICADO EM: {formatTime(selectedNews.pub_date || selectedNews.atualizado_em)}
                 </div>
                 {selectedNews.link && (
@@ -521,7 +561,7 @@ export default function Dashboard() {
                     href={selectedNews.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center bg-primary text-primary-foreground px-6 py-4 font-bold text-mono text-xs tracking-tighter hover:bg-primary/90 transition-colors"
+                    className="block w-full text-center bg-primary text-primary-foreground px-4 py-3 sm:py-4 font-bold text-mono text-[10px] sm:text-xs tracking-tighter hover:bg-primary/90 transition-colors rounded-sm"
                   >
                     ACESSAR FONTE ORIGINAL NA ÍNTEGRA →
                   </a>
@@ -529,7 +569,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <div className="absolute inset-0 -z-10" onClick={() => setSelectedNews(null)} />
         </div>
       )}
     </div>
