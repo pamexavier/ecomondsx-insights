@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WellnessRouteImport } from './routes/wellness'
 import { Route as RadarRouteImport } from './routes/radar'
 import { Route as InteligenciaRouteImport } from './routes/inteligencia'
 import { Route as AcervoRouteImport } from './routes/acervo'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiTendenciasRouteImport } from './routes/api.tendencias'
 
+const WellnessRoute = WellnessRouteImport.update({
+  id: '/wellness',
+  path: '/wellness',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RadarRoute = RadarRouteImport.update({
   id: '/radar',
   path: '/radar',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/acervo': typeof AcervoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/radar': typeof RadarRoute
+  '/wellness': typeof WellnessRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/acervo': typeof AcervoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/radar': typeof RadarRoute
+  '/wellness': typeof WellnessRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRoutesById {
@@ -61,19 +69,33 @@ export interface FileRoutesById {
   '/acervo': typeof AcervoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/radar': typeof RadarRoute
+  '/wellness': typeof WellnessRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/acervo' | '/inteligencia' | '/radar' | '/api/tendencias'
+  fullPaths:
+    | '/'
+    | '/acervo'
+    | '/inteligencia'
+    | '/radar'
+    | '/wellness'
+    | '/api/tendencias'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/acervo' | '/inteligencia' | '/radar' | '/api/tendencias'
+  to:
+    | '/'
+    | '/acervo'
+    | '/inteligencia'
+    | '/radar'
+    | '/wellness'
+    | '/api/tendencias'
   id:
     | '__root__'
     | '/'
     | '/acervo'
     | '/inteligencia'
     | '/radar'
+    | '/wellness'
     | '/api/tendencias'
   fileRoutesById: FileRoutesById
 }
@@ -82,11 +104,19 @@ export interface RootRouteChildren {
   AcervoRoute: typeof AcervoRoute
   InteligenciaRoute: typeof InteligenciaRoute
   RadarRoute: typeof RadarRoute
+  WellnessRoute: typeof WellnessRoute
   ApiTendenciasRoute: typeof ApiTendenciasRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wellness': {
+      id: '/wellness'
+      path: '/wellness'
+      fullPath: '/wellness'
+      preLoaderRoute: typeof WellnessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/radar': {
       id: '/radar'
       path: '/radar'
@@ -130,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   AcervoRoute: AcervoRoute,
   InteligenciaRoute: InteligenciaRoute,
   RadarRoute: RadarRoute,
+  WellnessRoute: WellnessRoute,
   ApiTendenciasRoute: ApiTendenciasRoute,
 }
 export const routeTree = rootRouteImport

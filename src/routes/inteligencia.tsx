@@ -162,11 +162,16 @@ function Inteligencia() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <a href="/" className="flex items-center gap-3">
+          {/* Logo Vector-X */}
+          <a href="/" className="flex items-center gap-3 group transition-opacity hover:opacity-80">
             <EcomondsLogo size={36} />
-            <div className="flex items-baseline">
-              <span className="text-display text-xl font-extrabold tracking-tight">Ecominds</span>
-              <span className="text-display text-xl font-extrabold text-primary text-glow">X</span>
+            <div className="flex flex-col justify-center">
+              <span className="text-display text-xl font-extrabold tracking-tight text-foreground leading-none uppercase">
+                Vector-X
+              </span>
+              <span className="text-mono text-[8px] uppercase tracking-[0.3em] text-muted-foreground mt-1.5 opacity-70">
+                By EcomindsX
+              </span>
             </div>
           </a>
           <a

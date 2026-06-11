@@ -56,12 +56,21 @@
   --color-ring: var(--ring);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
+
+  /* ── Aliases EXCLUSIVOS para o Wellness Hub ── */
+  --color-wh-bg: #09090b;
+  --color-wh-surface: #18181b;
+  --color-wh-primary: #5eead4;
+  --color-wh-text: #fafafa;
+  --color-wh-muted: #a1a1aa;
+  --color-wh-border: #27272a;
+  --color-wh-border-soft: rgba(39, 39, 42, 0.5);
 }
 
 :root {
   --radius: 2px;
 
-  /* EcomondsX palette */
+  /* EcomindsX palette */
   --background: oklch(0.17 0.008 152);   /* near #0D0F0E */
   --foreground: oklch(0.94 0.008 145);   /* near #E8EDE9 */
 

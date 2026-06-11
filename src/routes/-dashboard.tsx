@@ -170,14 +170,21 @@ export default function Dashboard() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
-          <Link to="/" className="flex items-center gap-2 sm:gap-3">
+          
+          {/* Logo Vector-X */}
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 group transition-opacity hover:opacity-80">
             <EcomondsLogo size={38} />
-            <div className="flex items-baseline">
-              <span className="text-display text-lg sm:text-xl font-extrabold tracking-tight">Ecominds</span>
-              <span className="text-display text-lg sm:text-xl font-extrabold text-primary text-glow">X</span>
+            <div className="flex flex-col justify-center">
+              <span className="text-display text-lg sm:text-xl font-extrabold tracking-tight text-foreground leading-none uppercase">
+                Vector-X
+              </span>
+              <span className="text-mono text-[8px] uppercase tracking-[0.3em] text-muted-foreground mt-1.5 opacity-70">
+                By EcomindsX
+              </span>
             </div>
           </Link>
 
+          {/* Navegação */}
           <div className="flex items-center border border-border-strong px-2 py-1 sm:px-3 sm:py-1.5 gap-4">
             <Link
               to="/radar"
@@ -191,6 +198,23 @@ export default function Dashboard() {
             >
               Acervo
             </Link>
+
+            {/* Wellness Hub — destaque próprio */}
+            <Link
+              to="/wellness"
+              className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap px-2 sm:px-3 py-0.5 transition-all hover:brightness-125"
+              style={{
+                color: "#5EEAD4",
+                border: "1px solid rgba(94,234,212,0.5)",
+                borderRadius: "999px",
+                boxShadow: "0 0 10px rgba(94,234,212,0.25), inset 0 0 8px rgba(94,234,212,0.06)",
+              }}
+            >
+              <span className="hidden sm:inline">Wellness Hub </span>
+              <span className="inline sm:hidden">Wellness </span>
+              ✦
+            </Link>
+
             <Link
               to="/inteligencia"
               className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary px-2 py-0.5 border border-primary transition-colors hover:brightness-125 whitespace-nowrap"

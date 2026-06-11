@@ -9,12 +9,21 @@ interface StatCardProps {
   live?: boolean;
 }
 
-function parseNumeric(val: string): { prefix: string; num: number; suffix: string } | null {
-  const match = val.match(/^([^0-9]*)([0-9]+)([^0-9]*)$/);
-  if (!match) return null;
-  return { prefix: match[1], num: parseInt(match[2], 10), suffix: match[3] };
-}
+function parseNumeric(val: any): { prefix: string; num: number; suffix: string } | null {
+  // 1. Tratamento seguro: converte tudo para string antes de processar
+  const strVal = String(val ?? ""); 
 
+  // 2. Regex que tenta extrair números de qualquer string
+  const match = strVal.match(/^([^0-9]*)([0-9]+)([^0-9]*)$/);
+  
+  if (!match) return null;
+  
+  return { 
+    prefix: match[1], 
+    num: parseInt(match[2], 10), 
+    suffix: match[3] 
+  };
+}
 export function StatCard({ index, label, value, hint, live }: StatCardProps) {
   const [displayed, setDisplayed] = useState("—");
   const rafRef = useRef<number | null>(null);
