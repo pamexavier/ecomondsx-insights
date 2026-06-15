@@ -1134,16 +1134,16 @@ export default function WellnessDashboard() {
 
       {/* ── MODAL DE ESPECIFICAÇÕES — REFERÊNCIAS GLOBAIS ── */}
       {selectedRef && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm overflow-hidden p-3 sm:p-4">
           {/* Overlay para fechar */}
           <div className="absolute inset-0" onClick={() => setSelectedRef(null)} />
 
-          <div className="relative flex flex-col bg-wh-surface shadow-2xl w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-2xl border-0 sm:border border-wh-border animate-in duration-300 slide-in-from-bottom sm:fade-in overflow-visible">
+          <div className="relative flex flex-col bg-wh-surface shadow-2xl w-full max-w-[calc(100vw-1.25rem)] h-[calc(100vh-1.25rem)] max-h-[calc(100vh-1.25rem)] sm:h-auto sm:max-h-[88vh] sm:max-w-2xl sm:rounded-2xl border-0 sm:border border-wh-border animate-in duration-150 slide-in-from-bottom sm:fade-in overflow-hidden">
 
             {/* Imagem de topo (em cor) */}
-            <div className="relative h-48 sm:h-64 shrink-0 overflow-visible group">
+            <div className="relative h-36 sm:h-52 shrink-0 overflow-hidden group">
               <div
-                className="absolute inset-0 flex h-full transition-transform duration-700 ease-out"
+                className="absolute inset-0 flex h-full transition-transform duration-300 ease-out"
                 style={{
                   width: `${selectedRef.imagens.length * 100}%`,
                   transform: `translateX(-${(imgIndex * 100) / selectedRef.imagens.length}%)`,
