@@ -1,12 +1,29 @@
 export type TrendCategory = "Material" | "Regulação" | "Tecnologia" | "Mercado";
 
+export interface MetricaItem {
+  label: string;
+  valor: string;
+}
+
 export interface Trend {
   id: string;
-  category: TrendCategory;
+  category: string; // ampliado de TrendCategory para aceitar categorias dinâmicas do banco
   title: string;
   description: string;
   relevance: number; // 0–100
   source?: string;
+  // campos vindos do Supabase
+  metricas?: { items: MetricaItem[] } | null; // 👈 adicionado
+  score_tecnico?: number | null;
+  categoria?: string;
+  fonte?: string;
+  titulo?: string;
+  titulo_pt?: string;
+  resumo_executivo?: string;
+  resumo_pt?: string;
+  pub_date?: string;
+  atualizado_em?: string;
+  link?: string;
 }
 
 export interface TrendsPayload {
@@ -14,14 +31,14 @@ export interface TrendsPayload {
   stats: {
     activeTrends: number;
     monitoredSources: number;
-    lastUpdate: string; // ISO
+    lastUpdate?: string | null; // opcional — pode não ter dado ainda
     avgRelevance: number;
   };
   highlight: {
-    title: string;
-    excerpt: string;
-    source: string;
-    publishedAt: string;
+    title?: string;
+    excerpt?: string;
+    source?: string;
+    publishedAt?: string;
   };
   keywords: string[];
 }
@@ -88,7 +105,7 @@ export const MOCK_PAYLOAD: TrendsPayload = {
     title:
       "Cimento verde: como o setor se prepara para o net-zero até 2050",
     excerpt:
-      "Uma análise das principais rotas de descarbonização adotadas por cimenteiras brasileiras, com foco em captura de carbono, substituição de clínquer e uso de combustíveis alternativos. O movimento já redesenha cadeias de fornecimento e contratos de longo prazo.",
+      "Uma análise das principais rotas de descarbonização adotadas por cimenteiras brasileiras, com foco em captura de carbono, substituição de clínquer e uso de combustíveis alternativos.",
     source: "Instituto Brasileiro do Cimento",
     publishedAt: new Date().toISOString(),
   },

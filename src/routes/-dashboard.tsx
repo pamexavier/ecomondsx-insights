@@ -70,14 +70,16 @@ export default function Dashboard() {
         if (noticias) {
           const formattedData: TrendsPayload = {
             trends: noticias.map((n) => ({
-              ...n,
-              id: n.id,
-              title: n.titulo_pt || n.titulo,
-              description: n.resumo_executivo || n.resumo_pt || "Análise em processamento...",
-              category: n.categoria || "Geral",
-              trend: "up" as const,
-              relevance: n.score_tecnico ?? 0,
-            })),
+  ...n,
+  id: n.id,
+  title: n.titulo_pt || n.titulo,
+  description: n.resumo_executivo || n.resumo_pt || "Análise em processamento...",
+  category: n.categoria || "Geral",
+  trend: "up" as const,
+  relevance: n.score_tecnico ?? 0,
+  metricas: n.metricas ?? null,        // 👈 explícito
+  score_tecnico: n.score_tecnico ?? 0, // 👈 explícito
+})),
             stats: {
               activeTrends: noticias.length,
               monitoredSources: new Set(noticias.map((n) => n.fonte)).size,
@@ -96,6 +98,7 @@ export default function Dashboard() {
               new Set(noticias.map((n) => n.categoria).filter(Boolean))
             ) as string[],
           };
+          console.log("METRICAS DEBUG:", formattedData.trends.map(t => ({ id: t.id, metricas: (t as any).metricas })));
           setData(formattedData);
         }
       } catch (err) {
@@ -130,6 +133,7 @@ export default function Dashboard() {
         setLoadingCategorias(false);
       });
   }, [isRadar]);
+  
 
   const handleSelectNews = async (news: any) => {
     setSelectedNews(news);

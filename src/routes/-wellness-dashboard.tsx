@@ -44,7 +44,189 @@ function formatSyncTime(iso: string | null) {
   }
 }
 
-// ─── página principal ─────────────────────────────────────────────────────────
+// ─── referências globais (curadoria editorial) ────────────────────────────────
+// TODO: substituir pelas fotos reais/licenciadas dos empreendimentos.
+//
+// PROCESSO DE CHECAGEM (obrigatório antes de publicar/editar qualquer item):
+// 1. Todo número (área, contagem de plantas/árvores, score de certificação, ano,
+//    altura etc.) precisa vir de pelo menos 2 fontes independentes que convirjam
+//    (ex: ArchDaily + site do arquiteto + Wikipedia). Se as fontes divergirem,
+//    usar o valor do projetista/arquiteto original como desempate.
+// 2. Nunca aceitar um número "redondo e impressionante" gerado por IA sem
+//    confirmar contra uma fonte primária — diferenças grandes (>10-15%) entre o
+//    valor usado e o valor de consenso são sinal de confabulação, não de
+//    arredondamento.
+// 3. Registrar a data da última verificação em `verificadoEm` para permitir
+//    auditorias periódicas (ex: revisar a cada 6-12 meses ou quando o card for
+//    editado).
+const REFERENCIAS_GLOBAIS = [
+  {
+    nome: "One Central Park",
+    local: "Sydney, Austrália",
+    ano: "2014",
+    arquiteto: "Ateliers Jean Nouvel + PTW Architects",
+    dimensoes: "Torres de 116 m e 64,5 m · 623 apartamentos",
+    certificacao: "Green Star 6★",
+    metricaChave: "250 espécies nativas",
+    destaque:
+      "Fachada viva com cerca de 250 espécies de plantas nativas australianas (~85.000 plantas) e heliostatos que redirecionam luz solar para os jardins sombreados.",
+    especificacoes: [
+      "Jardim vertical projetado pelo botânico Patrick Blanc — ~250 espécies nativas australianas, ~85.000 plantas",
+      "Heliostatos (espelhos motorizados) iluminam áreas sombreadas com luz solar refletida",
+      "Avaliação máxima no Green Star, sistema australiano de certificação ambiental",
+      "Eleito 'Best Tall Building Worldwide' pelo CTBUH em 2014",
+    ],
+    impactoDocumentado: [
+      { label: "Fachada viva", valor: "≈1.200 m² — uma das maiores fachadas vegetais em escala única do mundo" },
+      { label: "Certificação", valor: "Green Star 6★ (nota máxima do sistema australiano)" },
+    ],
+    imagens: [
+      "/images/wellness/ocp-1.jpg",
+      "/images/wellness/ocp-2.jpg",
+      "/images/wellness/ocp-3.jpg",
+    ],
+    verificadoEm: "2026-06-13",
+  },
+  {
+    nome: "The Edge",
+    local: "Amsterdã, Holanda",
+    ano: "2014",
+    arquiteto: "PLP Architecture",
+    dimensoes: "15 andares · 40.000 m² de área construída",
+    certificacao: "BREEAM Outstanding (98,36%)",
+    metricaChave: "98,36% BREEAM",
+    destaque:
+      "Considerado um dos edifícios mais sustentáveis do mundo, com sensores que ajustam iluminação, temperatura e ocupação em tempo real.",
+    especificacoes: [
+      "Cerca de 28.000 sensores monitoram movimento, luz, temperatura e CO₂",
+      "Iluminação LED alimentada via Ethernet (Power over Ethernet), controlada pelo celular dos usuários",
+      "4.100 m² de painéis solares no teto + energia geotérmica de um aquífero subterrâneo",
+      "Edifício 'energy positive': gera mais energia do que consome",
+    ],
+    impactoDocumentado: [
+      { label: "BREEAM", valor: "98,36% — maior nota já registrada para um edifício de escritórios" },
+      { label: "Balanço energético", valor: "Edifício 'energy positive': produção solar + geotérmica supera o consumo" },
+    ],
+    imagens: [
+      "/images/wellness/the-edge-1.jpg",
+      "/images/wellness/the-edge-2.jpg",
+      "/images/wellness/the-edge-2.jpg",
+    ],
+
+    verificadoEm: "2026-06-13",
+  },
+  {
+    nome: "Bosco Verticale",
+    local: "Milão, Itália",
+    ano: "2014",
+    arquiteto: "Stefano Boeri Architetti",
+    dimensoes: "Torres de 80 m e 112 m · 113 apartamentos",
+    certificacao: "International Highrise Award 2014",
+    metricaChave: "≈20 t CO₂/ano",
+    destaque:
+      "Duas torres residenciais que abrigam o equivalente a um hectare de floresta, filtrando CO₂ e partículas finas do ar urbano.",
+    especificacoes: [
+      "Cerca de 800-900 árvores, 5.000 arbustos e 15.000 plantas perenes nas fachadas",
+      "Estimativa de absorção de ~20 toneladas de CO₂ por ano",
+      "Irrigação alimentada por água residual tratada na própria edificação",
+      "Painéis fotovoltaicos contribuem para a autossuficiência energética das torres",
+    ],
+    impactoDocumentado: [
+      { label: "Sequestro de carbono", valor: "≈20 toneladas de CO₂ absorvidas por ano (estimativa do projeto)" },
+      { label: "Reconhecimento", valor: "International Highrise Award 2014 — melhor arranha-céu do mundo" },
+    ],
+    imagens: [
+      "/images/wellness/bosco-1.jpg",
+      "/images/wellness/bosco-2.jpg",
+      "/images/wellness/bosco-3.jpg",
+    ],
+    verificadoEm: "2026-06-13",
+  },
+  {
+    nome: "PARKROYAL Collection Pickering",
+    local: "Singapura",
+    ano: "2013",
+    arquiteto: "WOHA",
+    dimensoes: "367 quartos · 15.000 m² de áreas verdes",
+    certificacao: "Green Mark Platinum",
+    metricaChave: "15.000 m² verdes",
+    destaque:
+      "Hotel-jardim com terraços escalonados, captação de água da chuva e painéis fotovoltaicos integrados à fachada.",
+    especificacoes: [
+      "15.000 m² de skygardens, paredes verdes e espelhos d'água — o dobro da área do terreno",
+      "Green Mark Platinum, a certificação ambiental mais alta de Singapura",
+      "Irrigação das coberturas verdes alimentada por energia solar",
+      "Corredores com ventilação natural reduzem a dependência de ar-condicionado",
+    ],
+    impactoDocumentado: [
+      { label: "Área verde", valor: "15.000 m² — o dobro da área do terreno do empreendimento" },
+      { label: "Certificação", valor: "Green Mark Platinum (nota máxima do BCA de Singapura)" },
+    ],
+    imagens: [
+      "/images/wellness/parkroyal-1.jpg",
+      "/images/wellness/parkroyal-2.jpg",
+      "/images/wellness/parkroyal-3.jpg",
+      "/images/wellness/parkroyal-4.jpg",
+    ],
+    verificadoEm: "2026-06-13",
+  },
+  {
+    nome: "Amazon Spheres",
+    local: "Seattle, EUA",
+    ano: "2018",
+    arquiteto: "NBBJ",
+    dimensoes: "3 cúpulas de vidro · a maior com 27 m de altura",
+    certificacao: "Biophilic Design",
+    metricaChave: "40.000 plantas",
+    destaque:
+      "Três cúpulas de vidro que recriam um ecossistema de floresta tropical, usadas como espaço de trabalho e bem-estar dos colaboradores.",
+    especificacoes: [
+      "Cerca de 40.000 plantas de mais de 30 países diferentes",
+      "Parede viva de 4 andares (~370 m²) com 200 espécies",
+      "Microclima controlado a ~22°C e 60% de umidade, simulando floresta nublada da Costa Rica",
+      "Estrutura de aço com 2.643 painéis de vidro laminado",
+    ],
+    impactoDocumentado: [
+      { label: "Biodiversidade", valor: "≈40.000 plantas de mais de 30 países, em três cúpulas de vidro" },
+      { label: "Parede viva", valor: "4 andares (~370 m²) com 200 espécies de plantas" },
+    ],
+    imagens: [
+      "/images/wellness/amazon-1.jpg",
+      "/images/wellness/amazon-2.jpg",
+      "/images/wellness/amazon-3.jpg",
+      "/images/wellness/amazon-4.jpg",
+    ],
+    verificadoEm: "2026-06-13",
+  },
+  {
+    nome: "CapitaSpring",
+    local: "Singapura",
+    ano: "2021",
+    arquiteto: "BIG + Carlo Ratti Associati",
+    dimensoes: "280 m de altura · 51 andares",
+    certificacao: "Green Mark Platinum",
+    metricaChave: "80.000 plantas",
+    destaque:
+      "Torre com o 'Green Oasis' suspenso entre os andares 17 e 20, integrando hortas comunitárias e áreas de descompressão.",
+    especificacoes: [
+      "'Green Oasis': jardim vertical de 35 m de altura distribuído em 4 pavimentos",
+      "Cerca de 80.000 plantas — área verde equivalente a 140% do terreno",
+      "Horta urbana no terraço com mais de 150 espécies, a mais alta de Singapura",
+      "Certificações Green Mark Platinum e Universal Design GoldPLUS (BCA Singapura)",
+    ],
+    impactoDocumentado: [
+      { label: "Área verde", valor: "≈80.000 plantas — equivalente a 140% da área do terreno" },
+      { label: "Certificação", valor: "Green Mark Platinum + Universal Design GoldPLUS (BCA Singapura)" },
+    ],
+    imagens: [
+      "/images/wellness/capitaspring-1.jpg",
+      "/images/wellness/capitaspring-2.jpg",
+      "/images/wellness/capitaspring-3.jpg",
+      "/images/wellness/capitaspring-4.jpg",
+    ],
+    verificadoEm: "2026-06-13",
+  },
+] as const;
 
 export default function WellnessDashboard() {
   const [noticias, setNoticias]             = useState<WellnessNoticia[]>([]);
@@ -53,6 +235,9 @@ export default function WellnessDashboard() {
   const [loadingDetalhes, setLoadingDetalhes] = useState(false);
   const [filtroCategoria, setFiltroCategoria] = useState<string | null>(null);
   const [filtroCert, setFiltroCert]         = useState<string | null>(null);
+  const [filtroData, setFiltroData]         = useState<"hoje" | "ontem" | "7dias" | "todos">("hoje");
+  const [selectedRef, setSelectedRef]       = useState<(typeof REFERENCIAS_GLOBAIS)[number] | null>(null);
+  const [imgIndex, setImgIndex]             = useState(0);
 
   const [certCounts, setCertCounts]         = useState<CertCount[]>([]);
   const [catCounts, setCatCounts]           = useState<CatCount[]>([]);
@@ -88,15 +273,38 @@ export default function WellnessDashboard() {
         const { data, error } = await query.order("atualizado_em", { ascending: false });
         if (error) throw error;
 
-        // Filtra apenas os de hoje no frontend
+        // Se houver filtro de categoria/certificação ativo, mostramos os
+        // resultados de qualquer data. Caso contrário, aplicamos o filtro
+        // de período selecionado (hoje / ontem / 7 dias / tudo).
+        const temFiltroAtivo = !!filtroCategoria || !!filtroCert;
+
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
-        
-        const noticiasData = (data ?? []).filter(item => {
+
+        const ontem = new Date(hoje);
+        ontem.setDate(ontem.getDate() - 1);
+
+        const seteDiasAtras = new Date(hoje);
+        seteDiasAtras.setDate(seteDiasAtras.getDate() - 6);
+
+        const noticiasData = (data ?? []).filter((item) => {
+          if (temFiltroAtivo) return true;
+
           if (!item.atualizado_em) return false;
           const itemDate = new Date(item.atualizado_em);
           itemDate.setHours(0, 0, 0, 0);
-          return itemDate.getTime() === hoje.getTime();
+
+          switch (filtroData) {
+            case "ontem":
+              return itemDate.getTime() === ontem.getTime();
+            case "7dias":
+              return itemDate.getTime() >= seteDiasAtras.getTime();
+            case "todos":
+              return true;
+            case "hoje":
+            default:
+              return itemDate.getTime() === hoje.getTime();
+          }
         });
         
         setNoticias(noticiasData);
@@ -124,7 +332,32 @@ export default function WellnessDashboard() {
     }
 
     fetchNoticias();
-  }, [filtroCategoria, filtroCert]);
+  }, [filtroCategoria, filtroCert, filtroData]);
+
+  useEffect(() => {
+    setImgIndex(0);
+  }, [selectedRef]);
+
+  useEffect(() => {
+    if (!selectedRef) return;
+    const interval = setInterval(() => {
+      setImgIndex((prev) => (prev + 1) % selectedRef.imagens.length);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [selectedRef]);
+
+  const handlePrevImage = () => {
+    if (!selectedRef) return;
+    setImgIndex((prev) =>
+      prev === 0 ? selectedRef.imagens.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    if (!selectedRef) return;
+    setImgIndex((prev) => (prev + 1) % selectedRef.imagens.length);
+  };
 
   // ── fetch contagens (views do banco) ────────────────────────────────────────
   useEffect(() => {
@@ -202,6 +435,16 @@ export default function WellnessDashboard() {
           background: "var(--color-wh-primary)",
           filter: "blur(70px)",
           opacity: 0.035,
+        }}
+      />
+
+      {/* grain / ruído cinematográfico */}
+      <div
+        className="pointer-events-none fixed inset-0 z-30 opacity-[0.05] mix-blend-soft-light"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          backgroundSize: "200px 200px",
         }}
       />
 
@@ -300,15 +543,78 @@ export default function WellnessDashboard() {
           >
             Acompanhe as certificações, pesquisas e tendências que estão moldando os empreendimentos mais desejados do mundo.
           </p>
+
+          {/* CTA — Referências Globais */}
+          <a
+            href="#referencias-globais"
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById("referencias-globais")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="mt-6 sm:mt-8 inline-flex items-center gap-2 sm:gap-3 font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.25em] px-4 sm:px-5 py-2.5 sm:py-3 rounded-full border transition-all hover:brightness-110 animate-fade-up animate-glow-pulse"
+            style={{
+              animationDelay: "260ms",
+              color: "#00C67A",
+              borderColor: "rgba(0,198,122,0.45)",
+              background: "rgba(0,198,122,0.06)",
+            }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#00C67A" }} />
+            Conheça referências pelo mundo em Wellness
+            <span aria-hidden>↓</span>
+          </a>
+
+          <style>{`
+            @keyframes glowPulse {
+              0%, 100% { box-shadow: 0 0 8px rgba(0,198,122,0.15), inset 0 0 6px rgba(0,198,122,0.04); }
+              50% { box-shadow: 0 0 22px rgba(0,198,122,0.45), inset 0 0 10px rgba(0,198,122,0.1); }
+            }
+            .animate-glow-pulse {
+              animation: glowPulse 2.6s ease-in-out infinite;
+            }
+
+            /* ── scrollbar customizada ──────────────────────────────────── */
+            * {
+              scrollbar-width: thin;
+              scrollbar-color: rgba(94,234,212,0.45) var(--color-wh-bg);
+            }
+            ::-webkit-scrollbar {
+              width: 10px;
+              height: 10px;
+            }
+            ::-webkit-scrollbar-track {
+              background: var(--color-wh-bg);
+            }
+            ::-webkit-scrollbar-thumb {
+              background: linear-gradient(180deg, rgba(94,234,212,0.55), rgba(0,198,122,0.55));
+              border-radius: 999px;
+              border: 2px solid var(--color-wh-bg);
+            }
+            ::-webkit-scrollbar-thumb:hover {
+              background: linear-gradient(180deg, rgba(94,234,212,0.9), rgba(0,198,122,0.9));
+              box-shadow: 0 0 10px rgba(94,234,212,0.5);
+            }
+            ::-webkit-scrollbar-corner {
+              background: transparent;
+            }
+          `}</style>
         </section>
 
         {/* ── stats ───────────────────────────────────────────────────────── */}
         <section className="mt-10 sm:mt-14 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           <StatCard
             index={0}
-            label="Índices Hoje"
+            label={
+              { hoje: "Índices Hoje", ontem: "Índices Ontem", "7dias": "Índices 7 Dias", todos: "Índices Total" }[
+                filtroData
+              ]
+            }
             value={loading ? "0" : String(stats.totalHoje ?? 0)}
-            hint="Detectados hoje"
+            hint={
+              { hoje: "Detectados hoje", ontem: "Detectados ontem", "7dias": "Últimos 7 dias", todos: "Acervo completo" }[
+                filtroData
+              ]
+            }
             live
           />
           <StatCard
@@ -329,6 +635,46 @@ export default function WellnessDashboard() {
             value={loading ? "—" : (stats.destaque ?? "—")}
             hint="Categoria do dia"
           />
+        </section>
+
+        {/* ── filtro de período ──────────────────────────────────────────── */}
+        <section className="mt-10 sm:mt-12">
+          <div className="flex items-center gap-3 mb-4 sm:mb-5">
+            <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-wh-muted">
+              Período
+            </span>
+            <span className="h-px flex-1 bg-wh-border-soft" />
+            {(filtroCategoria || filtroCert) && (
+              <span className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.15em] text-wh-muted/60">
+                Ignorado durante filtro de tema
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { key: "hoje", label: "Hoje" },
+                { key: "ontem", label: "Ontem" },
+                { key: "7dias", label: "Últimos 7 dias" },
+                { key: "todos", label: "Tudo" },
+              ] as const
+            ).map((opt) => {
+              const ativo = filtroData === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => setFiltroData(opt.key)}
+                  className={`font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.18em] border px-2 sm:px-3 py-1 sm:py-1.5 transition-all ${
+                    ativo
+                      ? "text-wh-primary border-wh-primary bg-wh-primary/10"
+                      : "text-wh-muted border-wh-border-soft hover:text-wh-primary hover:border-wh-primary/50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </section>
 
         {/* ── certificações ───────────────────────────────────────────────── */}
@@ -457,7 +803,12 @@ export default function WellnessDashboard() {
                   {filtroCert}
                 </>
               ) : (
-                "Índices de hoje"
+                {
+                  hoje: "Índices de hoje",
+                  ontem: "Índices de ontem",
+                  "7dias": "Índices dos últimos 7 dias",
+                  todos: "Todos os índices",
+                }[filtroData]
               )}
             </h2>
             {!loading && !semSinaisHoje && (
@@ -474,7 +825,14 @@ export default function WellnessDashboard() {
                 Hub em standby
               </div>
               <h3 className="font-display text-xl sm:text-2xl font-bold text-wh-text mb-4">
-                Nenhum índice detectado hoje.
+                {filtroCategoria || filtroCert
+                  ? "Nenhum índice encontrado para esse filtro."
+                  : {
+                      hoje: "Nenhum índice detectado hoje.",
+                      ontem: "Nenhum índice detectado ontem.",
+                      "7dias": "Nenhum índice nos últimos 7 dias.",
+                      todos: "Nenhum índice no acervo ainda.",
+                    }[filtroData]}
               </h3>
               <p className="text-wh-muted text-xs sm:text-sm max-w-sm mb-6 sm:mb-8 leading-relaxed">
                 O monitoramento de bem-estar segue ativo. Utilize os filtros superiores para pesquisar o acervo histórico do Hub.
@@ -497,13 +855,99 @@ export default function WellnessDashboard() {
             </div>
           )}
         </section>
+
+        {/* ── referências globais ───────────────────────────────────────── */}
+        <section id="referencias-globais" className="mt-16 sm:mt-24">
+          <div className="flex items-center gap-3 mb-2">
+            <span
+              className="font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em]"
+              style={{ color: "#00C67A" }}
+            >
+              Referências Globais
+            </span>
+            <span className="h-px flex-1 bg-wh-border-soft" />
+          </div>
+          <h2 className="font-display text-xl sm:text-2xl font-bold text-wh-text mb-2">
+            Empreendimentos que definem o padrão
+          </h2>
+          <p className="font-mono text-xs text-wh-muted max-w-2xl leading-relaxed mb-6 sm:mb-8">
+            Curadoria de projetos pelo mundo que ilustram, na prática, as certificações, tecnologias e conceitos discutidos no Hub.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {REFERENCIAS_GLOBAIS.map((ref) => (
+              <div
+                key={ref.nome}
+                onClick={() => setSelectedRef(ref)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setSelectedRef(ref);
+                }}
+                className="group relative flex flex-col overflow-hidden border border-wh-border-soft bg-wh-surface transition-all duration-300 hover:border-[#00C67A]/40 cursor-pointer focus:outline-none focus:border-[#00C67A]/60"
+              >
+                {/* imagem */}
+                <div className="relative min-h-[220px] aspect-[5/4] sm:aspect-[3/2] overflow-hidden bg-wh-bg">
+                  <img
+                    src={ref.imagens[0]}
+                    alt={ref.nome}
+                    loading="lazy"
+                    className="h-full w-full object-cover object-center transition-all duration-700 ease-out grayscale sm:grayscale group-hover:grayscale-0 group-hover:saturate-100 group-hover:brightness-100 group-active:grayscale-0 group-active:saturate-100 group-active:brightness-100 focus-visible:grayscale-0 focus-visible:saturate-100 focus-visible:brightness-100"
+                  />
+                  {/* gradiente para legibilidade */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-wh-bg via-wh-bg/10 to-transparent" />
+                  {/* selo de certificação */}
+                  <span
+                    className="absolute top-3 left-3 font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.18em] px-2 py-1 rounded-sm backdrop-blur-sm border bg-wh-bg/60 transition-colors duration-300 group-hover:text-[#00C67A]"
+                    style={{ color: "#00C67A", borderColor: "rgba(0,198,122,0.35)" }}
+                  >
+                    {ref.certificacao}
+                  </span>
+                  {/* selo de métrica de impacto */}
+                  <span
+                    className="absolute top-3 right-3 font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.18em] px-2 py-1 rounded-sm backdrop-blur-sm border bg-wh-bg/60"
+                    style={{ color: "var(--color-wh-primary)", borderColor: "rgba(94,234,212,0.35)" }}
+                  >
+                    {ref.metricaChave}
+                  </span>
+                </div>
+
+                {/* conteúdo */}
+                <div className="flex flex-col gap-2 p-4 sm:p-5">
+                  <span className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-wh-muted">
+                    {ref.local}
+                  </span>
+                  <h3 className="font-display text-base sm:text-lg font-bold text-wh-text leading-snug">
+                    {ref.nome}
+                  </h3>
+                  <p className="text-wh-muted text-xs sm:text-sm leading-relaxed">
+                    {ref.destaque}
+                  </p>
+                  <span
+                    className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] mt-1 opacity-0 -translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0"
+                    style={{ color: "#00C67A" }}
+                  >
+                    Ver especificações →
+                  </span>
+                </div>
+
+                {/* linha de destaque inferior, acende no hover */}
+                <span
+                  className="absolute bottom-0 left-0 right-0 h-px scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"
+                  style={{ background: "#00C67A" }}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
       </main>
 
       {/* ── MODAL DE DETALHES RESPONSIVO ── */}
       {selectedNews && (
         <div className="fixed inset-0 z-50 flex items-center justify-center sm:justify-end bg-black/60 backdrop-blur-sm p-0 sm:p-4">
           {/* Overlay para fechar */}
-          <div className="absolute inset-0" onClick={() => setSelectedNews(null)} />
+          <div className="absolute inset-0 cursor-pointer" onClick={() => setSelectedNews(null)} />
           
           {/* Modal content - fullscreen no mobile, lateral no desktop */}
           <div className="relative flex flex-col bg-wh-surface shadow-2xl w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-2xl sm:rounded-l-2xl border-0 sm:border-l border-wh-border animate-in duration-300 slide-in-from-bottom sm:slide-in-from-right">
@@ -519,7 +963,7 @@ export default function WellnessDashboard() {
                 </div>
                 <button
                   onClick={() => setSelectedNews(null)}
-                  className="shrink-0 text-wh-muted hover:text-wh-primary font-mono text-[10px] sm:text-xs px-3 py-1.5 border border-wh-border rounded-sm"
+                  className="shrink-0 z-30 text-wh-muted hover:text-wh-primary font-mono text-[10px] sm:text-xs px-4 py-2 border border-wh-border rounded-full bg-wh-bg/90 shadow-lg"
                 >
                   ✕ FECHAR
                 </button>
@@ -682,6 +1126,154 @@ export default function WellnessDashboard() {
                     ACESSAR FONTE ORIGINAL NA ÍNTEGRA →
                   </a>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL DE ESPECIFICAÇÕES — REFERÊNCIAS GLOBAIS ── */}
+      {selectedRef && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+          {/* Overlay para fechar */}
+          <div className="absolute inset-0" onClick={() => setSelectedRef(null)} />
+
+          <div className="relative flex flex-col bg-wh-surface shadow-2xl w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-2xl border-0 sm:border border-wh-border animate-in duration-300 slide-in-from-bottom sm:fade-in overflow-visible">
+
+            {/* Imagem de topo (em cor) */}
+            <div className="relative h-48 sm:h-64 shrink-0 overflow-visible group">
+              <div
+                className="absolute inset-0 flex h-full transition-transform duration-700 ease-out"
+                style={{
+                  width: `${selectedRef.imagens.length * 100}%`,
+                  transform: `translateX(-${(imgIndex * 100) / selectedRef.imagens.length}%)`,
+                  zIndex: 20,
+                }}
+              >
+                {selectedRef.imagens.map((img, idx) => (
+                  <img
+                    key={`${selectedRef.nome}-${idx}`}
+                    src={img}
+                    alt={`${selectedRef.nome} ${idx + 1}`}
+                    loading="lazy"
+                    className={`relative h-full flex-shrink-0 object-cover transition-transform duration-500 ease-out ${
+                      idx === imgIndex ? "group-hover:scale-[1.08] group-hover:shadow-2xl" : ""
+                    }`}
+                    style={{
+                      width: `${100 / selectedRef.imagens.length}%`,
+                      zIndex: idx === imgIndex ? 20 : 1,
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-wh-surface via-wh-surface/10 to-transparent pointer-events-none" style={{ zIndex: 10 }} />
+
+              <button
+                onClick={() => setSelectedRef(null)}
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 z-30 text-wh-text hover:text-[#00C67A] font-mono text-[10px] sm:text-xs px-3 py-1.5 border border-wh-border bg-wh-bg/90 backdrop-blur-sm rounded-sm shadow-lg transition-colors"
+              >
+                ✕ FECHAR
+              </button>
+
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-wh-border bg-wh-bg/80 p-2 text-wh-text shadow-lg transition hover:border-wh-primary hover:bg-wh-bg/95 hover:text-wh-primary"
+                aria-label="Imagem anterior"
+              >
+                ‹
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-wh-border bg-wh-bg/80 p-2 text-wh-text shadow-lg transition hover:border-wh-primary hover:bg-wh-bg/95 hover:text-wh-primary"
+                aria-label="Próxima imagem"
+              >
+                ›
+              </button>
+
+              <span
+                className="absolute top-3 left-3 sm:top-4 sm:left-4 font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.18em] px-2 py-1 rounded-sm backdrop-blur-sm border bg-wh-bg/60"
+                style={{ color: "#00C67A", borderColor: "rgba(0,198,122,0.35)" }}
+              >
+                {selectedRef.certificacao}
+              </span>
+
+              <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+                {selectedRef.imagens.map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
+                      idx === imgIndex ? "bg-wh-primary" : "bg-wh-muted/40"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Conteúdo rolável */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-5 sm:space-y-6">
+              <div>
+                <span className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-wh-muted">
+                  {selectedRef.local} · {selectedRef.ano}
+                </span>
+                <h2 className="font-display text-2xl sm:text-3xl font-extrabold leading-tight text-wh-text mt-1">
+                  {selectedRef.nome}
+                </h2>
+                <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.15em] text-wh-muted mt-2">
+                  {selectedRef.arquiteto}
+                </p>
+              </div>
+
+              {/* dimensões */}
+              <div className="border border-wh-border-soft bg-wh-primary/5 rounded-sm px-4 py-3">
+                <span className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-wh-muted">
+                  Dimensões
+                </span>
+                <p className="text-wh-text text-sm sm:text-base font-medium mt-1">
+                  {selectedRef.dimensoes}
+                </p>
+              </div>
+
+              {/* impacto documentado */}
+              <div className="border border-wh-border-soft rounded-sm px-4 py-3" style={{ background: "rgba(94,234,212,0.05)" }}>
+                <span className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-wh-muted">
+                  Impacto Documentado
+                </span>
+                <dl className="mt-2 space-y-2">
+                  {selectedRef.impactoDocumentado.map((item, i) => (
+                    <div key={i} className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
+                      <dt
+                        className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.15em] shrink-0"
+                        style={{ color: "var(--color-wh-primary)" }}
+                      >
+                        {item.label}:
+                      </dt>
+                      <dd className="text-wh-text text-sm font-medium">{item.valor}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              {/* descrição */}
+              <p className="text-wh-muted leading-relaxed text-sm">
+                {selectedRef.destaque}
+              </p>
+
+              {/* especificações técnicas */}
+              <div className="space-y-2">
+                <h4
+                  className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest font-bold flex items-center gap-2"
+                  style={{ color: "#00C67A" }}
+                >
+                  <span className="h-px w-4" style={{ background: "#00C67A" }} /> Especificações técnicas
+                </h4>
+                <ul className="space-y-2">
+                  {selectedRef.especificacoes.map((spec, i) => (
+                    <li key={i} className="flex items-start gap-2 text-wh-muted text-xs sm:text-sm leading-relaxed">
+                      <span className="mt-1.5 h-1 w-1 rounded-full shrink-0" style={{ background: "#00C67A" }} />
+                      {spec}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
