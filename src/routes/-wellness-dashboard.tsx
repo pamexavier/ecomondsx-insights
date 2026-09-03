@@ -449,7 +449,7 @@ export default function WellnessDashboard() {
       />
 
       {/* ── header responsivo ──────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-wh-border bg-wh-bg/80 backdrop-blur-md">
+      <header data-local-nav className="sticky top-0 z-40 border-b border-wh-border bg-wh-bg/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-3 sm:px-6 py-2 sm:py-4">
           
           {/* Logo Vector-X - mais compacta no mobile */}
@@ -475,10 +475,10 @@ export default function WellnessDashboard() {
                 Radar
               </Link>
               <Link
-                to="/acervo"
+                to="/noticias"
                 className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-wh-muted px-2 py-1 hover:text-wh-primary transition-colors whitespace-nowrap"
               >
-                Acervo
+                Notícias
               </Link>
 
               {/* Wellness Hub */}
@@ -545,24 +545,34 @@ export default function WellnessDashboard() {
           </p>
 
           {/* CTA — Referências Globais */}
-          <a
-            href="#referencias-globais"
-            onClick={(e) => {
-              e.preventDefault();
-              document.getElementById("referencias-globais")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-            className="mt-6 sm:mt-8 inline-flex items-center gap-2 sm:gap-3 font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.25em] px-4 sm:px-5 py-2.5 sm:py-3 rounded-full border transition-all hover:brightness-110 animate-fade-up animate-glow-pulse"
-            style={{
-              animationDelay: "260ms",
-              color: "#00C67A",
-              borderColor: "rgba(0,198,122,0.45)",
-              background: "rgba(0,198,122,0.06)",
-            }}
-          >
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#00C67A" }} />
-            Conheça referências pelo mundo em Wellness
-            <span aria-hidden>↓</span>
-          </a>
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <a
+              href="#referencias-globais"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("referencias-globais")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="inline-flex items-center gap-2 sm:gap-3 font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.25em] px-4 sm:px-5 py-2.5 sm:py-3 rounded-full border transition-all hover:brightness-110 animate-fade-up animate-glow-pulse"
+              style={{
+                animationDelay: "260ms",
+                color: "#00C67A",
+                borderColor: "rgba(0,198,122,0.45)",
+                background: "rgba(0,198,122,0.06)",
+              }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#00C67A" }} />
+              Conheça referências pelo mundo em Wellness
+              <span aria-hidden>↓</span>
+            </a>
+            <Link
+              to="/wellness-analise-solar"
+              className="inline-flex items-center gap-2 sm:gap-3 font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.25em] px-4 sm:px-5 py-2.5 sm:py-3 rounded-full bg-wh-primary text-wh-bg border border-transparent transition-all hover:brightness-110 animate-fade-up"
+              style={{ animationDelay: "260ms" }}
+            >
+              Análise Solar
+              <span aria-hidden>☀️</span>
+            </Link>
+          </div>
 
           <style>{`
             @keyframes glowPulse {
@@ -885,6 +895,8 @@ export default function WellnessDashboard() {
                   if (e.key === "Enter" || e.key === " ") setSelectedRef(ref);
                 }}
                 className="group relative flex flex-col overflow-hidden border border-wh-border-soft bg-wh-surface transition-all duration-300 hover:border-[#00C67A]/40 cursor-pointer focus:outline-none focus:border-[#00C67A]/60"
+                
+
               >
                 {/* imagem */}
                 <div className="relative min-h-[220px] aspect-[5/4] sm:aspect-[3/2] overflow-hidden bg-wh-bg">

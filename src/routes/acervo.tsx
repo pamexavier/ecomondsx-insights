@@ -251,7 +251,7 @@ function Acervo() {
       />
 
       {/* ── Header responsivo ── */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
+      <header data-local-nav className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-3 sm:px-6 py-2 sm:py-4">
           
           {/* Logo Vector-X - mais compacta no mobile */}
@@ -277,12 +277,12 @@ function Acervo() {
                 Radar
               </Link>
               
-              {/* Acervo (Ativo) */}
+              {/* Notícias (Ativo) */}
               <Link
-                to="/acervo"
+                to="/noticias"
                 className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary px-2 py-1 transition-colors whitespace-nowrap font-bold"
               >
-                Acervo
+                Notícias
               </Link>
 
               {/* Wellness Hub */}

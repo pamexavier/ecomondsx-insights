@@ -1,0 +1,19 @@
+{
+  "name": "horizonte-dsm-service",
+  "version": "1.0.0",
+  "description": "Calcula obstrução solar real (horizonte) a partir do DSM da Google Solar API",
+  "main": "microservico-horizonte-dsm.js",
+  "scripts": {
+    "start": "node microservico-horizonte-dsm.js",
+    "test-lote": "node test-lote.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^4.22.2",
+    "geotiff": "^2.1.3",
+    "node-fetch": "^2.7.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

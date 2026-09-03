@@ -160,7 +160,7 @@ function Inteligencia() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
+      <header data-local-nav className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           {/* Logo Vector-X */}
           <a href="/" className="flex items-center gap-3 group transition-opacity hover:opacity-80">

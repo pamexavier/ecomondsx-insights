@@ -9,21 +9,45 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WellnessAnaliseSolarRouteImport } from './routes/wellness-analise-solar'
 import { Route as WellnessRouteImport } from './routes/wellness'
+import { Route as SobreRouteImport } from './routes/sobre'
+import { Route as ReferenciasRouteImport } from './routes/referencias'
 import { Route as RadarRouteImport } from './routes/radar'
+import { Route as NoticiasRouteImport } from './routes/noticias'
 import { Route as InteligenciaRouteImport } from './routes/inteligencia'
 import { Route as AcervoRouteImport } from './routes/acervo'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiTendenciasRouteImport } from './routes/api.tendencias'
 
+const WellnessAnaliseSolarRoute = WellnessAnaliseSolarRouteImport.update({
+  id: '/wellness-analise-solar',
+  path: '/wellness-analise-solar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WellnessRoute = WellnessRouteImport.update({
   id: '/wellness',
   path: '/wellness',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SobreRoute = SobreRouteImport.update({
+  id: '/sobre',
+  path: '/sobre',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReferenciasRoute = ReferenciasRouteImport.update({
+  id: '/referencias',
+  path: '/referencias',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RadarRoute = RadarRouteImport.update({
   id: '/radar',
   path: '/radar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NoticiasRoute = NoticiasRouteImport.update({
+  id: '/noticias',
+  path: '/noticias',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InteligenciaRoute = InteligenciaRouteImport.update({
@@ -51,16 +75,24 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
   '/inteligencia': typeof InteligenciaRoute
+  '/noticias': typeof NoticiasRoute
   '/radar': typeof RadarRoute
+  '/referencias': typeof ReferenciasRoute
+  '/sobre': typeof SobreRoute
   '/wellness': typeof WellnessRoute
+  '/wellness-analise-solar': typeof WellnessAnaliseSolarRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
   '/inteligencia': typeof InteligenciaRoute
+  '/noticias': typeof NoticiasRoute
   '/radar': typeof RadarRoute
+  '/referencias': typeof ReferenciasRoute
+  '/sobre': typeof SobreRoute
   '/wellness': typeof WellnessRoute
+  '/wellness-analise-solar': typeof WellnessAnaliseSolarRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRoutesById {
@@ -68,8 +100,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
   '/inteligencia': typeof InteligenciaRoute
+  '/noticias': typeof NoticiasRoute
   '/radar': typeof RadarRoute
+  '/referencias': typeof ReferenciasRoute
+  '/sobre': typeof SobreRoute
   '/wellness': typeof WellnessRoute
+  '/wellness-analise-solar': typeof WellnessAnaliseSolarRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRouteTypes {
@@ -78,24 +114,36 @@ export interface FileRouteTypes {
     | '/'
     | '/acervo'
     | '/inteligencia'
+    | '/noticias'
     | '/radar'
+    | '/referencias'
+    | '/sobre'
     | '/wellness'
+    | '/wellness-analise-solar'
     | '/api/tendencias'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/acervo'
     | '/inteligencia'
+    | '/noticias'
     | '/radar'
+    | '/referencias'
+    | '/sobre'
     | '/wellness'
+    | '/wellness-analise-solar'
     | '/api/tendencias'
   id:
     | '__root__'
     | '/'
     | '/acervo'
     | '/inteligencia'
+    | '/noticias'
     | '/radar'
+    | '/referencias'
+    | '/sobre'
     | '/wellness'
+    | '/wellness-analise-solar'
     | '/api/tendencias'
   fileRoutesById: FileRoutesById
 }
@@ -103,13 +151,24 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcervoRoute: typeof AcervoRoute
   InteligenciaRoute: typeof InteligenciaRoute
+  NoticiasRoute: typeof NoticiasRoute
   RadarRoute: typeof RadarRoute
+  ReferenciasRoute: typeof ReferenciasRoute
+  SobreRoute: typeof SobreRoute
   WellnessRoute: typeof WellnessRoute
+  WellnessAnaliseSolarRoute: typeof WellnessAnaliseSolarRoute
   ApiTendenciasRoute: typeof ApiTendenciasRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wellness-analise-solar': {
+      id: '/wellness-analise-solar'
+      path: '/wellness-analise-solar'
+      fullPath: '/wellness-analise-solar'
+      preLoaderRoute: typeof WellnessAnaliseSolarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wellness': {
       id: '/wellness'
       path: '/wellness'
@@ -117,11 +176,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WellnessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sobre': {
+      id: '/sobre'
+      path: '/sobre'
+      fullPath: '/sobre'
+      preLoaderRoute: typeof SobreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/referencias': {
+      id: '/referencias'
+      path: '/referencias'
+      fullPath: '/referencias'
+      preLoaderRoute: typeof ReferenciasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/radar': {
       id: '/radar'
       path: '/radar'
       fullPath: '/radar'
       preLoaderRoute: typeof RadarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/noticias': {
+      id: '/noticias'
+      path: '/noticias'
+      fullPath: '/noticias'
+      preLoaderRoute: typeof NoticiasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inteligencia': {
@@ -159,8 +239,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcervoRoute: AcervoRoute,
   InteligenciaRoute: InteligenciaRoute,
+  NoticiasRoute: NoticiasRoute,
   RadarRoute: RadarRoute,
+  ReferenciasRoute: ReferenciasRoute,
+  SobreRoute: SobreRoute,
   WellnessRoute: WellnessRoute,
+  WellnessAnaliseSolarRoute: WellnessAnaliseSolarRoute,
   ApiTendenciasRoute: ApiTendenciasRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,580 +1,224 @@
-import { Link, useLocation } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { EcomondsLogo } from "@/components/EcomondsLogo";
-import { StatCard } from "@/components/StatCard";
-import { TrendCard, TrendCardSkeleton } from "@/components/TrendCard";
-import { type TrendsPayload } from "@/lib/mock-trends";
-import { KeywordMarquee } from "@/components/KeywordMarquee";
-import { supabase } from "@/lib/supabase";
+import HeroCarousel from "@/components/HeroCarousel";
+import { BrazilZonesMap } from "@/components/BrazilZonesMap";
 
-function formatTime(iso: string) {
-  try {
-    const d = new Date(iso);
-    return (
-      d.toLocaleDateString("pt-BR") +
-      " às " +
-      d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-    );
-  } catch {
-    return "—";
-  }
-}
+/* ────────────────────────────────────────────────────────────────────────
+   HOME
+   Escopo enxuto de propósito: só o que é "ferramenta" (Diagnóstico) e o
+   convite pro "conteúdo" (Notícias). Tudo que é tese/conceito (Pilares,
+  Glossário de Certificações e Referências Globais moram em /referencias —
+   ver esse arquivo se precisar editar aquele conteúdo.
+──────────────────────────────────────────────────────────────────────── */
 
-export default function Dashboard() {
-  const [data, setData] = useState<TrendsPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedNews, setSelectedNews] = useState<any | null>(null);
-  const [loadingDetalhes, setLoadingDetalhes] = useState(false);
-  const [filtroAtivo, setFiltroAtivo] = useState<string | null>(null);
-
-  const [categoriasRadar, setCategoriasRadar] = useState<{ nome: string; total: number }[]>([]);
-  const [loadingCategorias, setLoadingCategorias] = useState(false);
-  const [filtroCatRadar, setFiltroCatRadar] = useState<string | null>(null);
-
-  const location = useLocation();
-  const isRadar = location.pathname === "/radar";
-
-  // O banco já entrega a massa de dados filtrada dinamicamente
-  const trendsFiltradas = filtroAtivo
-    ? data?.trends.filter((t) => t.category === filtroAtivo)
-    : data?.trends;
-
-  useEffect(() => {
-    async function fetchSupabaseData() {
-      try {
-        setLoading(true);
-        const tipoFiltro = isRadar ? "radar" : "estrategia";
-
-        let query = supabase
-          .from("noticias")
-          .select("id, titulo, titulo_pt, resumo_executivo, resumo_pt, categoria, fonte, atualizado_em, pub_date, metricas, score_tecnico, link")
-          .eq("tipo", tipoFiltro);
-
-        // Se houver categoria selecionada no Radar, traz TODO o histórico dela sem travas
-        if (isRadar && filtroCatRadar) {
-          query = query.eq("categoria", filtroCatRadar);
-        } else {
-          // Se não houver filtro, isola estritamente o dia de HOJE para o feed inicial
-          const hoje = new Date();
-          hoje.setHours(0, 0, 0, 0);
-          
-          query = query
-            .gte("atualizado_em", hoje.toISOString())
-            .limit(3); // Mantém o teto de 3 para o pulso do dia
-        }
-
-        const { data: noticias, error } = await query.order("atualizado_em", { ascending: false });
-
-        if (error) throw error;
-
-        if (noticias) {
-          const formattedData: TrendsPayload = {
-            trends: noticias.map((n) => ({
-  ...n,
-  id: n.id,
-  title: n.titulo_pt || n.titulo,
-  description: n.resumo_executivo || n.resumo_pt || "Análise em processamento...",
-  category: n.categoria || "Geral",
-  trend: "up" as const,
-  relevance: n.score_tecnico ?? 0,
-  metricas: n.metricas ?? null,        // 👈 explícito
-  score_tecnico: n.score_tecnico ?? 0, // 👈 explícito
-})),
-            stats: {
-              activeTrends: noticias.length,
-              monitoredSources: new Set(noticias.map((n) => n.fonte)).size,
-              lastUpdate: noticias[0]?.atualizado_em,
-              avgRelevance: noticias.length
-                ? Math.round(noticias.reduce((acc, n) => acc + (n.score_tecnico ?? 0), 0) / noticias.length)
-                : 0,
-            },
-            highlight: {
-              title: noticias[0]?.titulo_pt || noticias[0]?.titulo,
-              excerpt: noticias[0]?.resumo_executivo || noticias[0]?.resumo_pt,
-              source: noticias[0]?.fonte,
-              publishedAt: noticias[0]?.pub_date || noticias[0]?.atualizado_em,
-            },
-            keywords: Array.from(
-              new Set(noticias.map((n) => n.categoria).filter(Boolean))
-            ) as string[],
-          };
-          console.log("METRICAS DEBUG:", formattedData.trends.map(t => ({ id: t.id, metricas: (t as any).metricas })));
-          setData(formattedData);
-        }
-      } catch (err) {
-        console.error("Erro:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchSupabaseData();
-  }, [location.pathname, isRadar, filtroCatRadar]);
-
-  // Carrega contadores das categorias do Radar
-  useEffect(() => {
-    if (!isRadar) return;
-    setLoadingCategorias(true);
-    supabase
-      .from("noticias")
-      .select("categoria")
-      .eq("tipo", "radar")
-      .not("categoria", "is", null)
-      .then(({ data }) => {
-        const contagem: Record<string, number> = {};
-        (data ?? []).forEach((n: any) => {
-          const cat = n.categoria?.trim();
-          if (cat) contagem[cat] = (contagem[cat] || 0) + 1;
-        });
-        setCategoriasRadar(
-          Object.entries(contagem)
-            .map(([nome, total]) => ({ nome, total }))
-            .sort((a, b) => b.total - a.total)
-        );
-        setLoadingCategorias(false);
-      });
-  }, [isRadar]);
-  
-
-  const handleSelectNews = async (news: any) => {
-    setSelectedNews(news);
-    setLoadingDetalhes(true);
-    const tipoFiltro = isRadar ? "radar" : "estrategia";
-
-    try {
-      const { data: detalhes, error } = await supabase
-        .from("noticias")
-        .select("o_que_e, impacto_real, como_aplicar, contras, quando_usar, motivo")
-        .eq("id", news.id)
-        .eq("tipo", tipoFiltro)
-        .single();
-
-      if (error) throw error;
-      if (detalhes) {
-        setSelectedNews((prev: any) =>
-          prev?.id === news.id ? { ...prev, ...detalhes } : prev
-        );
-      }
-    } catch (err) {
-      console.error("Erro ao buscar detalhes:", err);
-    } finally {
-      setLoadingDetalhes(false);
-    }
-  };
-
-  const semSinaisHoje = !loading && (!data?.trends || data.trends.length === 0);
-
+export default function Home() {
   return (
-    <div className="relative min-h-screen bg-background text-foreground bg-noise">
+    <div className="relative min-h-screen bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-grid bg-grid-fade" />
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[600px]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[700px]"
         style={{ background: "var(--gradient-radial-glow)" }}
       />
 
-      {/* Header responsivo com scroll horizontal no mobile */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 sm:px-6 py-2 sm:py-4">
-          
-          {/* Logo Vector-X - mais compacta no mobile */}
-          <Link to="/" className="flex items-center gap-2 sm:gap-3 group transition-opacity hover:opacity-80 shrink-0">
+      {/* ── Header ── */}
+      <header data-local-nav className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity shrink-0">
             <EcomondsLogo size={32} />
-            <div className="flex flex-col justify-center">
-              <span className="text-display text-sm sm:text-xl font-extrabold tracking-tight text-foreground leading-none uppercase">
+            <div className="flex flex-col">
+              <span className="text-display text-sm sm:text-lg font-bold tracking-tight leading-none text-foreground">
                 Vector-X
               </span>
-              <span className="text-mono text-[6px] sm:text-[8px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground mt-1 opacity-70">
+              <span className="text-mono text-[8px] uppercase tracking-[0.15em] text-muted-foreground/70 mt-1">
                 By EcomindsX
               </span>
             </div>
           </Link>
 
-          {/* Navegação - scroll horizontal no mobile */}
-          <div className="overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-2 sm:gap-3 px-1">
+          <nav className="overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1 sm:gap-2 px-1">
+              {[
+                { label: "Notícias", href: "/noticias" },
+                { label: "Sobre", href: "/sobre" },
+                { label: "Certificações", href: "/referencias" },
+              ].map((item) => (
+                <Link
+                  key={item.label}
+                  to={item.href as any}
+                  className="text-sm text-muted-foreground px-2 sm:px-3 py-1.5 rounded-lg outline-none hover:text-foreground hover:bg-card/60 focus-visible:ring-2 focus-visible:ring-primary/50 transition-colors whitespace-nowrap"
+                >
+                  {item.label}
+                </Link>
+              ))}
               <Link
-                to="/radar"
-                className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-muted-foreground px-2 py-1 hover:text-primary transition-colors whitespace-nowrap"
+                to="/wellness-analise-solar"
+                className="text-sm font-medium text-primary px-3 sm:px-4 py-1.5 rounded-lg border border-primary/40 bg-primary/5 outline-none hover:border-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/50 transition-colors whitespace-nowrap ml-1"
               >
-                Radar
-              </Link>
-              <Link
-                to="/acervo"
-                className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-muted-foreground px-2 py-1 hover:text-primary transition-colors whitespace-nowrap"
-              >
-                Acervo
-              </Link>
-
-              {/* Wellness Hub */}
-              <Link
-                to="/wellness"
-                className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap px-2 sm:px-3 py-1 transition-all hover:brightness-125"
-                style={{
-                  color: "#5EEAD4",
-                  border: "1px solid rgba(94,234,212,0.5)",
-                  borderRadius: "999px",
-                  boxShadow: "0 0 10px rgba(94,234,212,0.25), inset 0 0 8px rgba(94,234,212,0.06)",
-                }}
-              >
-                <span className="hidden sm:inline">Wellness Hub </span>
-                <span className="inline sm:hidden">Wellness </span>
-                ✦
-              </Link>
-
-              <Link
-                to="/inteligencia"
-                className="text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary px-2 py-1 border border-primary transition-colors hover:brightness-125 whitespace-nowrap"
-                style={{ boxShadow: "0 0 8px rgba(0,255,100, 0.5)" }}
-              >
-                <span className="hidden sm:inline">Inteligência de Projeto </span>
-                <span className="inline sm:hidden">Inteligência </span>
-                →
+                Diagnóstico Bioclimático
               </Link>
             </div>
-          </div>
+          </nav>
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-24">
-        {/* Hero */}
-        <section className="pt-12 sm:pt-16 md:pt-24">
-          <div className="animate-fade-up flex items-center gap-2 text-mono text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-primary mb-4 sm:mb-5">
-            <span className="h-px w-6 sm:w-8 bg-primary" /> {isRadar ? "Radar Global" : "Vector-X"}
-          </div>
-          <h1 className="text-display max-w-4xl text-3xl sm:text-5xl md:text-7xl font-extrabold leading-[1.1] sm:leading-[0.90] animate-fade-up">
-            {isRadar ? (
-              <>
-                Tendências globais
-                <br />
-                <span className="text-primary text-glow">na CONSTRUÇÃO.</span>
-              </>
-            ) : (
-              <>
-                O FUTURO da construção
-                <br />
-                <span className="text-primary text-glow">decodificado.</span>
-              </>
-            )}
-          </h1>
-          <p
-            className="text-mono mt-6 sm:mt-8 max-w-2xl text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground animate-fade-up border-l-2 border-primary/40 pl-4 sm:pl-5"
-            style={{ animationDelay: "180ms" }}
-          >
-            {isRadar
-              ? "Sinais técnicos do setor da construção sustentável — materiais, energia, clima, água e tecnologia aplicada. Sem filtro de mercado, sem recorte de público. Só o que está acontecendo no mundo."
-              : "Inteligência aplicada para quem projeta e constrói no mais alto nível. Tecnologias, materiais e métodos que ainda não chegaram ao mercado brasileiro — com análise de aplicação, ROI e janela de vantagem competitiva."}
-          </p>
-        </section>
+      <main className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-32">
 
-        {/* Stats */}
-        <section className="mt-10 sm:mt-14 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-          <StatCard index={0} label="Sinais Hoje" value={data ? String(data.stats.activeTrends) : "—"} hint="Detectados hoje" live />
-          <StatCard index={1} label="Fontes" value={data ? String(data.stats.monitoredSources) : "—"} hint="Monitoramento Global" />
-          <StatCard index={2} label="Sync" value={data?.stats.lastUpdate ? formatTime(data.stats.lastUpdate).split(" às ")[1] : "—"} hint="Último pulso" />
-          <StatCard index={3} label="Destaque" value={data?.keywords?.[0] ?? "—"} hint="Categoria do dia" />
-        </section>
-
-        {/* Categorias do Radar */}
-        {isRadar && (
-          <section className="mt-12 sm:mt-16">
-            <div className="flex items-center gap-3 mb-4 sm:mb-6">
-              <span className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-                Categorias
-              </span>
-              <span className="h-px flex-1 bg-border" />
-              {filtroCatRadar && (
-                <button
-                  onClick={() => setFiltroCatRadar(null)}
-                  className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-rose-400 border border-rose-400/30 px-2 sm:px-3 py-1 hover:bg-rose-400/10 transition-colors"
-                >
-                  ✕ Limpar
-                </button>
-              )}
-            </div>
-
-            {loadingCategorias ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-20 sm:h-24 bg-card border border-border animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                {categoriasRadar.map((cat) => {
-                  const ativo = filtroCatRadar === cat.nome;
-                  return (
-                    <button
-                      key={cat.nome}
-                      onClick={() => setFiltroCatRadar((prev) => prev === cat.nome ? null : cat.nome)}
-                      className={`group relative flex flex-col justify-between p-3 sm:p-5 text-left transition-all duration-200 border focus:outline-none ${
-                        ativo
-                          ? "border-primary bg-primary/10 shadow-[0_0_24px_-4px_var(--color-primary,hsl(var(--primary)))]"
-                          : "border-border bg-card hover:border-primary/50 hover:bg-primary/5"
-                      }`}
-                    >
-                      <span className={`absolute top-0 left-0 right-0 h-px transition-all duration-300 ${ativo ? "bg-primary" : "bg-transparent group-hover:bg-primary/30"}`} />
-                      <span className={`text-mono text-[8px] sm:text-[10px] uppercase tracking-[0.2em] font-bold transition-colors ${ativo ? "text-primary" : "text-foreground group-hover:text-primary"}`}>
-                        {cat.nome}
-                      </span>
-                      <div className="flex items-end justify-between mt-3 sm:mt-4">
-                        <span className={`text-display text-xl sm:text-2xl font-extrabold tabular-nums transition-colors ${ativo ? "text-primary text-glow" : "text-muted-foreground group-hover:text-foreground"}`}>
-                          {cat.total}
-                        </span>
-                        <span className="text-mono text-[8px] sm:text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
-                          sinais
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Trends Grid */}
-        <section className="mt-16 sm:mt-20">
-          <div className="flex items-end justify-between border-b border-border pb-3 sm:pb-4 mb-6 sm:mb-8">
-            <h2 className="text-display text-xl sm:text-2xl font-bold">
-              {filtroCatRadar
-                ? <><span className="text-primary">#</span>{filtroCatRadar}</>
-                : "Sinais de hoje"
-              }
-            </h2>
-            {!loading && !semSinaisHoje && (
-              <span className="text-mono text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-widest">
-                {trendsFiltradas?.length ?? 0} sinais
-              </span>
-            )}
+        {/* ── Hero ── */}
+        <section className="pt-16 sm:pt-24 md:pt-32 pb-16 sm:pb-24">
+          <div className="animate-fade-up flex items-center gap-3 text-mono text-[10px] sm:text-[11px] uppercase tracking-[0.15em] text-primary mb-6">
+            <span className="h-px w-8 bg-primary" />
+            EcomindsX · Engenharia Ambiental & Wellness
           </div>
 
-          {semSinaisHoje ? (
-            <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center">
-              <div className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-4 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 bg-muted-foreground rounded-full" />
-                Radar em standby
-              </div>
-              <h3 className="text-display text-xl sm:text-2xl font-bold mb-4">
-                Nenhum sinal detectado hoje.
-              </h3>
-              <p className="text-muted-foreground text-xs sm:text-sm max-w-sm mb-6 sm:mb-8 leading-relaxed">
-                Mientras o radar trabalha, explore o acervo completo de tendências anteriores.
-              </p>
-              <Link
-                to="/acervo"
-                className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] bg-primary text-primary-foreground px-4 sm:px-6 py-2 sm:py-3 hover:bg-primary/90 transition-colors"
-              >
-                Explorar acervo →
-              </Link>
-            </div>
-          ) : (
-            <>
-              {!isRadar && (
-                <div className="mb-6 sm:mb-8">
-                  <KeywordMarquee
-                    keywords={data?.keywords ?? []}
-                    activeKeyword={filtroAtivo}
-                    onSelect={(kw) => setFiltroAtivo(prev => prev === kw ? null : kw)}
-                  />
-                </div>
-              )}
+          <div className="mt-6 md:mt-8 animate-fade-up" style={{ animationDelay: "60ms" }}>
+            <HeroCarousel />
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-                {loading
-                  ? Array.from({ length: 3 }).map((_, i) => (
-                      <TrendCardSkeleton key={i} index={i} />
-                    ))
-                  : trendsFiltradas?.map((t, i) => (
-                      <div
-                        key={t.id}
-                        onClick={() => handleSelectNews(t)}
-                        className="cursor-pointer transition-all hover:translate-y-[-4px]"
-                      >
-                        <TrendCard trend={t} index={i} />
-                      </div>
-                    ))}
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* Botão Acervo */}
-        {!isRadar && !semSinaisHoje && !loading && (
-          <section className="mt-16 sm:mt-20 border-t border-border pt-10 sm:pt-12 flex flex-col items-center text-center gap-3 sm:gap-4">
-            <div className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-              Quer ir mais fundo?
-            </div>
-            <h3 className="text-display text-xl sm:text-2xl font-bold">
-              Todo o histórico de sinais em um só lugar.
-            </h3>
-            <p className="text-muted-foreground text-xs sm:text-sm max-w-sm leading-relaxed">
-              Filtre por categoria, período e mergulhe no acervo completo de tendências detectadas.
-            </p>
-            <Link
-              to="/acervo"
-              className="mt-2 text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] border border-primary/30 text-primary px-6 sm:px-8 py-3 sm:py-4 hover:border-primary transition-colors"
-              style={{ boxShadow: "0 0 8px rgba(0,255,100, 0.2)" }}
-            >
-              Explorar Sinais Anteriores →
-            </Link>
-          </section>
-        )}
-      </main>
-
-      {/* MODAL DE DETALHES - VERSÃO RESPONSIVA */}
-      {selectedNews && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center sm:justify-end bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-          {/* Overlay para fechar */}
-          <div className="absolute inset-0" onClick={() => setSelectedNews(null)} />
           
-          {/* Modal content - fullscreen no mobile, lateral no desktop */}
-          <div className="relative flex flex-col bg-card shadow-2xl w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-2xl sm:rounded-l-2xl border-0 sm:border-l border-border animate-in duration-300 slide-in-from-bottom sm:slide-in-from-right">
-            
-            {/* Header fixo no topo */}
-            <div className="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border p-4 sm:p-6 z-10">
-              <div className="flex items-start justify-between gap-3">
-                <div className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-primary flex-1 break-words">
-                  {selectedNews.categoria}
-                  {selectedNews.fonte && (
-                    <span className="hidden sm:inline"> // {selectedNews.fonte}</span>
-                  )}
-                </div>
-                <button
-                  onClick={() => setSelectedNews(null)}
-                  className="shrink-0 text-muted-foreground hover:text-primary text-mono text-[10px] sm:text-xs px-3 py-1.5 border border-border rounded-sm"
-                >
-                  ✕ FECHAR
-                </button>
-              </div>
-              
-              {/* Fonte no mobile (abaixo do título) */}
-              {selectedNews.fonte && (
-                <div className="text-mono text-[8px] uppercase tracking-[0.15em] text-muted-foreground mt-2 sm:hidden">
-                  {selectedNews.fonte}
-                </div>
-              )}
-            </div>
+        
+        </section>
 
-            {/* Conteúdo rolável */}
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-5 sm:space-y-6">
-              
-              {/* Título */}
-              <h2 className="text-display text-2xl sm:text-3xl md:text-4xl font-extrabold leading-tight text-foreground">
-                {selectedNews.title}
-              </h2>
+        {/* ── Diagnóstico Bioclimático — módulo central da home ──
+             Antes chamado "Análise Solar": renomeado porque uma análise
+             solar de verdade exige leitura de sombreamento, o que este
+             módulo ainda não faz. O que ele entrega hoje — zona
+             bioclimática (NBR 15220-3), clima horário (INMET) e
+             recomendações de materiais/inércia térmica — já é rico o
+             suficiente pra ter nome próprio, sem prometer o que falta. */}
+        {/* ── Diagnóstico Bioclimático — módulo central da home ── */}
+        <section id="diagnostico" className="mb-16 sm:mb-24">
+  <div className="relative overflow-hidden border border-primary/20 bg-card p-6 sm:p-10 rounded-2xl">
+    <div className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full"
+      style={{ background: "radial-gradient(circle, rgba(0,198,122,0.10) 0%, transparent 70%)" }} />
 
-              {/* Badges */}
-              <div className="flex flex-wrap gap-2">
-                {(selectedNews as any).nivel_maturidade && (
-                  <span className="text-mono text-[8px] sm:text-[9px] uppercase tracking-[0.15em] text-primary border border-primary/30 px-2 py-1 rounded-sm">
-                    {String((selectedNews as any).nivel_maturidade).toUpperCase()}
-                  </span>
-                )}
-              </div>
+    <div className="relative z-10 mb-3">
+      <div className="text-mono text-[10px] uppercase tracking-[0.15em] text-primary mb-3 flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-dot" />
+        Diagnóstico Bioclimático
+      </div>
+      <h2 className="text-display text-2xl sm:text-3xl md:text-4xl font-extrabold leading-tight mb-4 max-w-2xl">
+        Radiação, azimute e zoneamento,<br />
+        <span className="text-primary">calculados pra um endereço exato.</span>
+      </h2>
+      <p className="text-muted-foreground text-sm sm:text-base max-w-lg leading-relaxed mb-6">
+        Um dado a mais na sua prancheta: zona bioclimática (NBR 15220-3:2024), clima horário
+        histórico (INMET) e posicionamento solar do terreno, prontos antes da primeira decisão
+        de projeto, pra embasar a especificação de material, ventilação e orientação.
+      </p>
+      {/* O BOTÃO FOI REMOVIDO DAQUI */}
+    </div>
 
-              {/* Resumo Executivo */}
-              <div className="relative p-4 sm:p-6 bg-surface/30 border border-border rounded-sm">
-                <span className="absolute -top-2.5 left-3 sm:left-4 bg-card px-2 text-mono text-[8px] sm:text-[10px] text-muted-foreground uppercase">
-                  Resumo Executivo
-                </span>
-                <p className="text-foreground leading-relaxed text-sm sm:text-base italic">
-                  "{selectedNews.resumo_executivo || selectedNews.description}"
-                </p>
-              </div>
+    {/* Mapa + card de exemplo lado a lado */}
+    <div className="relative z-10 mt-8 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+      
+      {/* Coluna 1: Mapa */}
+      <div className="border border-border bg-background/60 p-4 sm:p-5 rounded-xl">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+            Zonas bioclimáticas brasileiras · NBR 15220-3:2024
+          </span>
+        </div>
+        <BrazilZonesMap />
+      </div>
+      
+      {/* Coluna 2: Card + Botão (envolvidos em um flex-col) */}
+      <div className="flex flex-col gap-4">
+        <div className="border border-border bg-background/60 p-5 sm:p-6 rounded-xl">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+              Exemplo ilustrativo
+            </span>
+            <span className="text-mono text-[9px] uppercase tracking-[0.1em] text-primary border border-primary/30 rounded-md px-2 py-0.5">
+              Demo
+            </span>
+          </div>
 
-              {/* Loading de detalhes */}
-              {loadingDetalhes ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="h-2 w-24 bg-muted-foreground/20 animate-pulse rounded" />
-                      <div className="h-12 bg-muted-foreground/10 animate-pulse rounded" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  {/* O que é na prática */}
-                  {selectedNews.o_que_e && (
-                    <div className="space-y-2">
-                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
-                        <span className="h-px w-4 bg-primary" /> O que é na prática
-                      </h4>
-                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.o_que_e}</p>
-                    </div>
-                  )}
-
-                  {/* Impacto Real */}
-                  {selectedNews.impacto_real && (
-                    <div className="relative p-4 border border-primary/30 bg-primary/5 rounded-sm">
-                      <span className="absolute -top-2.5 left-3 sm:left-4 bg-card px-2 text-mono text-[8px] sm:text-[10px] text-primary uppercase">
-                        Impacto Real
-                      </span>
-                      <p className="text-foreground leading-relaxed text-sm font-medium">{selectedNews.impacto_real}</p>
-                    </div>
-                  )}
-
-                  {/* Como aplicar em obra */}
-                  {selectedNews.como_aplicar && (
-                    <div className="space-y-2">
-                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
-                        <span className="h-px w-4 bg-primary" /> Como aplicar em obra
-                      </h4>
-                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.como_aplicar}</p>
-                    </div>
-                  )}
-
-                  {/* Limitações e riscos */}
-                  {selectedNews.contras && (
-                    <div className="space-y-2">
-                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-rose-400 font-bold flex items-center gap-2">
-                        <span className="h-px w-4 bg-rose-400" /> Limitações e riscos
-                      </h4>
-                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.contras}</p>
-                    </div>
-                  )}
-
-                  {/* Quando usar */}
-                  {selectedNews.quando_usar && (
-                    <div className="space-y-2">
-                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
-                        <span className="h-px w-4 bg-primary" /> Quando usar
-                      </h4>
-                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.quando_usar}</p>
-                    </div>
-                  )}
-
-                  {/* Por que isso é relevante */}
-                  {selectedNews.motivo && (
-                    <div className="space-y-2">
-                      <h4 className="text-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-2">
-                        <span className="h-px w-4 bg-primary" /> Por que isso é relevante
-                      </h4>
-                      <p className="text-muted-foreground leading-relaxed text-sm">{selectedNews.motivo}</p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Footer */}
-              <div className="pt-6 border-t border-border space-y-4">
-                <div className="text-mono text-[9px] sm:text-[10px] text-muted-foreground">
-                  PUBLICADO EM: {formatTime(selectedNews.pub_date || selectedNews.atualizado_em)}
-                </div>
-                {selectedNews.link && (
-                  <a
-                    href={selectedNews.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full text-center bg-primary text-primary-foreground px-4 py-3 sm:py-4 font-bold text-mono text-[10px] sm:text-xs tracking-tighter hover:bg-primary/90 transition-colors rounded-sm"
-                  >
-                    ACESSAR FONTE ORIGINAL NA ÍNTEGRA →
-                  </a>
-                )}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <div className="text-display text-2xl sm:text-3xl font-extrabold text-primary">ZB 03</div>
+              <div className="text-mono text-[9px] uppercase tracking-[0.1em] text-primary/80 mt-1">
+                NBR 15220-3 · Mista
               </div>
             </div>
+            <div>
+              <div className="text-display text-2xl sm:text-3xl font-extrabold text-foreground">34° NE</div>
+              <div className="text-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground mt-1">
+                Azimute da fachada
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            {[
+              "Radiação média: 4,8 kWh/m²/dia (estação INMET mais próxima)",
+              "Amplitude térmica: moderada",
+              "Inércia recomendada: alta",
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-2 text-muted-foreground text-xs">
+                <span className="h-1 w-1 rounded-full bg-primary/60 shrink-0" />
+                {item}
+              </div>
+            ))}
           </div>
         </div>
-      )}
+
+        {/* BOTÃO MOVIDO PARA CÁ (Abaixo do Card) */}
+        <Link
+          to="/wellness-analise-solar"
+          className="inline-flex justify-center items-center gap-2 text-sm font-semibold bg-primary text-primary-foreground px-5 sm:px-6 py-3 rounded-lg outline-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-colors w-full"
+        >
+          Gerar minha análise →
+        </Link>
+      </div>
+    </div>
+
+
+    {/* Por que isso importa */}
+    <div className="relative z-10 mt-10 pt-8 border-t border-border/60 grid grid-cols-1 sm:grid-cols-3 gap-5">
+      {[
+        {
+          title: "Ocupação sem retrabalho",
+          desc: "Material e vedação certos pro clima do lote evitam intervenção corretiva: infiltração, mofo, fissura por dilatação térmica.",
+        },
+        {
+          title: "Conforto sem depender de climatização",
+          desc: "Ventilação cruzada e inércia térmica calculadas pro local reduzem a necessidade de ar-condicionado o ano todo.",
+        },
+        {
+          title: "Decisão de projeto embasada em dado real",
+          desc: "Zona bioclimática, clima horário e posicionamento solar do terreno real, prontos pra entrar direto na especificação.",
+        },
+      ].map((item) => (
+        <div key={item.title}>
+          <h4 className="text-sm font-semibold text-foreground mb-1.5">{item.title}</h4>
+          <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  
+</section>
+        {/* ── CTA Notícias ── */}
+        <section className="border-t border-border pt-16 sm:pt-20 flex flex-col items-center text-center gap-4">
+          <div className="text-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+            Quer ir mais fundo?
+          </div>
+          <h3 className="text-display text-2xl sm:text-3xl font-extrabold max-w-lg leading-tight">
+            Novidades, tecnologias e tendências da construção — num só lugar.
+          </h3>
+          <p className="text-muted-foreground text-xs sm:text-sm max-w-sm leading-relaxed">
+            Do radar técnico às análises de wellness: filtre pelo que importa pro seu projeto ou investimento.
+          </p>
+          <Link
+            to="/noticias"
+            className="mt-2 text-sm font-semibold bg-primary text-primary-foreground px-6 sm:px-8 py-3 sm:py-3.5 rounded-lg outline-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-colors"
+          >
+            Explorar notícias →
+          </Link>
+        </section>
+
+      </main>
     </div>
   );
 }
