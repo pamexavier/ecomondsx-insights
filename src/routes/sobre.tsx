@@ -28,7 +28,7 @@ const PILARES = [
     titulo: "Projeto para Pessoas",
     subtitulo: "O ambiente precisa ornar com quem o vive",
     corpo:
-      "Entender rotina, comportamento, cultura e percepção é tão importante quanto entender a técnica. Projetamos para que luz, escala, circulação e permanência façam sentido para as pessoas — e não apenas para a planta baixa.",
+      "Entender rotina, comportamento, cultura e percepção é tão importante quanto entender a técnica. Projetamos para que luz, escala, circulação e permanência façam sentido para as pessoas.",
     entregas: ["Experiência do ocupante", "Uso e pertencimento"],
     cor: "#A78BFA",
   },

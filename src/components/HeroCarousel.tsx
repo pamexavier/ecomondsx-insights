@@ -440,7 +440,7 @@ export default function HeroCarousel() {
               <div className="flex items-center gap-2 text-mono text-[10px] uppercase tracking-[0.25em] text-primary mb-4">
                 <span className="h-px w-6 bg-primary" /> {slide.eyebrow}
               </div>
-              <h2 className="text-display text-2xl sm:text-3xl md:text-4xl font-extrabold leading-[1.15] text-foreground">
+              <h2 className="text-display text-2xl sm:text-3xl md:text-4xl font-extrabold leading-[1.15] text-primary">
                 {slide.title}
               </h2>
               <p className="text-mono mt-4 max-w-md text-xs sm:text-sm leading-relaxed text-muted-foreground">

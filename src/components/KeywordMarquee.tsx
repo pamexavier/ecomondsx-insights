@@ -46,17 +46,15 @@ export function KeywordMarquee({
     isDragging.current = false;
   }
 
-  return (
+ return (
     <div className="relative w-full border-y border-border py-3">
       {/* Fade esquerda */}
       <div
-        className="pointer-events-none absolute left-0 top-0 z-10 h-full w-12 sm:w-16"
-        style={{ background: "linear-gradient(90deg, oklch(0.17 0.008 152), transparent)" }}
+        className="pointer-events-none absolute left-0 top-0 z-10 h-full w-12 sm:w-16 bg-gradient-to-r from-[#EEF5EF] to-transparent"
       />
       {/* Fade direita */}
       <div
-        className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 sm:w-16"
-        style={{ background: "linear-gradient(-90deg, oklch(0.17 0.008 152), transparent)" }}
+        className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 sm:w-16 bg-gradient-to-l from-[#EEF5EF] to-transparent"
       />
 
       {/* Removemos a animação marquee e o w-max. 

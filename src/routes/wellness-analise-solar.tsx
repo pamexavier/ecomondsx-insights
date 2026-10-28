@@ -1,4 +1,5 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { LIBERAR_ANALISES } from "@/lib/flags";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,19 +14,33 @@ import {
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import {
-  MapPin, Loader2, CloudRain, Thermometer, Wind,
+  MapPin, CloudRain, Thermometer, Wind,
   ShieldCheck, Cpu, FileText, Download, Target, Compass, Sun,
-  Layers, Award, Satellite, Ruler, Play, Pause, Building2, ArrowLeft,
-  Eye
+  Layers, Satellite, Ruler, Building2, ArrowLeft,
+  Sparkles, X, Zap, Droplets
 } from "lucide-react";
 
-// Bibliotecas para geração do PDF
-import { toPng } from "html-to-image";
-import { jsPDF } from "jspdf";
 import { supabase } from "@/lib/supabase";
-import { BrazilZonesMap } from "@/components/BrazilZonesMap";
+import {
+  formatarNumero,
+  formatarMoeda,
+  calcularEconomiaAgua,
+  calcularEconomiaSolar,
+  normalizarPotencialFotovoltaico,
+  obterAreaTelhadoComOrigem,
+} from "@/utils/calculosBioclimaticos";
+import { gerarPDFPaginado } from "@/utils/geradorPDF";
+
+
+// ── IMPORTAÇÃO DO NOVO COMPONENTE ISOLADO ──
+import SimuladorSombreamento3D from "@/components/SimuladorSombreamento3D";
+import CapaLaudo from "./CapaLaudo";
+import { ResumoEntorno } from "./ResumoEntorno";
 
 export const Route = createFileRoute("/wellness-analise-solar")({
+  beforeLoad: () => {
+    if (!LIBERAR_ANALISES) throw redirect({ to: "/" });
+  },
   validateSearch: (search: Record<string, unknown>) => ({
     obraId: typeof search.obraId === "string" && search.obraId.trim()
       ? search.obraId.trim()
@@ -39,8 +54,298 @@ export const Route = createFileRoute("/wellness-analise-solar")({
   component: VectorZoneamento,
 });
 
-const N8N_WEBHOOK_URL = "http://localhost:5678/webhook-test/analise-solar";
+const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "http://localhost:5678/webhook-test/analise-solar";
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 const TABELA_PROPRIA = "analises_vectorx";
+
+let googleMapsLoadPromise: Promise<any> | null = null;
+
+function carregarGoogleMaps(apiKey: string) {
+  if (!apiKey) return Promise.reject(new Error("Chave do Google Maps ausente. Configure VITE_GOOGLE_MAPS_API_KEY."));
+  const googleMaps = (window as any).google?.maps;
+  if (googleMaps?.importLibrary) return Promise.resolve(googleMaps);
+  if (!googleMapsLoadPromise) {
+    googleMapsLoadPromise = new Promise((resolve, reject) => {
+      const callbackName = `__vectorMapsReady${Date.now()}`;
+      const script = document.createElement("script");
+      (window as any)[callbackName] = () => {
+        resolve((window as any).google.maps);
+        delete (window as any)[callbackName];
+      };
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&loading=async&libraries=maps,marker,places&callback=${callbackName}`;
+      script.async = true;
+      script.onerror = () => reject(new Error("Não foi possível carregar o Google Maps."));
+      document.head.appendChild(script);
+    });
+  }
+  return googleMapsLoadPromise;
+}
+
+type PontoMapa = { lat: number; lng: number };
+
+function SeletorLocalizacao({
+  apiKey,
+  logradouro,
+  numero,
+  cidade,
+  uf,
+  ponto,
+  onEnderecoChange,
+  onPontoChange,
+  onLocalSelecionado,
+}: {
+  apiKey: string;
+  logradouro: string;
+  numero: string;
+  cidade: string;
+  uf: string;
+  ponto: PontoMapa | null;
+  onEnderecoChange: (value: string) => void;
+  onPontoChange: (point: PontoMapa) => void;
+  onLocalSelecionado: (local: { ponto: PontoMapa; placeId: string; componentes: any[]; endereco: string }) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const mapaRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const centroMapaRef = useRef<PontoMapa | null>(null);
+  const pontoRef = useRef(ponto);
+  const moverPinoRef = useRef<((position: PontoMapa, notificar?: boolean) => void) | null>(null);
+  const callbacksRef = useRef({ onPontoChange, onLocalSelecionado });
+  const [mapaAberto, setMapaAberto] = useState(false);
+  const [erroMapa, setErroMapa] = useState("");
+
+  pontoRef.current = ponto;
+
+  useEffect(() => {
+    callbacksRef.current = { onPontoChange, onLocalSelecionado };
+  }, [onPontoChange, onLocalSelecionado]);
+
+  useEffect(() => {
+    let cancelado = false;
+    let listenerPlace: any;
+
+    async function inicializarAutocomplete() {
+      try {
+        const googleMaps = await carregarGoogleMaps(apiKey);
+        const placesLibrary = await googleMaps.importLibrary("places");
+        if (cancelado || !inputRef.current) return;
+        const autocomplete = new placesLibrary.Autocomplete(inputRef.current, {
+          fields: ["geometry", "place_id", "address_components", "formatted_address"],
+          componentRestrictions: { country: "br" },
+        });
+        listenerPlace = autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          const location = place.geometry?.location;
+          if (!location) {
+            setErroMapa("Esse resultado não tem um ponto no mapa. Escolha outra sugestão ou marque o prédio manualmente.");
+            return;
+          }
+          setErroMapa("");
+          const coordenadas = { lat: location.lat(), lng: location.lng() };
+          centroMapaRef.current = coordenadas;
+          callbacksRef.current.onLocalSelecionado({
+            ponto: coordenadas,
+            placeId: place.place_id || "",
+            componentes: place.address_components || [],
+            endereco: place.formatted_address || inputRef.current?.value || "",
+          });
+          setMapaAberto(true);
+        });
+      } catch (error) {
+        if (!cancelado) setErroMapa(error instanceof Error ? error.message : "Falha ao carregar o Google Maps.");
+      }
+    }
+
+    void inicializarAutocomplete();
+    return () => {
+      cancelado = true;
+      listenerPlace?.remove();
+    };
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (!mapaAberto) return;
+    let cancelado = false;
+    let listenerClique: any;
+    let listenerArraste: any;
+
+    async function inicializarMapa() {
+      try {
+        const googleMaps = await carregarGoogleMaps(apiKey);
+        const [mapsLibrary, markerLibrary] = await Promise.all([
+          googleMaps.importLibrary("maps"),
+          googleMaps.importLibrary("marker"),
+        ]);
+        if (cancelado || !mapaRef.current) return;
+
+        const mapa = new mapsLibrary.Map(mapaRef.current, {
+          center: pontoRef.current || centroMapaRef.current || { lat: -30.0079461, lng: -51.1853043 },
+          zoom: 19,
+          mapTypeId: "hybrid",
+          mapId: "DEMO_MAP_ID",
+          streetViewControl: false,
+          mapTypeControl: true,
+          fullscreenControl: true,
+        });
+        mapInstanceRef.current = mapa;
+
+        const moverPino = (position: PontoMapa, notificar = true) => {
+          const coordenadas = {
+            lat: Number(position.lat.toFixed(7)),
+            lng: Number(position.lng.toFixed(7)),
+          };
+          centroMapaRef.current = coordenadas;
+          if (!markerRef.current) {
+            markerRef.current = new markerLibrary.AdvancedMarkerElement({
+              map: mapa,
+              position: coordenadas,
+              gmpDraggable: true,
+              title: "Local do imóvel; arraste para ajustar",
+            });
+            listenerArraste = markerRef.current.addListener("dragend", () => {
+              const posicao = markerRef.current.position;
+              if (posicao) moverPino({
+                lat: typeof posicao.lat === "function" ? posicao.lat() : Number(posicao.lat),
+                lng: typeof posicao.lng === "function" ? posicao.lng() : Number(posicao.lng),
+              });
+            });
+          } else {
+            markerRef.current.position = coordenadas;
+            markerRef.current.map = mapa;
+          }
+          mapa.panTo(coordenadas);
+          if (notificar) callbacksRef.current.onPontoChange(coordenadas);
+        };
+        moverPinoRef.current = moverPino;
+
+        if (!pontoRef.current && logradouro) {
+          const textoBusca = `${logradouro}${numero ? ', ' + numero : ''}${cidade ? ' - ' + cidade : ''}${uf ? ' - ' + uf : ''}`;
+          new googleMaps.Geocoder().geocode({ address: textoBusca, componentRestrictions: { country: "BR" } }, (resultados: any[], status: string) => {
+            if (status === "OK" && resultados?.[0]?.geometry?.location) {
+              const location = resultados[0].geometry.location;
+              const coordenadas = { lat: location.lat(), lng: location.lng() };
+              centroMapaRef.current = coordenadas;
+              mapa.panTo(location);
+              mapa.setZoom(19);
+              moverPino(coordenadas, true);
+            }
+          });
+        } else if (pontoRef.current) {
+          moverPino(pontoRef.current, false);
+        }
+
+        listenerClique = mapa.addListener("click", (evento: any) => {
+          if (evento.latLng) moverPino({ lat: evento.latLng.lat(), lng: evento.latLng.lng() });
+        });
+      } catch (error) {
+        if (!cancelado) setErroMapa(error instanceof Error ? error.message : "Falha ao carregar o Google Maps.");
+      }
+    }
+
+    void inicializarMapa();
+    return () => {
+      cancelado = true;
+      listenerClique?.remove();
+      listenerArraste?.remove();
+      if (markerRef.current) markerRef.current.map = null;
+      markerRef.current = null;
+      mapInstanceRef.current = null;
+      moverPinoRef.current = null;
+    };
+  }, [apiKey, mapaAberto]);
+
+  useEffect(() => {
+    const mapa = mapInstanceRef.current;
+    if (!mapa) return;
+    if (ponto) {
+      centroMapaRef.current = { lat: ponto.lat, lng: ponto.lng };
+      moverPinoRef.current?.(ponto, false);
+    } else {
+      if (markerRef.current) markerRef.current.map = null;
+      markerRef.current = null;
+    }
+  }, [ponto?.lat, ponto?.lng, mapaAberto]);
+
+  useEffect(() => {
+    if (!ponto) centroMapaRef.current = null;
+  }, [logradouro, ponto?.lat, ponto?.lng]);
+
+  const centralizarEnderecoDigitado = () => {
+    const texto = `${logradouro}${numero ? ', ' + numero : ''}${cidade ? ' - ' + cidade : ''}${uf ? ' - ' + uf : ''}`.trim();
+    const googleMaps = (window as any).google?.maps;
+    if (!texto || ponto || !googleMaps) return;
+    new googleMaps.Geocoder().geocode({ address: texto, componentRestrictions: { country: "BR" } }, (resultados: any[], status: string) => {
+      if (status === "OK" && resultados?.[0]?.geometry?.location) {
+        const location = resultados[0].geometry.location;
+        centroMapaRef.current = { lat: location.lat(), lng: location.lng() };
+        mapInstanceRef.current?.panTo(location);
+        mapInstanceRef.current?.setZoom(19);
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="logradouro-maps" className="text-xs font-medium text-ink-soft">Logradouro</Label>
+      <input
+        id="logradouro-maps"
+        ref={inputRef}
+        value={logradouro}
+        onChange={(event) => onEnderecoChange(event.target.value)}
+        onBlur={centralizarEnderecoDigitado}
+        autoComplete="off"
+        className="flex h-11 w-full rounded-xl border border-line bg-surface-soft px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand/40"
+        aria-describedby="instrucao-localizacao"
+      />
+      <p id="instrucao-localizacao" className="text-[10px] leading-relaxed text-zinc-400">
+        Confirme se o pino está sobre o prédio. Arraste se necessário.
+      </p>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setMapaAberto(true)}
+        className="h-11 w-full justify-start gap-2 rounded-xl border border-brand/30 bg-brand-soft/60 text-brand-strong hover:bg-brand-soft"
+      >
+        <MapPin className="size-4 text-brand" aria-hidden="true" />
+        {ponto ? "Abrir mapa para reposicionar o pino" : "Abrir mapa e marcar o prédio"}
+      </Button>
+      {ponto && <p className="text-[10px] text-zinc-500">Ponto selecionado: {ponto.lat.toFixed(6)}, {ponto.lng.toFixed(6)}</p>}
+      {erroMapa && <p role="alert" className="text-xs text-rose-300">{erroMapa}</p>}
+      {mapaAberto && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-ink/40 p-3 backdrop-blur-sm sm:p-6">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-modal-mapa"
+            className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_24px_80px_rgba(46,53,50,0.18)]"
+          >
+            <header className="flex items-center justify-between gap-4 border-b border-line px-4 py-3 sm:px-6 sm:py-4">
+              <div>
+                <h2 id="titulo-modal-mapa" className="flex items-center gap-2 text-base font-semibold text-ink sm:text-lg">
+                  <MapPin className="size-4 text-brand" aria-hidden="true" /> Ajustar localização do imóvel
+                </h2>
+                <p className="mt-1 text-xs text-ink-soft">Clique no prédio ou arraste o pino até a posição correta.</p>
+              </div>
+              <Button type="button" variant="outline" onClick={() => setMapaAberto(false)} className="shrink-0 rounded-full border-line text-ink-soft hover:bg-surface-soft">
+                Fechar mapa
+              </Button>
+            </header>
+            <div ref={mapaRef} className="h-[60vh] min-h-[320px] w-full bg-surface-soft sm:h-[68vh] sm:min-h-[420px]" role="region" aria-label="Mapa para marcar o prédio" />
+            <footer className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <p className="text-xs tabular-nums text-ink-soft" aria-live="polite">
+                {ponto ? `Pino: ${ponto.lat.toFixed(6)}, ${ponto.lng.toFixed(6)}` : "Nenhum ponto marcado; clique no prédio para posicionar o pino."}
+              </p>
+              <Button type="button" onClick={() => setMapaAberto(false)} className="rounded-full bg-brand-strong text-white hover:bg-brand">
+                Usar este ponto
+              </Button>
+            </footer>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
 
 async function persistirAnaliseVectorX(obraId: string, analiseNormalizada: any) {
   const colunas = [
@@ -50,7 +355,7 @@ async function persistirAnaliseVectorX(obraId: string, analiseNormalizada: any) 
     "clima", "potencial_hidrico", "score_bioclimatico", "estrategias_conforto",
     "estrategias_resiliencia", "recomendacoes_conforto", "recomendacoes_resiliencia",
     "resumo_executivo", "leitura_ia", "calculo_solar",
-    "sombreamento_real", "cards_materiais", "material_recomendado",
+    "sombreamento_real", "potencial_fotovoltaico", "cards_materiais", "material_recomendado",
   ];
   const campos = Object.fromEntries(
     colunas
@@ -88,7 +393,7 @@ const normalizarAnalise = (raw: any) => {
     'resumo', 'classificacao', 'clima', 'potencial_hidrico',
     'score_bioclimatico', 'estrategias_conforto', 'estrategias_resiliencia',
     'recomendacoes_conforto', 'recomendacoes_resiliencia', 'calculo_solar',
-    'sombreamento_real', 'cards_materiais', 'material_recomendado',
+    'sombreamento_real', 'potencial_fotovoltaico', 'cards_materiais', 'material_recomendado',
   ];
   const normalizado = { ...resposta };
   camposJson.forEach((campo) => {
@@ -99,38 +404,72 @@ const normalizarAnalise = (raw: any) => {
   return normalizado;
 };
 
-const categorizarEstrategias = (estrategias: any[] = [], tipo: 'conforto' | 'resiliencia') => {
-  const categorias = tipo === 'conforto'
-    ? [
-        { nome: 'Brises e Sombreamento', termos: ['brise', 'sombra', 'sombreamento', 'persiana', 'beiral', 'proteção'] },
-        { nome: 'Ventilação e Térmica', termos: ['ventila', 'conforto', 'resfri', 'abertura', 'ar', 'cruzada'] },
-        { nome: 'Materiais e Envoltória', termos: ['isolamento', 'parede', 'cobertura', 'material', 'inércia', 'fachada', 'vidro'] },
-      ]
-    : [
-        { nome: 'Água e Drenagem', termos: ['água', 'chuva', 'reservatório', 'reaproveitamento', 'drenagem', 'cisterna'] },
-        { nome: 'Estrutura e Ventos', termos: ['estrutura', 'vento', 'ancor', 'cobertura', 'carga', 'resistência'] },
-        { nome: 'Operação e Contingência', termos: ['emergência', 'contingência', 'fechamento', 'reserva', 'manutenção'] },
-      ];
+const ANALISE_LOADING_STEPS = [
+  "Mapeando terreno",
+  "Calculando azimute",
+  "Detectando sombras",
+  "Gerando relatório",
+];
 
-  const agrupadas = categorias.map((categoria) => ({ ...categoria, itens: [] as string[] }));
-  const outras: string[] = [];
+function AnaliseLoadingState() {
+  const [etapa, setEtapa] = useState(0);
 
-  estrategias.forEach((estrategia) => {
-    if (estrategia && typeof estrategia === 'object' && estrategia.categoria && estrategia.texto) {
-      const categoria = agrupadas.find((c) => c.nome === estrategia.categoria);
-      if (categoria) categoria.itens.push(estrategia.texto);
-      else outras.push(estrategia.texto);
-      return;
-    }
-    const texto = typeof estrategia === 'string' ? estrategia : estrategia?.descricao || String(estrategia);
-    const categoria = agrupadas.find(({ termos }) => termos.some((termo) => texto.toLowerCase().includes(termo)));
-    if (categoria) categoria.itens.push(texto);
-    else outras.push(texto);
-  });
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      setEtapa((valorAtual) => (valorAtual + 1) % ANALISE_LOADING_STEPS.length);
+    }, 1400);
 
-  if (outras.length) agrupadas.push({ nome: 'Recomendações Gerais', termos: [], itens: outras });
-  return agrupadas.filter((c) => c.itens.length > 0);
-};
+    return () => clearInterval(intervalo);
+  }, []);
+
+  const textoEtapa = ANALISE_LOADING_STEPS[etapa];
+
+  return (
+    <div className="max-w-5xl mx-auto min-h-[60vh] flex items-center justify-center py-12">
+      <style>{`
+        @keyframes pulse-sun {
+          0%, 100% { transform: scale(1); opacity: 0.92; }
+          50% { transform: scale(1.18); opacity: 1; }
+        }
+        @keyframes move-arc {
+          0% { transform: translateX(-34px) translateY(8px) scale(0.9); opacity: 0.2; }
+          50% { transform: translateX(0) translateY(0) scale(1); opacity: 1; }
+          100% { transform: translateX(34px) translateY(-8px) scale(0.9); opacity: 0.2; }
+        }
+        @keyframes drift-horizon {
+          0% { transform: translateX(-18px); opacity: 0.25; }
+          50% { transform: translateX(18px); opacity: 0.8; }
+          100% { transform: translateX(-18px); opacity: 0.25; }
+        }
+        @keyframes build-house {
+          0%, 100% { transform: translateY(12px) scale(0.94); opacity: 0.25; }
+          50% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+      `}</style>
+
+      <div className="relative w-full max-w-2xl">
+        <div className="relative h-72 overflow-hidden rounded-[28px] border border-line bg-surface-soft">
+          <div className="absolute left-[16%] top-[18%] h-12 w-12 rounded-full bg-gradient-to-br from-amber-200 via-yellow-400 to-orange-500 shadow-[0_0_15px_rgba(251,191,36,0.4)] animate-[pulse-sun_1.8s_ease-in-out_infinite]" />
+
+          <div className="absolute left-[24%] top-[36%] h-0.5 w-[42%] rotate-[18deg] rounded-full bg-gradient-to-r from-brand/0 via-brand/60 to-brand/0 animate-[move-arc_2.2s_ease-in-out_infinite]" />
+
+          <div className="absolute left-[50%] top-[58%] h-20 w-20 -translate-x-1/2 rounded-full border border-brand/25 bg-brand/5" />
+
+          <div className="absolute left-1/2 bottom-10 h-28 w-44 -translate-x-1/2 rounded-t-[26px] bg-gradient-to-t from-brand/15 to-brand-soft/5 border-t border-brand/20 animate-[build-house_2.2s_ease-in-out_infinite]" />
+          <div className="absolute left-1/2 bottom-[92px] h-14 w-24 -translate-x-1/2 rounded-t-[18px] bg-brand/10 border border-brand/20 animate-[build-house_2.2s_ease-in-out_infinite_0.2s]" />
+          <div className="absolute left-[42%] bottom-[108px] h-8 w-7 rounded-md border border-brand-soft/30 bg-brand/10" />
+          <div className="absolute right-[42%] bottom-[108px] h-8 w-7 rounded-md border border-brand-soft/30 bg-brand/10" />
+
+          <div className="absolute inset-x-8 bottom-5 h-px bg-gradient-to-r from-transparent via-brand/50 to-transparent animate-[drift-horizon_2.8s_ease-in-out_infinite]" />
+
+          <div className="absolute inset-x-0 bottom-3 flex items-center justify-center">
+            <span className="rounded-full bg-brand-soft px-3 py-1 text-[9px] font-medium text-brand-strong">{textoEtapa}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── LÓGICA DA CARTA SOLAR SVG ──
 const FAIXAS_FACHADA: Record<string, { min: number; max: number }> = {
@@ -140,29 +479,25 @@ const FAIXAS_FACHADA: Record<string, { min: number; max: number }> = {
   Oeste: { min: 180, max: 360 }, Noroeste: { min: 225, max: 45 },
 };
 
-// ── HELPER DE VERIFICAÇÃO ANGULAR ──
 const anguloPertenceAFaixa = (azimuteDeg: number, fachadaNome: string) => {
-  const fLimpa = (fachadaNome || 'Norte').trim();
-  const formatada = fLimpa.charAt(0).toUpperCase() + fLimpa.slice(1).toLowerCase();
-  const faixa = FAIXAS_FACHADA[formatada] || FAIXAS_FACHADA['Norte'];
-  const az = ((azimuteDeg % 360) + 360) % 360;
+  const fLimpa = (fachadaNome || 'Norte').trim();
+  const formatada = fLimpa.charAt(0).toUpperCase() + fLimpa.slice(1).toLowerCase();
+  const faixa = FAIXAS_FACHADA[formatada] || FAIXAS_FACHADA['Norte'];
+  const az = ((azimuteDeg % 360) + 360) % 360;
 
-  if (faixa.min > faixa.max) {
-    // Caso de setor que cruza 0° (ex: Norte 270° a 90°)
-    return az >= faixa.min || az <= faixa.max;
-  }
-  return az >= faixa.min && az <= faixa.max;
+  if (faixa.min > faixa.max) {
+    return az >= faixa.min || az <= faixa.max;
+  }
+  return az >= faixa.min && az <= faixa.max;
 };
 
 const CORES_ESTACAO: Record<string, string> = { Verao: '#F59E0B', Outono: '#DC2626', Inverno: '#3B82F6', Primavera: '#10B981' };
 
-// Estilo de cada ponto conforme o status real (geometria + sombreamento da API).
-// Adicionamos anéis de contraste marcantes para diferenciar claramente a sombra real.
 const ESTILO_STATUS: Record<string, { opacidade: number; raio: number; anel?: string }> = {
   'Pleno Sol': { opacidade: 1, raio: 5 },
-  'Meia Sombra': { opacidade: 0.65, raio: 4.5, anel: '#38bdf8' }, // Anel azul claro para meia sombra
-  'Sombra': { opacidade: 0.3, raio: 3.5, anel: '#64748b' },        // Anel cinza/ardósia para sombra pura
-  'Sombra (obstruída)': { opacidade: 0.5, raio: 5, anel: '#fb7185' }, // Anel rosa/vermelho para obstrução real da API
+  'Meia Sombra': { opacidade: 0.65, raio: 4.5, anel: '#38bdf8' },
+  'Sombra': { opacidade: 0.3, raio: 3.5, anel: '#64748b' },
+  'Sombra (obstruída)': { opacidade: 0.5, raio: 5, anel: '#fb7185' },
 };
 const estiloDoStatus = (status?: string) => ESTILO_STATUS[status ?? ''] ?? { opacidade: 0.8, raio: 4.5 };
 
@@ -192,26 +527,398 @@ const gerarPathSetorFachada = (fachada: string, cx: number, cy: number, raioMax:
   return `M${cx},${cy} L${p1.x.toFixed(1)},${p1.y.toFixed(1)} A${raioMax},${raioMax} 0 ${largeArc},1 ${p2.x.toFixed(1)},${p2.y.toFixed(1)} Z`;
 };
 
+const ESTACOES_RELATORIO = ["Verao", "Outono", "Inverno", "Primavera"];
+const DIRECOES_ENTORNO = ["Norte", "Nordeste", "Leste", "Sudeste", "Sul", "Sudoeste", "Oeste", "Noroeste"];
+const AZIMUTE_POR_FACHADA: Record<string, number> = {
+  norte: 0, nordeste: 45, leste: 90, sudeste: 135,
+  sul: 180, sudoeste: 225, oeste: 270, noroeste: 315,
+};
+
+type HorizontePonto = {
+  ponto?: { x: number; y: number; mascara: number } | null;
+  referenciaNaoEncontrada?: boolean;
+  azimute: number;
+  anguloObstrucaoGraus: number | null;
+  distanciaObstaculoMetros?: number | null;
+  alturaObstaculoMetros?: number | null;
+  alturaObstaculoAcimaDoSoloMetros?: number | null;
+  aviso?: string | null;
+};
+
+const rotuloTipoObstaculo = (p?: any) =>
+  p?.ponto?.mascara === 0 ? "possivelmente vegetação"
+  : p?.ponto?.mascara === 1 ? "edificação vizinha"
+  : null;
+
+const difAngular = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+
+// ── 1. VERIFICA SE O OBSTÁCULO REALMENTE INTERCEPTA O SOL EM ALGUMA ESTAÇÃO ──
+function obstaculoGeraSombraReal(
+  ponto: HorizontePonto,
+  calculoSolar: any,
+  margemAzimute = 15,
+  toleranciaElevacao = 3
+): boolean {
+  const anguloObs = Number(ponto?.anguloObstrucaoGraus);
+  if (!Number.isFinite(anguloObs) || anguloObs < 3) return false;
+  if (!calculoSolar) return true;
+
+  for (const estacao of ESTACOES_RELATORIO) {
+    const horarios = calculoSolar[estacao];
+    if (!horarios) continue;
+    for (const d of Object.values(horarios) as any[]) {
+      const azSol = Number(d?.azimute);
+      const elevSol = Number(d?.elevacao);
+      if (!Number.isFinite(azSol) || elevSol <= 0) continue;
+
+      if (difAngular(ponto.azimute, azSol) <= margemAzimute) {
+        if (d?.obstruidoReal === true || d?.status === "Sombra (obstruída)") {
+          return true;
+        }
+        if (anguloObs + toleranciaElevacao >= elevSol) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// ── 2. FILTRA RUÍDO PONTUAL DE 1 PIXEL NO DSM (POSTES, CAMINHÕES NA RUA, ARTEFATOS) ──
+function filtrarRuidoPontual(pontos: HorizontePonto[]): HorizontePonto[] {
+  if (pontos.length <= 2) return pontos;
+
+  const consistentes = pontos.filter((p) => {
+    const vizinhos = pontos.filter(
+      (outro) => outro !== p && difAngular(p.azimute, outro.azimute) <= 15
+    );
+    if (vizinhos.length === 0) return true;
+    const maiorVizinho = Math.max(...vizinhos.map((v) => Number(v.anguloObstrucaoGraus) || 0));
+    return maiorVizinho >= (Number(p.anguloObstrucaoGraus) || 0) * 0.35;
+  });
+
+  return consistentes.length > 0 ? consistentes : pontos;
+}
+
+// ── 3. CALCULAR BLOQUEIOS REAIS POR AZIMUTE ──
+function calcularBloqueios(calculoSolar: any, perfilHorizonte: HorizontePonto[]) {
+  const mapa = new Map<number, { azimute: number; horas: string[] }>();
+  if (!calculoSolar) return mapa;
+
+  for (const estacao of ESTACOES_RELATORIO) {
+    const horarios = calculoSolar[estacao];
+    if (!horarios) continue;
+    for (const [hora, d] of Object.entries(horarios) as [string, any][]) {
+      if (d?.status === "Sombra (obstruída)" || d?.obstruidoReal === true) {
+        const az = Math.round(Number(d.azimute));
+        if (Number.isFinite(az)) {
+          const item = mapa.get(az) || { azimute: az, horas: [] };
+          item.horas.push(`${hora} (${estacao})`);
+          mapa.set(az, item);
+        }
+      }
+    }
+  }
+  return mapa;
+}
+
+// ── 4. RESUMO DOS 8 SETORES CARDEAIS COM VALIDAÇÃO SOLAR E DE FACHADA (90°) ──
+function resumirEntornoPorSetor(
+  perfil: HorizontePonto[] | null | undefined,
+  azimuteFachada: number | null,
+  bloqueiosOuCalculoSolar?: any
+) {
+  const todos = perfil || [];
+  const validosBrutos = todos.filter(
+    (p) => !p.referenciaNaoEncontrada && Number.isFinite(p.azimute) && typeof p.anguloObstrucaoGraus === "number",
+  );
+  const validos = filtrarRuidoPontual(validosBrutos);
+
+  return DIRECOES_ENTORNO.map((direcao, i) => {
+    const centro = i * 45;
+    const doSetor = validos.filter((p) => difAngular(p.azimute, centro) <= 22.5);
+    const doSetorBruto = validosBrutos.filter((p) => difAngular(p.azimute, centro) <= 22.5);
+    const baseSetor = doSetor.length > 0 ? doSetor : doSetorBruto;
+
+    const candidatosSombraReal = baseSetor.filter(
+      (p) =>
+        (azimuteFachada === null || difAngular(p.azimute, azimuteFachada) <= 90) &&
+        obstaculoGeraSombraReal(p, bloqueiosOuCalculoSolar)
+    );
+    const listaParaPico = candidatosSombraReal.length > 0 ? candidatosSombraReal : baseSetor;
+
+    const pico = listaParaPico.reduce<HorizontePonto | null>(
+      (m, p) => (!m || (p.anguloObstrucaoGraus as number) > (m.anguloObstrucaoGraus as number) ? p : m),
+      null,
+    );
+
+    const todosDoSetor = todos.filter((p) => difAngular(p.azimute, centro) <= 22.5);
+    const avisoSetor = !pico ? (todosDoSetor.find((p) => p.aviso)?.aviso || undefined) : undefined;
+    const atrasDaFachada =
+      !pico && (todosDoSetor.length === 0 || !!avisoSetor?.toLowerCase().includes("dentro do prédio"));
+
+    const naFrente = azimuteFachada !== null && pico !== null && difAngular(pico.azimute, azimuteFachada) <= 90;
+    const geraSombra = pico !== null && obstaculoGeraSombraReal(pico, bloqueiosOuCalculoSolar);
+    const afetaFachada = naFrente && geraSombra;
+
+    let bloqueio: { horas: string[] } | null = null;
+    if (bloqueiosOuCalculoSolar instanceof Map && pico) {
+      for (const [az, b] of bloqueiosOuCalculoSolar.entries()) {
+        if (difAngular(az, centro) <= 22.5) {
+          bloqueio = b;
+          break;
+        }
+      }
+    }
+
+    return { direcao, pico, afetaFachada, avisoSetor, atrasDaFachada, bloqueio };
+  });
+}
+
+function horariosDaEstacao(horarios: Record<string, { status?: string | null }> | undefined) {
+  const entradas = Object.entries(horarios || {})
+    .map(([label, d]) => ({ hora: parseInt(label, 10), status: String(d?.status || "") }))
+    .filter((e) => Number.isFinite(e.hora))
+    .sort((a, b) => a.hora - b.hora);
+  return {
+    comSol: entradas.filter((e) => e.status === "Pleno Sol" || e.status === "Meia Sombra").map((e) => `${e.hora}h`),
+    bloqueados: entradas.filter((e) => e.status.startsWith("Sombra (obstru")).map((e) => `${e.hora}h`),
+  };
+}
+
+function resumirExposicaoSolar(calculoSolar: any, perfilHorizonte: any[]) {
+  const porEstacao = ESTACOES_RELATORIO.map((estacao) => {
+    const horarios = calculoSolar?.[estacao] ?? {};
+    const amostras = Object.entries(horarios)
+      .map(([hora, dado]: [string, any]) => ({ hora: Number.parseFloat(hora), ...dado }))
+      .filter((dado) => Number.isFinite(dado.hora))
+      .sort((a, b) => a.hora - b.hora);
+    const amostrasDiurnas = amostras.filter((dado) => Number(dado.elevacao) > 0);
+    const solDireto = amostrasDiurnas.filter((dado) => dado.status === "Pleno Sol" || dado.status === "Meia Sombra");
+    const obstruidos = amostrasDiurnas.filter((dado) => 
+      dado.iluminado === true && (dado.obstruidoReal === true || dado.status === "Sombra (obstruída)")
+    );
+
+    return {
+      estacao,
+      total: amostrasDiurnas.length,
+      solDireto: solDireto.length,
+      plenoSol: amostrasDiurnas.filter((dado) => dado.status === "Pleno Sol").length,
+      meiaSombra: amostrasDiurnas.filter((dado) => dado.status === "Meia Sombra").length,
+      sombra: amostrasDiurnas.filter((dado) => dado.status === "Sombra").length,
+      obstruidos: obstruidos.length,
+      inicioSol: solDireto[0]?.hora,
+      fimSol: solDireto.at(-1)?.hora,
+      percentualSol: amostrasDiurnas.length ? Math.round((solDireto.length / amostrasDiurnas.length) * 100) : null,
+    };
+  });
+
+  const pontosPerfil = Array.isArray(perfilHorizonte) ? perfilHorizonte : [];
+  const pontosComDado = pontosPerfil.filter(
+    (ponto) => ponto && ponto.referenciaNaoEncontrada !== true && typeof ponto.anguloObstrucaoGraus === "number"
+  );
+  const picos = pontosComDado
+    .filter((ponto) => Number(ponto.anguloObstrucaoGraus) >= 2)
+    .sort((a, b) => Number(b.anguloObstrucaoGraus) - Number(a.anguloObstrucaoGraus));
+
+  return {
+    porEstacao,
+    pontosComDado: pontosComDado.length,
+    pontosTotais: pontosPerfil.length,
+    picos,
+    coberturaHorizonte: pontosPerfil.length ? Math.round((pontosComDado.length / pontosPerfil.length) * 100) : 0,
+  };
+}
+
+function MapaEntorno({
+  mapa,
+  perfil,
+  azimuteFachada,
+  calculoSolar,
+}: {
+  mapa: any;
+  perfil: any[];
+  azimuteFachada: number | null;
+  calculoSolar?: any;
+}) {
+  if (!mapa?.imagem || !mapa?.observador) return null;
+  const R: number = mapa.raioMetros ?? 60;
+  const obs = mapa.observador;
+ 
+  const pontosBrutos = (perfil || []).filter((p) => p?.ponto && typeof p.anguloObstrucaoGraus === "number");
+  const pontosLimpos = filtrarRuidoPontual(pontosBrutos);
+ 
+  const candidatosSombraReal = pontosLimpos.filter(
+    (p) =>
+      (azimuteFachada === null || difAngular(p.azimute, azimuteFachada) <= 90) &&
+      obstaculoGeraSombraReal(p, calculoSolar),
+  );
+  const principal = candidatosSombraReal.reduce<any>(
+    (m, p) => (!m || p.anguloObstrucaoGraus > m.anguloObstrucaoGraus ? p : m),
+    null,
+  );
+ 
+  const poli: number[][] = mapa.poligonoXY || [];
+ 
+  const xs = [obs.x, ...poli.map((q) => q[0]), ...pontosBrutos.map((p) => p.ponto?.x).filter(Boolean)];
+  const ys = [obs.y, ...poli.map((q) => q[1]), ...pontosBrutos.map((p) => p.ponto?.y).filter(Boolean)];
+  const padding = 12;
+  const x0 = Math.max(-R, Math.min(...xs) - padding);
+  const x1 = Math.min(R, Math.max(...xs) + padding);
+  const yMax = Math.min(R, Math.max(...ys) + padding);
+  const yMin = Math.max(-R, Math.min(...ys) - padding);
+ 
+  const svgX = x0;
+  const svgY = -yMax;
+  const svgWidth = x1 - x0;
+  const svgHeight = yMax - yMin;
+ 
+  const conePath = () => {
+    if (azimuteFachada === null) return "";
+    const a1 = ((azimuteFachada - 90) * Math.PI) / 180;
+    const a2 = ((azimuteFachada + 90) * Math.PI) / 180;
+    return `M${obs.x},${-obs.y} L${obs.x + R * Math.sin(a1)},${-obs.y - R * Math.cos(a1)} A${R},${R} 0 0,1 ${obs.x + R * Math.sin(a2)},${-obs.y - R * Math.cos(a2)} Z`;
+  };
+ 
+  const aneis = [20, 40, 60].filter((d) => d < R);
+  const tam = Math.max(svgWidth, svgHeight);
+  const fonte = tam / 70; // rótulos proporcionais ao tamanho da cena
+ 
+  return (
+    <div className="mt-3">
+      <div className="overflow-hidden rounded-xl border border-line bg-surface-soft">
+        <svg
+          viewBox={`${svgX} ${svgY} ${svgWidth} ${svgHeight}`}
+          className="mx-auto block h-auto max-h-[320px] w-full"
+          role="img"
+          aria-label="Mapa do entorno com obstáculos solares"
+        >
+          <image href={mapa.imagem} x={-R} y={-R} width={2 * R} height={2 * R} style={{ imageRendering: "pixelated" }} />
+          {/* véu que esmaece o DSM colorido */}
+          <rect x={-R} y={-R} width={2 * R} height={2 * R} fill="#ffffff" fillOpacity="0.55" />
+ 
+          {azimuteFachada !== null && (
+            <path d={conePath()} fill="#3A7D5E" fillOpacity="0.12" stroke="#3A7D5E" strokeWidth={fonte * 0.12} strokeDasharray={`${fonte * 0.5} ${fonte * 0.4}`} />
+          )}
+ 
+          {aneis.map((d) => (
+            <g key={d}>
+              <circle cx={obs.x} cy={-obs.y} r={d} fill="none" stroke="#334155" strokeOpacity="0.45" strokeWidth={fonte * 0.08} strokeDasharray={`${fonte * 0.3} ${fonte * 0.3}`} />
+              <text x={obs.x + 0.8} y={-obs.y - d - 0.6} fontSize={fonte * 0.9} fill="#1f2937" stroke="#fff" strokeWidth={fonte * 0.22} paintOrder="stroke">
+                {d} m
+              </text>
+            </g>
+          ))}
+ 
+          {poli.length > 2 && (
+            <polygon points={poli.map((q) => `${q[0]},${-q[1]}`).join(" ")} fill="#fbbf24" fillOpacity="0.35" stroke="#d97706" strokeWidth={fonte * 0.18} />
+          )}
+ 
+          {pontosBrutos.map((p) => {
+            const naFrente = azimuteFachada === null || difAngular(p.azimute, azimuteFachada) <= 90;
+            const geraSombra = naFrente && obstaculoGeraSombraReal(p, calculoSolar);
+            const ehPrincipal = p === principal;
+            return (
+              <line
+                key={p.azimute}
+                x1={obs.x}
+                y1={-obs.y}
+                x2={p.ponto.x}
+                y2={-p.ponto.y}
+                stroke={ehPrincipal ? "#e11d48" : geraSombra ? "#0891b2" : "#64748b"}
+                strokeWidth={fonte * (ehPrincipal ? 0.28 : geraSombra ? 0.16 : 0.07)}
+                opacity={ehPrincipal ? 1 : geraSombra ? 0.9 : 0.35}
+                strokeDasharray={!naFrente ? `${fonte * 0.2} ${fonte * 0.4}` : undefined}
+              />
+            );
+          })}
+ 
+          {pontosBrutos
+            .filter((p) => p.anguloObstrucaoGraus >= 5 && (azimuteFachada === null || difAngular(p.azimute, azimuteFachada) <= 90))
+            .map((p) => {
+              const ehPrincipal = p === principal;
+              const geraSombra = obstaculoGeraSombraReal(p, calculoSolar);
+              return (
+                <circle
+                  key={`c${p.azimute}`}
+                  cx={p.ponto.x}
+                  cy={-p.ponto.y}
+                  r={fonte * (ehPrincipal ? 0.55 : geraSombra ? 0.38 : 0.25)}
+                  fill={ehPrincipal ? "#e11d48" : geraSombra ? "#0891b2" : "#64748b"}
+                  stroke="#fff"
+                  strokeWidth={fonte * 0.12}
+                />
+              );
+            })}
+ 
+          {principal && (
+            <text
+              x={principal.ponto.x + fonte * 0.9}
+              y={-principal.ponto.y - fonte * 0.7}
+              fontSize={fonte * 1.15}
+              fontWeight="bold"
+              fill="#9f1239"
+              stroke="#fff"
+              strokeWidth={fonte * 0.3}
+              paintOrder="stroke"
+            >
+              {`${formatarNumero(principal.anguloObstrucaoGraus, 1)}° a ${formatarNumero(principal.distanciaObstaculoMetros, 0)} m`}
+            </text>
+          )}
+ 
+          {/* observador / fachada */}
+          <polygon
+            points={`${obs.x},${-obs.y - fonte * 0.9} ${obs.x - fonte * 0.7},${-obs.y + fonte * 0.5} ${obs.x + fonte * 0.7},${-obs.y + fonte * 0.5}`}
+            fill="#3A7D5E"
+            stroke="#fff"
+            strokeWidth={fonte * 0.15}
+          />
+ 
+          {/* seta de norte (norte para cima) */}
+          <g transform={`translate(${svgX + fonte * 2.2}, ${svgY + fonte * 3.2})`}>
+            <polygon points={`0,${-fonte * 1.6} ${fonte * 0.6},${fonte * 0.4} 0,${fonte * 0.05} ${-fonte * 0.6},${fonte * 0.4}`} fill="#1f2937" />
+            <text x={0} y={fonte * 1.6} fontSize={fonte * 1.1} textAnchor="middle" fontWeight="bold" fill="#1f2937" stroke="#fff" strokeWidth={fonte * 0.25} paintOrder="stroke">N</text>
+          </g>
+        </svg>
+      </div>
+ 
+      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-ink-soft">
+        <li className="flex items-center gap-1.5"><i className="inline-block h-2 w-3 border border-amber-600 bg-amber-300/60" />Edifício</li>
+        <li className="flex items-center gap-1.5"><span className="inline-block size-0 border-x-[4px] border-b-[7px] border-x-transparent border-b-brand-strong" />Fachada analisada</li>
+        <li className="flex items-center gap-1.5"><i className="inline-block h-2 w-3 border border-dashed border-brand-strong bg-brand-strong/15" />Campo de visão da fachada</li>
+        <li className="flex items-center gap-1.5"><i className="inline-block h-0.5 w-4 bg-cyan-600" />Obstáculo que intercepta o sol</li>
+        <li className="flex items-center gap-1.5"><i className="inline-block h-0.5 w-4 bg-rose-600" />Principal obstáculo</li>
+      </ul>
+      <p className="mt-1 text-[9px] text-ink-soft">Imagem de elevação do satélite esmaecida; anéis a cada 20 m a partir da fachada.</p>
+    </div>
+  );
+}
+
 export default function VectorZoneamento() {
   const { obraId } = Route.useSearch();
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [form, setForm] = useState({
     cep: "", logradouro: "", numero: "", bairro: "", cidade: "", uf: "",
     andar: "", modalidade: "obra_nova" as "obra_nova" | "reforma",
-    fachada: "" as string, nomeProjeto: "",
+    finalidadeAnalise: "imovel_existente" as "imovel_existente" | "projeto",
+    tipoImovel: "", fachada: "" as string, nomeProjeto: "", espessuraMaterial: "15",
+    lat: null as number | null, lng: null as number | null, placeId: "",
   });
   const router = useRouter();
+  
   const voltar = () => {
     if (window.history.length > 1) router.history.back();
     else router.navigate({ to: "/" });
   };
+
   const [loading, setLoading] = useState(false);
   const [buscandoCep, setBuscarCep] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [localConfirmado, setLocalConfirmado] = useState(false);
+  const [erroLocalizacao, setErroLocalizacao] = useState("");
+  const [formAberto, setFormAberto] = useState(false);
   const [dadosBioclimaticos, setDadosBioclimaticos] = useState<any>(null);
-  const [celulaSolarHover, setCelulaSolarHover] = useState<{ estacao: string; hora: string; dados: any } | null>(null);
   
-  // Estados do Simulador 3D
-  const [mostrarSimulador, setMostrarSimulador] = useState(false);
+  const [celulaSolarHover, setCelulaSolarHover] = useState<{ estacao: string; hora: string; dados: any } | null>(null);
   const [estacaoSim, setEstacaoSim] = useState('Verao');
   const [horaSlider, setHoraSlider] = useState(12);
   const [animando, setAnimando] = useState(false);
@@ -230,7 +937,10 @@ export default function VectorZoneamento() {
         ...prev, logradouro: data.logradouro || prev.logradouro,
         bairro: data.bairro || prev.bairro,
         cidade: data.localidade || prev.cidade, uf: data.uf || prev.uf,
+        lat: null, lng: null, placeId: "",
       }));
+      setLocalConfirmado(false);
+      setErroLocalizacao("");
       toast.success("Endereço preenchido!");
     } catch (err) {
       toast.error("Erro ao buscar CEP.");
@@ -246,13 +956,27 @@ export default function VectorZoneamento() {
     if (val.replace("-", "").length === 8) fetchCEP(val);
   };
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.logradouro || !form.cidade || !form.uf || !form.fachada || !form.nomeProjeto) {
       toast.error("Preencha os campos obrigatórios (Rua, Cidade, UF, Fachada e Projeto)");
       return;
     }
+    if (!localConfirmado || typeof form.lat !== "number" || typeof form.lng !== "number") {
+      toast.error("Marque o prédio no mapa e confirme o local antes de continuar.");
+      return;
+    }
+    setConfirmando(true);
+  }
 
+  async function executarAnalise() {
+    if (!localConfirmado || typeof form.lat !== "number" || typeof form.lng !== "number") {
+      setConfirmando(false);
+      toast.error("Marque o prédio no mapa e confirme o local antes de continuar.");
+      return;
+    }
+    setConfirmando(false);
+    setFormAberto(false);
     const analiseId = obraId || crypto.randomUUID();
     setLoading(true);
     const enderecoCompleto = `${form.logradouro}, ${form.numero}${form.bairro ? ' - ' + form.bairro : ''}, ${form.cidade} - ${form.uf}, Brasil`;
@@ -267,9 +991,15 @@ export default function VectorZoneamento() {
       cidade: form.cidade,
       estado: form.uf,
       pais: 'Brasil',
-      modalidade: form.modalidade,
+      modalidade: form.finalidadeAnalise === "imovel_existente" ? "reforma" : form.modalidade,
+      finalidadeAnalise: form.finalidadeAnalise,
+      tipoImovel: form.tipoImovel,
       fachada: form.fachada,
-      andar: form.andar ? Number(form.andar) : 0
+      andar: form.andar ? Number(form.andar) : 0,
+      espessuraMaterial: form.espessuraMaterial ? Number(form.espessuraMaterial) : 15,
+      lat: Number(form.lat.toFixed(7)),
+      lng: Number(form.lng.toFixed(7)),
+      ...(form.placeId ? { placeId: form.placeId } : {}),
     };
     try {
       const res = await fetch(N8N_WEBHOOK_URL, {
@@ -281,6 +1011,15 @@ export default function VectorZoneamento() {
       if (!res.ok) throw new Error("Falha de comunicação com o webhook n8n");
 
       const data = await res.json();
+      const respostaBackend = Array.isArray(data) ? data[0] : data?.data || data?.body || data;
+      if (respostaBackend?.disponivel === false && respostaBackend?.status === "fachada_nao_localizada") {
+        const mensagem = respostaBackend.mensagem || "Não foi possível localizar a fachada nesse ponto. Reposicione o pino e tente novamente.";
+        setErroLocalizacao(mensagem);
+        setLocalConfirmado(false);
+        setFormAberto(true);
+        toast.error(mensagem);
+        return;
+      }
       const analiseNormalizada = normalizarAnalise(data);
 
       setDadosBioclimaticos(analiseNormalizada);
@@ -294,49 +1033,101 @@ export default function VectorZoneamento() {
     }
   }
 
-  const gerarPDF = async () => {
-    if (!relatorioRef.current) return;
-    const toastId = toast.loading("Gerando laudo técnico...");
-    try {
-      const element = relatorioRef.current;
-      const width = element.offsetWidth;
-      const height = element.offsetHeight;
-      const dataUrl = await toPng(element, { quality: 1, pixelRatio: 2, backgroundColor: "#0a0a0a" });
-      const pdf = new jsPDF({ orientation: height > width ? "portrait" : "landscape", unit: "px", format: [width, height] });
-      pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
-      pdf.save(`VectorX_Bioclimatica_${form.nomeProjeto.replace(/\s+/g, "_")}.pdf`);
-      toast.success("Laudo baixado com sucesso!", { id: toastId });
-    } catch (error) {
-      toast.error("Erro ao gerar PDF.", { id: toastId });
-    }
-  };
-
   const fachadaAtual = dadosBioclimaticos?.fachada?.replace(/"/g, '') || form.fachada;
   const sombreamentoReal = dadosBioclimaticos?.sombreamento_real;
+  const potencialFotovoltaicoBruto = dadosBioclimaticos?.potencial_fotovoltaico;
+  const potencialFotovoltaico = normalizarPotencialFotovoltaico(
+    potencialFotovoltaicoBruto && typeof potencialFotovoltaicoBruto === 'object' ? potencialFotovoltaicoBruto as Record<string, number | string | undefined> : null,
+  );
+
+  const extrairMm = (texto?: string | null): number | null => {
+    const m = String(texto ?? "").match(/(\d+(?:[.,]\d+)?)\s*mm/i);
+    return m ? Number(m[1].replace(",", ".")) : null;
+  };
+
+  const chuvaMilimetros =
+    dadosBioclimaticos?.potencial_hidrico?.precipitacao_mm ??
+    extrairMm(dadosBioclimaticos?.potencial_hidrico?.indice_chuvas);
+
+     const areaTelhado = obterAreaTelhadoComOrigem(
+        dadosBioclimaticos?.potencial_hidrico && typeof dadosBioclimaticos.potencial_hidrico === "object"
+          ? (dadosBioclimaticos.potencial_hidrico as Record<string, unknown>) : null,
+        potencialFotovoltaicoBruto && typeof potencialFotovoltaicoBruto === "object"
+          ? (potencialFotovoltaicoBruto as Record<string, unknown>) : null,
+      );
+    
+
+  const perfilHorizonteReal = dadosBioclimaticos?.horizontePerfil
+    ?? sombreamentoReal?.perfil_horizonte
+    ?? sombreamentoReal?.perfil
+    ?? [];
+  
+  const economiaAgua = calcularEconomiaAgua(chuvaMilimetros, areaTelhado.areaM2);
+  const economiaSolar = potencialFotovoltaico
+    ? calcularEconomiaSolar(potencialFotovoltaico.geracaoAnualMaximaKwh)
+    : null;
+  const exportarPDF = () => {
+    gerarPDFPaginado(relatorioRef, `Laudo_Bioclimatico_${form.nomeProjeto.replace(/\s+/g, "_")}`);
+  };
+  const gerarPDF = exportarPDF;
   const temSombreamentoReal = Boolean(sombreamentoReal?.disponivel);
   const percentualReal = dadosBioclimaticos?.resumo?.percentualIluminacao;
+
+  const horasComDadoRealResumo = dadosBioclimaticos?.resumo?.horasComDadoReal ?? 0;
+  const totalHorasAvaliadasResumo = dadosBioclimaticos?.resumo?.totalHorasAvaliadas ?? 0;
+  const fonteSombreamentoResumo = dadosBioclimaticos?.resumo?.fonteSombreamento;
   const percentualGeometrico = dadosBioclimaticos?.resumo?.percentualIluminacaoGeometrico ?? percentualReal;
   const deltaSombreamento = (percentualGeometrico != null && percentualReal != null)
     ? Math.round((percentualGeometrico - percentualReal) * 10) / 10
     : null;
 
-  const cardsMateriais: any[] = Array.isArray(dadosBioclimaticos?.cards_materiais) ? dadosBioclimaticos.cards_materiais : [];
-  const materialIA = dadosBioclimaticos?.material_recomendado;
-  const justificativaIA = typeof materialIA?.justificativa === 'string' ? materialIA.justificativa : null;
-  const melhorMaterial = cardsMateriais[0] ?? (
-    materialIA?.aplicacao ? {
-      aplicacao: materialIA.aplicacao,
-      grupo: materialIA.grupo ?? null,
-      transmitancia_termica_U_Wm2K: materialIA.transmitancia_termica_U_Wm2K ?? null,
-      capacidade_termica_kJm2K: materialIA.capacidade_termica_kJm2K ?? null,
-      atraso_termico_estimado_h: materialIA.atraso_termico_estimado_h ?? null,
-      norma_referencia: materialIA.norma_referencia ?? null,
-      observacao: null,
-    } : null
-  );
-  const outrosMateriais = cardsMateriais.slice(1);
-
   const calculoSolarAtual = dadosBioclimaticos?.classificacao || dadosBioclimaticos?.calculo_solar;
+
+  const leituraSolar = useMemo(
+    () => resumirExposicaoSolar(calculoSolarAtual, perfilHorizonteReal),
+    [calculoSolarAtual, perfilHorizonteReal],
+  );
+
+  const azimuteFachadaAtual = useMemo(() => {
+    const real = Number(sombreamentoReal?.azimute_fachada_usado);
+    if (Number.isFinite(real)) return real;
+    const chave = String(fachadaAtual || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return AZIMUTE_POR_FACHADA[chave] ?? null;
+  }, [fachadaAtual, sombreamentoReal?.azimute_fachada_usado]);
+
+  const bloqueios = useMemo(
+    () => calcularBloqueios(calculoSolarAtual, perfilHorizonteReal),
+    [calculoSolarAtual, perfilHorizonteReal],
+  );
+
+  const azimutesBloqueantes = useMemo(() => [...bloqueios.keys()], [bloqueios]);
+
+  const setoresEntorno = useMemo(
+    () => resumirEntornoPorSetor(perfilHorizonteReal, azimuteFachadaAtual, bloqueios),
+    [perfilHorizonteReal, azimuteFachadaAtual, bloqueios],
+  );
+
+  const direcaoPrincipal = useMemo(() => {
+    const c = setoresEntorno.filter((s) => s.pico && s.bloqueio);
+    c.sort((a, b) => (b.bloqueio?.horas?.length || 0) - (a.bloqueio?.horas?.length || 0));
+    return c[0]?.direcao;
+  }, [setoresEntorno]);
+
+  // Obstrução principal sincronizada (página 2, página 4 e simulador 3D)
+  const obstrucaoPrincipal = useMemo(() => {
+    const setor = setoresEntorno.find((s) => s.direcao === direcaoPrincipal);
+    const p = setor?.pico;
+    if (!p) return null;
+    return {
+      azimute: p.azimute,
+      direcao: setor!.direcao,
+      anguloObstrucaoGraus: p.anguloObstrucaoGraus,
+      distanciaMetros: p.distanciaObstaculoMetros,
+      alturaMetros: p.alturaObstaculoAcimaDoSoloMetros ?? p.alturaObstaculoMetros,
+      mascara: p.ponto?.mascara ?? null,
+    };
+  }, [setoresEntorno, direcaoPrincipal]);
+
   const horasNumericas: number[] = useMemo(() => {
     const horas = calculoSolarAtual?.[estacaoSim];
     if (!horas) return [];
@@ -360,6 +1151,13 @@ export default function VectorZoneamento() {
     }, 60);
     return () => clearInterval(id);
   }, [animando, horasNumericas]);
+
+  useEffect(() => {
+    if (!formAberto) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setFormAberto(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [formAberto]);
 
   const desembrulharAzimute = (hora: number, azimute: number) =>
     (hora > 12 && azimute > 180) ? azimute - 360 : azimute;
@@ -395,851 +1193,769 @@ export default function VectorZoneamento() {
     return { min: Math.min(...vals), max: Math.max(...vals) };
   }, [calculoSolarAtual, estacaoSim, horasNumericas]);
 
-  if (!mostrarFormulario) {
-    return <IntroDiagnosticoBioclimatico />;
-  }
-
   return (
-    <div className="min-h-screen bg-[#050505] text-zinc-300 font-sans selection:bg-cyan-900 selection:text-cyan-100 flex flex-col md:flex-row">
-      <Toaster theme="dark" position="top-center" />
+    <div className="min-h-screen bg-canvas text-ink-soft font-sans selection:bg-brand-soft selection:text-ink flex flex-col md:flex-row relative">
+      <Toaster theme="light" position="top-center" />
 
-      {/* ── SIDEBAR (CONTROLES VECTOR-X) ── */}
-      <aside className="w-full md:w-[380px] bg-[#0a0a0a] border-r border-white/5 flex flex-col h-auto md:h-screen sticky top-0 z-20">
-        <div className="p-6 border-b border-white/5 bg-gradient-to-b from-cyan-950/20 to-transparent">
-            <button
-            onClick={voltar}
-            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-cyan-400 transition-colors mb-4"
+      {loading && !dadosBioclimaticos && (
+        <div className="fixed inset-0 z-[100] bg-canvas/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-3xl">
+            <AnaliseLoadingState />
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL DE CONFIRMAÇÃO ── */}
+      {confirmando && (
+        <div className="fixed inset-0 z-[70] bg-ink/40 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-surface border border-line rounded-3xl p-8 max-w-md w-full shadow-[0_24px_80px_rgba(46,53,50,0.18)]">
+            <h3 className="text-sm font-semibold text-ink mb-4">Confirme os dados desta análise</h3>
+            <p className="text-sm text-ink mb-1">
+              {form.logradouro}{form.numero ? `, ${form.numero}` : ''}{form.bairro ? ` - ${form.bairro}` : ''}
+            </p>
+            <p className="text-sm text-ink mb-4">{form.cidade} - {form.uf}</p>
+            <p className="text-xs text-ink-soft mb-6">
+              Finalidade: <strong className="text-ink">{form.finalidadeAnalise === "imovel_existente" ? "Avaliar imóvel existente" : "Projeto ou obra"}</strong>
+              {form.tipoImovel && <> · <strong className="text-ink">{form.tipoImovel}</strong></>}
+              <br />Fachada: <strong className="text-ink">{form.fachada}</strong>
+              {form.andar ? <> · Andar <strong className="text-ink">{form.andar}º</strong></> : null}
+            </p>
+            <p className="text-xs text-warn-ink bg-warn-soft border border-transparent rounded-xl px-3 py-2 mb-6">
+              Após confirmar, esses parâmetros ficam bloqueados — não será possível editar e gerar de novo sem uma nova análise.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setConfirmando(false)} className="flex-1 rounded-full border-line text-ink-soft hover:bg-surface-soft">
+                Voltar e corrigir
+              </Button>
+              <Button onClick={executarAnalise} className="flex-1 rounded-full bg-brand-strong hover:bg-brand text-white font-semibold">
+                Confirmar e gerar leitura
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overlay da gaveta */}
+      {formAberto && (
+        <div
+          className="fixed inset-0 z-[60] bg-ink/30 backdrop-blur-sm animate-in fade-in duration-300"
+          onClick={() => setFormAberto(false)}
+        />
+      )}
+
+      {/* ── GAVETA (FORMULÁRIO VECTOR-X) ── */}
+      <aside
+        aria-hidden={!formAberto}
+        className={`fixed inset-y-0 left-0 z-[65] w-full sm:w-[560px] xl:w-[640px] bg-surface border-r border-line flex flex-col shadow-[8px_0_32px_rgba(46,53,50,0.08)] transition-[transform,opacity,visibility] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          formAberto ? "translate-x-0 scale-100 opacity-100 visible" : "-translate-x-full scale-[0.98] opacity-0 invisible"
+        }`}
+      >
+        <div className="relative overflow-hidden p-6 pb-5 border-b border-line bg-brand-soft/50">
+          <div className="absolute -top-12 -right-10 size-40 rounded-full border border-brand/10" />
+          <button
+            onClick={() => setFormAberto(false)}
+            className="flex items-center gap-1.5 text-xs font-medium text-ink-soft hover:text-brand-strong transition-colors mb-4"
           >
-            <ArrowLeft className="size-3.5" /> Voltar
+            <X className="size-3.5" /> Fechar
           </button>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="size-8 rounded bg-cyan-950 border border-cyan-500/30 flex items-center justify-center">
-              <Cpu className="size-4 text-cyan-400" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="size-8 rounded-xl bg-brand-soft border border-line flex items-center justify-center">
+              <Cpu className="size-4 text-brand-strong" />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tighter text-white">VECTOR<span className="text-cyan-500">-X</span></h1>
-              <p className="text-[9px] font-bold tracking-widest uppercase text-cyan-500/70">Inteligência Bioclimática</p>
+              <h1 className="text-lg font-black tracking-tighter text-ink">VECTOR<span className="text-brand">-X</span></h1>
+              <p className="text-xs font-medium text-brand-strong">Inteligência Bioclimática</p>
             </div>
           </div>
+          {!dadosBioclimaticos && <>
+            <p className="text-xs font-medium text-brand-strong mb-2">Leitura solar do endereço</p>
+            <h2 className="text-2xl font-semibold leading-tight text-ink">Descubra como o sol chega a este imóvel.</h2>
+            <p className="text-xs leading-relaxed text-ink-soft mt-2">Para uma casa onde você já mora, um imóvel que pensa comprar ou um projeto em desenvolvimento.</p>
+          </>}
         </div>
 
-        <form onSubmit={submit} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="size-4 text-zinc-500" />
-              <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Parâmetros do Terreno</h2>
+        {/* ── FORMULÁRIO vs RESUMO BLOQUEADO ── */}
+        {!dadosBioclimaticos ? (
+          <form onSubmit={submit} className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Target className="size-4 text-brand-strong" />
+                <h2 className="text-xs font-medium text-ink-soft">Comece pelo objetivo</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-ink-soft">O que você quer avaliar?</Label>
+                  <Select value={form.finalidadeAnalise} onValueChange={(v: "imovel_existente" | "projeto") => setForm({ ...form, finalidadeAnalise: v })}>
+                    <SelectTrigger className="h-11 rounded-xl border border-brand/30 bg-brand-soft/60 text-ink font-medium focus:ring-brand/40">
+                      <SelectValue placeholder="Escolha o objetivo" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[80] rounded-xl bg-surface border-line text-ink">
+                      <SelectItem value="imovel_existente">Imóvel existente: moradia ou compra</SelectItem>
+                      <SelectItem value="projeto">Projeto, obra nova ou reforma</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs leading-relaxed text-ink-soft">A análise ajuda a entender insolação e sombras do endereço antes de decidir ou projetar.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-ink-soft">Tipo de imóvel</Label>
+                    <Select value={form.tipoImovel} onValueChange={(v) => setForm({ ...form, tipoImovel: v })}>
+                      <SelectTrigger className="h-11 rounded-xl border border-line bg-surface-soft text-ink placeholder:text-ink-faint focus:ring-brand/40"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent className="z-[80] rounded-xl bg-surface border-line text-ink">
+                        <SelectItem value="Apartamento">Apartamento</SelectItem>
+                        <SelectItem value="Casa">Casa</SelectItem>
+                        <SelectItem value="Outro imóvel">Outro imóvel</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-ink-soft">Nome para identificar</Label>
+                    <Input value={form.nomeProjeto} onChange={e => setForm({...form, nomeProjeto: e.target.value})} className="h-11 rounded-xl border-line bg-surface-soft text-ink placeholder:text-ink-faint focus-visible:ring-brand/40" placeholder="Ex: Apartamento que vou comprar" />
+                  </div>
+                </div>
+
+                <div className="border-t border-line pt-4">
+                  <p className="text-xs font-medium text-ink-soft mb-3">Onde fica?</p>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_100px]">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-ink-soft">CEP</Label>
+                        <Input value={form.cep} onChange={handleCEPChange} placeholder="00000-000" maxLength={9} className="h-11 rounded-xl border-line bg-surface-soft text-ink placeholder:text-ink-faint focus-visible:ring-brand/40" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-ink-soft">Número</Label>
+                        <Input value={form.numero} onChange={e => setForm({...form, numero: e.target.value})} placeholder="123" className="h-11 rounded-xl border-line bg-surface-soft text-ink placeholder:text-ink-faint focus-visible:ring-brand/40" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-ink-soft">Andar</Label>
+                        <Input value={form.andar} onChange={e => setForm({...form, andar: e.target.value.replace(/\D/g, '')})} placeholder="0" className="h-11 rounded-xl border-line bg-surface-soft text-ink placeholder:text-ink-faint focus-visible:ring-brand/40" />
+                      </div>
+                    </div>
+
+                    <SeletorLocalizacao
+                      apiKey={GOOGLE_MAPS_API_KEY}
+                      logradouro={form.logradouro}
+                      numero={form.numero} 
+                      cidade={form.cidade} 
+                      uf={form.uf}         
+                      ponto={form.lat !== null && form.lng !== null ? { lat: form.lat, lng: form.lng } : null}
+                      onEnderecoChange={(logradouro) => {
+                        setForm((prev) => ({ ...prev, logradouro, lat: null, lng: null, placeId: "" }));
+                        setLocalConfirmado(false);
+                        setErroLocalizacao("");
+                      }}
+                      onPontoChange={(ponto) => {
+                        setForm((prev) => ({ ...prev, lat: ponto.lat, lng: ponto.lng, placeId: "" }));
+                        setLocalConfirmado(false);
+                        setErroLocalizacao("");
+                      }}
+                      onLocalSelecionado={(local) => {
+                        const encontrarComponente = (tipo: string) => local.componentes.find((componente: any) => componente.types.includes(tipo));
+                        const rua = encontrarComponente("route")?.long_name;
+                        const numero = encontrarComponente("street_number")?.long_name;
+                        const bairro = encontrarComponente("neighborhood")?.long_name
+                          || encontrarComponente("sublocality_level_1")?.long_name
+                          || encontrarComponente("sublocality")?.long_name;
+                        const cidade = encontrarComponente("locality")?.long_name
+                          || encontrarComponente("administrative_area_level_2")?.long_name;
+                        const estado = encontrarComponente("administrative_area_level_1")?.short_name;
+                        const cep = encontrarComponente("postal_code")?.long_name;
+                        setForm((prev) => ({
+                          ...prev,
+                          logradouro: rua || local.endereco || prev.logradouro,
+                          numero: numero || prev.numero,
+                          bairro: bairro || prev.bairro,
+                          cidade: cidade || prev.cidade,
+                          uf: estado || prev.uf,
+                          cep: cep || prev.cep,
+                          lat: Number(local.ponto.lat.toFixed(7)),
+                          lng: Number(local.ponto.lng.toFixed(7)),
+                          placeId: local.placeId,
+                        }));
+                        setLocalConfirmado(false);
+                        setErroLocalizacao("");
+                      }}
+                    />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="bairro-imovel" className="text-xs font-medium text-ink-soft">Bairro</Label>
+                      <Input
+                        id="bairro-imovel"
+                        value={form.bairro}
+                        onChange={(e) => setForm((prev) => ({ ...prev, bairro: e.target.value }))}
+                        placeholder="Informe o bairro"
+                        className="h-11 rounded-xl border-line bg-surface-soft text-ink placeholder:text-ink-faint focus-visible:ring-brand/40"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-soft p-3">
+                      <p className="min-w-0 flex-1 text-xs text-ink-soft" aria-live="polite">
+                        {form.lat !== null && form.lng !== null
+                          ? `Pino: ${form.lat.toFixed(6)}, ${form.lng.toFixed(6)}${localConfirmado ? " · local confirmado" : " · confirme para continuar"}`
+                          : "Escolha um resultado ou clique no mapa para marcar o prédio."}
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={() => { setLocalConfirmado(true); setErroLocalizacao(""); }}
+                        disabled={form.lat === null || form.lng === null}
+                        aria-pressed={localConfirmado}
+                        className="shrink-0 rounded-full bg-brand-strong text-white hover:bg-brand disabled:opacity-40"
+                      >
+                        Confirmar local
+                      </Button>
+                    </div>
+                    {erroLocalizacao && <p role="alert" className="rounded-xl border border-danger-ink/20 bg-danger-soft p-3 text-xs leading-relaxed text-danger-ink">{erroLocalizacao}</p>}
+
+                    <div className="grid grid-cols-[1fr_60px] gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-ink-soft">Cidade</Label>
+                        <Input value={form.cidade} onChange={e => setForm({...form, cidade: e.target.value})} className="h-11 rounded-xl border-line bg-surface-soft text-ink placeholder:text-ink-faint focus-visible:ring-brand/40" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-ink-soft">UF</Label>
+                        <Input value={form.uf} onChange={e => setForm({...form, uf: e.target.value.toUpperCase()})} maxLength={2} className="h-11 rounded-xl border-line bg-surface-soft text-center text-ink placeholder:text-ink-faint focus-visible:ring-brand/40" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {form.finalidadeAnalise === "projeto" && <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-ink-soft">Etapa do projeto</Label>
+                  <Select value={form.modalidade} onValueChange={(v: "obra_nova" | "reforma") => setForm({ ...form, modalidade: v })}>
+                    <SelectTrigger className="h-11 rounded-xl border border-line bg-surface-soft text-ink font-medium focus:ring-brand/40">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[80] rounded-xl bg-surface border-line text-ink">
+                      <SelectItem value="obra_nova">Planejamento de obra nova</SelectItem>
+                      <SelectItem value="reforma">Reforma em imóvel existente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>}
+
+                {form.finalidadeAnalise === "projeto" && form.modalidade === "reforma" && (
+                  <section className="rounded-2xl border border-warn-ink/20 bg-warn-soft p-3 text-warn-ink animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <p className="text-xs font-semibold text-warn-ink">Na reforma, você também poderá explorar</p>
+                        <p className="text-xs text-ink-soft mt-1">Recursos em desenvolvimento, além da leitura solar atual.</p>
+                      </div>
+                      <span className="shrink-0 rounded-full border border-transparent bg-sand px-2 py-1 text-xs font-medium text-sand-ink">Em breve</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl bg-surface/70 p-2.5">
+                        <p className="text-xs font-semibold text-ink">Transmitância térmica</p>
+                        <p className="text-xs leading-relaxed text-ink-soft mt-1">Desempenho de paredes e cobertura.</p>
+                      </div>
+                      <div className="rounded-xl bg-surface/70 p-2.5">
+                        <p className="text-xs font-semibold text-ink">Materiais recomendados</p>
+                        <p className="text-xs leading-relaxed text-ink-soft mt-1">Alternativas adequadas ao clima local.</p>
+                      </div>
+                      <div className="rounded-xl bg-surface/70 p-2.5">
+                        <p className="text-xs font-semibold text-ink">Posicionamento no lote</p>
+                        <p className="text-xs leading-relaxed text-ink-soft mt-1">Implantação e orientação do imóvel.</p>
+                      </div>
+                      <div className="rounded-xl bg-surface/70 p-2.5">
+                        <p className="text-xs font-semibold text-ink">Ventilação natural</p>
+                        <p className="text-xs leading-relaxed text-ink-soft mt-1">Estratégias para favorecer o conforto.</p>
+                      </div>
+                    </div>
+                  </section>
+                )}
+                
+                <div className="space-y-1.5 pt-2">
+                  <Label className="text-xs font-medium text-ink-soft flex items-center gap-1.5">
+                    <Compass className="size-3" /> Qual fachada ou orientação quer analisar?
+                  </Label>
+                  <Select value={form.fachada} onValueChange={(v) => setForm({ ...form, fachada: v })}>
+                    <SelectTrigger className="h-11 rounded-xl border border-brand/30 bg-brand-soft/60 text-ink font-medium focus:ring-brand/40">
+                      <SelectValue placeholder="Selecione a fachada..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[80] rounded-xl bg-surface border-line text-ink">
+                      <SelectItem value="Norte">Norte (Maior Insolação)</SelectItem>
+                      <SelectItem value="Sul">Sul (Menor Insolação)</SelectItem>
+                      <SelectItem value="Leste">Leste (Sol da Manhã)</SelectItem>
+                      <SelectItem value="Oeste">Oeste (Sol da Tarde)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {form.finalidadeAnalise === "projeto" && <div className="space-y-1.5 pt-1">
+                  <Label className="text-xs font-medium text-ink-soft flex items-center gap-1.5">
+                    <Ruler className="size-3" /> Espessura da Envoltória (cm)
+                  </Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={form.espessuraMaterial}
+                    onChange={e => setForm({ ...form, espessuraMaterial: e.target.value.replace(/[^\d]/g, '') })}
+                    placeholder="15"
+                    className="h-11 rounded-xl border-line bg-surface-soft text-ink placeholder:text-ink-faint focus-visible:ring-brand/40"
+                  />
+                  <p className="text-[9px] text-zinc-600 leading-relaxed">
+                    Usada pro cálculo de transmitância (U), capacidade térmica e atraso térmico da parede/cobertura. Se não souber ainda, deixe 15cm (padrão de alvenaria simples).
+                  </p>
+                </div>}
+
+              </div>
             </div>
-
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] uppercase tracking-wider text-zinc-500">Nome do Projeto</Label>
-                <Input value={form.nomeProjeto} onChange={e => setForm({...form, nomeProjeto: e.target.value})} className="bg-white/5 border-white/10 text-white h-10" placeholder="Ex: Galpão Logístico" />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-zinc-500">CEP</Label>
-                  <Input value={form.cep} onChange={handleCEPChange} placeholder="00000-000" maxLength={9} className="bg-white/5 border-white/10 text-white h-10" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-zinc-500">Número</Label>
-                  <Input value={form.numero} onChange={e => setForm({...form, numero: e.target.value})} placeholder="123" className="bg-white/5 border-white/10 text-white h-10" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-zinc-500">Andar</Label>
-                  <Input value={form.andar} onChange={e => setForm({...form, andar: e.target.value.replace(/\D/g, '')})} placeholder="0" className="bg-white/5 border-white/10 text-white h-10" />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-[10px] uppercase tracking-wider text-zinc-500">Logradouro</Label>
-                <Input value={form.logradouro} onChange={e => setForm({...form, logradouro: e.target.value})} className="bg-white/5 border-white/10 text-white h-10" />
-              </div>
-
-              <div className="grid grid-cols-[1fr_60px] gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-zinc-500">Cidade</Label>
-                  <Input value={form.cidade} onChange={e => setForm({...form, cidade: e.target.value})} className="bg-white/5 border-white/10 text-white h-10" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-zinc-500">UF</Label>
-                  <Input value={form.uf} onChange={e => setForm({...form, uf: e.target.value.toUpperCase()})} maxLength={2} className="bg-white/5 border-white/10 text-white h-10 text-center uppercase" />
-                </div>
-              </div>
-
-              <div className="space-y-1.5 pt-2">
-                <Label className="text-[10px] uppercase tracking-wider text-zinc-500">Tipo de Projeto</Label>
-                <Select value={form.modalidade} onValueChange={(v: "obra_nova" | "reforma") => setForm({ ...form, modalidade: v })}>
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white h-11 font-semibold">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                    <SelectItem value="obra_nova">Obra Nova (do zero)</SelectItem>
-                    <SelectItem value="reforma">Reforma (fachada existente)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5 pt-2">
-                <Label className="text-[10px] uppercase tracking-wider text-cyan-500 font-bold flex items-center gap-1.5">
-                  <Compass className="size-3" /> Orientação Principal
-                </Label>
-                <Select value={form.fachada} onValueChange={(v) => setForm({ ...form, fachada: v })}>
-                  <SelectTrigger className="bg-cyan-950/20 border-cyan-500/30 text-cyan-100 h-11 font-semibold">
-                    <SelectValue placeholder="Selecione a fachada..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                    <SelectItem value="Norte">Norte (Maior Insolação)</SelectItem>
-                    <SelectItem value="Sul">Sul (Menor Insolação)</SelectItem>
-                    <SelectItem value="Leste">Leste (Sol da Manhã)</SelectItem>
-                    <SelectItem value="Oeste">Oeste (Sol da Tarde)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          </form>
+        ) : (
+          <div className="flex-1 p-6 space-y-5 custom-scrollbar overflow-y-auto">
+            <div className="flex items-center gap-2 text-xs font-medium text-ink-soft">
+              <ShieldCheck className="size-3.5" /> Parâmetros bloqueados
             </div>
+            <div className="space-y-3 text-sm text-ink-soft bg-surface-soft border border-line p-4 rounded-2xl">
+              <p className="font-semibold text-ink">{form.nomeProjeto}</p>
+              <p>{form.logradouro}{form.numero ? `, ${form.numero}` : ''}</p>
+              <p>{form.cidade} - {form.uf}</p>
+              <p className="text-brand-strong font-semibold text-xs pt-2 border-t border-line mt-2">
+                Fachada: {fachadaAtual}
+              </p>
+            </div>
+            <p className="text-xs text-ink-soft leading-relaxed pt-2">
+              Essa análise já foi processada e registrada no sistema. Pra avaliar outro terreno ou eixo de fachada, inicie uma nova análise.
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setDadosBioclimaticos(null);
+                setForm({
+                  cep: "", logradouro: "", numero: "", bairro: "", cidade: "", uf: "",
+                  andar: "", modalidade: "obra_nova", finalidadeAnalise: "imovel_existente",
+                  tipoImovel: "", fachada: "", nomeProjeto: "", espessuraMaterial: "15",
+                  lat: null, lng: null, placeId: "",
+                });
+                router.navigate({ to: "/wellness-analise-solar", search: { obraId: undefined } });
+              }} 
+              className="w-full mt-4 rounded-full border-line bg-surface text-brand-strong hover:bg-brand-soft"
+            >
+              Iniciar nova análise
+            </Button>
           </div>
-        </form>
+        )}
 
-        <div className="p-6 border-t border-white/5 bg-[#0a0a0a]">
-          <Button
-            onClick={submit}
-            disabled
-            className="w-full h-12 cursor-not-allowed bg-zinc-800 text-zinc-500 font-black tracking-widest uppercase transition-all"
-          >
-            EM BREVE · PROCESSAR ZONEAMENTO
-          </Button>
-        </div>
+        {/* ── BOTÃO DE SUBMIT (SOME APÓS LAUDO) ── */}
+        {!dadosBioclimaticos && (
+          <div className="p-6 border-t border-line bg-surface">
+            <Button
+              onClick={submit}
+              disabled={loading}
+              className="w-full h-12 rounded-full bg-brand-strong text-white font-semibold transition-all hover:bg-brand disabled:opacity-50"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <Sparkles className="size-4" /> MAPEANDO CENÁRIO...
+                </span>
+              ) : (
+                "GERAR LEITURA SOLAR"
+              )}
+            </Button>
+          </div>
+        )}
       </aside>
 
       {/* ── ÁREA PRINCIPAL (CANVAS DO LAUDO) ── */}
-      <main className="flex-1 h-screen overflow-y-auto bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-900/10 via-[#050505] to-[#050505] p-4 md:p-8 custom-scrollbar">
+      <main className="flex-1 w-full min-w-0 min-h-screen bg-canvas p-4 md:p-8 custom-scrollbar">
 
+        {/* Barra superior: Voltar + abrir formulário */}
+        <div className="max-w-6xl mx-auto flex items-center justify-between mb-6">
+          <button
+            onClick={voltar}
+            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-ink-soft hover:text-brand-strong transition-colors"
+          >
+            <ArrowLeft className="size-3.5" /> Voltar
+          </button>
+
+          <Button
+            onClick={() => setFormAberto(true)}
+            variant="outline"
+            className="h-9 rounded-full border-line bg-surface text-brand-strong hover:bg-brand-soft text-xs font-bold uppercase tracking-wider"
+          >
+            {dadosBioclimaticos
+              ? <><ShieldCheck className="size-3.5 mr-2" /> Parâmetros da análise</>
+              : <><Target className="size-3.5 mr-2" /> Analisar um endereço</>}
+          </Button>
+        </div>
+
+        {/* CARDS APARECEM AQUI QUANDO AINDA NÃO HÁ LAUDO */}
         {!dadosBioclimaticos && !loading && (
-          <div className="h-full flex flex-col items-center justify-center text-zinc-600 border border-dashed border-white/5 rounded-3xl bg-white/[0.01]">
-            <Cpu className="size-16 mb-4 opacity-20" />
-            <p className="text-sm font-mono uppercase tracking-widest">Aguardando parâmetros de entrada</p>
-          </div>
-        )}
-
-        {loading && (
-          <div className="h-full flex flex-col items-center justify-center">
-            <div className="relative size-24">
-              <div className="absolute inset-0 border-t-2 border-cyan-500 rounded-full animate-spin"></div>
-              <div className="absolute inset-2 border-b-2 border-teal-500 rounded-full animate-spin" style={{ animationDirection: 'reverse' }}></div>
-              <Cpu className="absolute inset-0 m-auto size-6 text-cyan-400 animate-pulse" />
-            </div>
-            <p className="mt-6 text-xs font-mono uppercase tracking-[0.2em] text-cyan-500 animate-pulse">Cruzando dados NBR 15220...</p>
-          </div>
-        )}
-
-        {dadosBioclimaticos && !loading && (
-          <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-20">
-
-            <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
-              <div className="flex items-center gap-3">
-                <span className="flex h-2 w-2 rounded-full bg-cyan-500 animate-pulse"></span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Laudo Gerado com Sucesso</span>
+          <div className="max-w-6xl mx-auto flex flex-col justify-center min-h-[50vh] md:min-h-full animate-in fade-in zoom-in-95 duration-500 py-8">
+            <div className="mb-8 md:mb-12">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-soft border border-transparent text-xs font-medium text-brand-strong mb-4">
+                <Sparkles className="size-3" /> Motor de Engenharia Bioclimática
               </div>
-              <Button onClick={gerarPDF} variant="outline" className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-950/50 hover:text-cyan-300 h-9 text-xs font-bold uppercase tracking-wider">
-                <Download className="size-3 mr-2" /> Exportar Laudo PDF
+              <h1 className="max-w-5xl text-3xl md:text-5xl font-semibold text-ink tracking-tight mb-4">
+                Incidência Solar <br />
+                <span className="text-brand">Descubra como o sol chega ao imóvel.</span>
+              </h1>
+              <p className="text-ink-soft max-w-2xl text-sm md:text-base leading-relaxed">
+                Avalie uma casa ou apartamento existente, confira um endereço antes de comprar ou use os dados para planejar uma obra. Veja horários de sol, orientação da fachada, sombras do entorno e contexto climático em um relatório visual.
+              </p>
+              <div className="flex flex-wrap gap-x-5 gap-y-2 mt-4 text-xs font-medium text-ink-soft">
+                <span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-brand" />Casa onde você mora</span>
+                <span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-brand-soft border border-brand" />Imóvel em avaliação de compra</span>
+                <span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-sand" />Projeto ou reforma</span>
+              </div>
+              <Button
+                onClick={() => setFormAberto(true)}
+                className="mt-6 h-12 px-6 bg-brand-strong text-white rounded-full hover:bg-brand font-semibold shadow-[0_8px_24px_rgba(58,125,94,0.18)] transition-all hover:-translate-y-0.5"
+              >
+                <Target className="size-4 mr-2" /> Analisar um endereço
               </Button>
             </div>
 
-            <div ref={relatorioRef} className="bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-
-              {/* HERO DO LAUDO */}
-              <div className="p-8 md:p-12 border-b border-white/5 relative overflow-hidden bg-gradient-to-br from-zinc-900 to-[#0a0a0a]">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-
-                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-                  <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/50 border border-cyan-500/30 text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-4">
-                      Zona Bioclimática {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}
-                    </div>
-                    <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-2">
-                      {form.nomeProjeto || "Projeto Bioclimático"}
-                    </h2>
-                    <p className="text-sm text-zinc-300 flex items-center gap-2 font-medium">
-                      <MapPin className="size-4 text-cyan-500 shrink-0" />
-                      {dadosBioclimaticos.endereco || `${form.logradouro}${form.numero ? ', ' + form.numero : ''}${form.bairro ? ' - ' + form.bairro : ''}, ${dadosBioclimaticos.municipio} - ${dadosBioclimaticos.uf}, Brasil`}
-                    </p>
-                    <p className="text-xs text-zinc-500 mt-1.5">
-                      Fachada Avaliada: <strong className="text-white">{fachadaAtual}</strong>
-                      {form.andar ? <> · Andar <strong className="text-white">{form.andar}º</strong></> : null}
-                    </p>
-                  </div>
-
-                  <div className="text-left md:text-right">
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Score Bioclimático</p>
-                    <div className="flex items-center md:justify-end gap-4">
-                      <span className="text-6xl font-black text-cyan-400 tabular-nums tracking-tighter leading-none">
-                        {dadosBioclimaticos.score_bioclimatico?.nota?.toFixed(1) ?? '-'}
-                      </span>
-                      <div className="text-left">
-                        <span className="block text-xs font-bold uppercase text-white bg-white/10 px-2 py-1 rounded">
-                          {dadosBioclimaticos.score_bioclimatico?.classificacao || 'Calculado'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+            <div className="mb-4 flex items-center gap-3">
+              <span className="h-px w-8 bg-brand/60" />
+              <h2 className="text-xs font-medium text-ink-soft">O que você vai descobrir</h2>
+            </div>
+            <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-5 pb-4 md:pb-0 custom-scrollbar-hide items-stretch">
+              <div className="min-w-[260px] md:min-w-0 snap-center shrink-0 bg-surface border border-line hover:border-brand/40 rounded-2xl shadow-[0_2px_12px_rgba(46,53,50,0.04)] p-5 flex flex-col transition-colors">
+                <div className="size-10 rounded-xl bg-brand-soft border border-transparent flex items-center justify-center mb-5">
+                  <Satellite className="size-5 text-brand-strong" />
                 </div>
-
-                <p className="mt-8 pt-6 border-t border-white/5 text-sm text-zinc-300 leading-relaxed max-w-3xl relative z-10">
-                  {dadosBioclimaticos.score_bioclimatico?.resumo}
+                <h3 className="text-sm font-semibold text-ink mb-2">Sol por horário e estação</h3>
+                <p className="text-xs text-ink-soft leading-relaxed">
+                  Entenda em quais períodos a fachada recebe sol direto e como a trajetória muda ao longo do ano.
                 </p>
               </div>
 
-              <div className="p-8 md:p-12 space-y-8">
-                {/* DADOS CLIMÁTICOS & HÍDRICOS */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* CLIMA */}
-                  <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Thermometer className="size-4 text-orange-500" />
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Clima Local</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                      <div>
-                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Temp. Média</p>
-                        <p className="text-2xl font-black text-white">{dadosBioclimaticos.temp_media}°C</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Projetada (Min-Max)</p>
-                        <p className="text-sm font-bold text-zinc-300 mt-2">{dadosBioclimaticos.temp_bulbo_seco_min}° a {dadosBioclimaticos.temp_bulbo_seco_max}°C</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Umidade</p>
-                        <p className="text-2xl font-black text-white">{dadosBioclimaticos.umidade_media}%</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Radiação</p>
-                        <p className="text-xl font-black text-white mt-1">{dadosBioclimaticos.radiacao_media} <span className="text-xs text-zinc-500">W/m²</span></p>
-                      </div>
-                    </div>
-                  </div>
+              <div className="min-w-[260px] md:min-w-0 snap-center shrink-0 bg-surface border border-line hover:border-brand/40 rounded-2xl shadow-[0_2px_12px_rgba(46,53,50,0.04)] p-5 flex flex-col transition-colors">
+                <div className="size-10 rounded-xl bg-brand-soft border border-transparent flex items-center justify-center mb-5">
+                  <Layers className="size-5 text-brand-strong" />
+                </div>
+                <h3 className="text-sm font-semibold text-ink mb-2">Sombras do entorno</h3>
+                <p className="text-xs text-ink-soft leading-relaxed">
+                  Veja obstruções próximas por direção e como elas podem interferir na entrada de sol da fachada.
+                </p>
+              </div>
 
-                  {/* HÍDRICO */}
-                  <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 flex flex-col">
-                    <div className="flex items-center gap-2 mb-4">
-                      <CloudRain className="size-4 text-blue-400" />
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Potencial Hídrico</h3>
-                    </div>
-                    <p className="text-sm text-zinc-300 font-medium leading-relaxed flex-1">
-                      {dadosBioclimaticos.potencial_hidrico?.reaproveitamento || "Dados de precipitação não processados pela IA."}
-                    </p>
-                    <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center">
-                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Índice de Chuvas</span>
-                      <span className="text-sm font-black text-blue-400 bg-blue-950/30 px-3 py-1 rounded-lg">
-                        {dadosBioclimaticos.potencial_hidrico?.indice_chuvas || "-"}
-                      </span>
-                    </div>
+              <div className="min-w-[260px] md:min-w-0 snap-center shrink-0 bg-surface border border-line hover:border-brand/40 rounded-2xl shadow-[0_2px_12px_rgba(46,53,50,0.04)] p-5 flex flex-col transition-colors">
+                <div className="size-10 rounded-xl bg-brand-soft border border-transparent flex items-center justify-center mb-5">
+                  <Thermometer className="size-5 text-brand-strong" />
+                </div>
+                <h3 className="text-sm font-semibold text-ink mb-2">Clima e localização</h3>
+                <p className="text-xs text-ink-soft leading-relaxed">
+                  Contextualize a insolação com a zona bioclimática e os dados climáticos disponíveis para a região.
+                </p>
+              </div>
+
+              <div className="min-w-[260px] md:min-w-0 snap-center shrink-0 bg-surface border border-line hover:border-brand/40 rounded-2xl shadow-[0_2px_12px_rgba(46,53,50,0.04)] p-5 flex flex-col transition-colors">
+                <div className="size-10 rounded-xl bg-sand border border-transparent flex items-center justify-center mb-5">
+                  <Zap className="size-5 text-sand-ink" />
+                </div>
+                <h3 className="text-sm font-semibold text-ink mb-2">Potencial fotovoltaico</h3>
+                <p className="text-xs text-ink-soft leading-relaxed">
+                  Consulte uma estimativa de geração e economia solar do telhado quando houver dados disponíveis para o endereço.
+                </p>
+              </div>
+
+              <div className="min-w-[260px] md:min-w-0 snap-center shrink-0 bg-surface border border-line hover:border-brand/40 rounded-2xl shadow-[0_2px_12px_rgba(46,53,50,0.04)] p-5 flex flex-col transition-colors">
+                <div className="size-10 rounded-xl bg-brand-soft border border-transparent flex items-center justify-center mb-5">
+                  <CloudRain className="size-5 text-brand-strong" />
+                </div>
+                <h3 className="text-sm font-semibold text-ink mb-2">Captação de água da chuva</h3>
+                <p className="text-xs text-ink-soft leading-relaxed">
+                  Veja uma estimativa de volume captável e economia potencial, baseada na chuva local e em um telhado de referência.
+                </p>
+              </div>
+
+              <div className="min-w-[260px] md:min-w-0 snap-center shrink-0 bg-surface border border-line hover:border-brand/40 rounded-2xl shadow-[0_2px_12px_rgba(46,53,50,0.04)] p-5 flex flex-col transition-colors">
+                <div className="size-10 rounded-xl bg-brand-soft border border-transparent flex items-center justify-center mb-5">
+                  <ShieldCheck className="size-5 text-brand-strong" />
+                </div>
+                <h3 className="text-sm font-semibold text-ink mb-2">Um relatório para decidir</h3>
+                <p className="text-xs text-ink-soft leading-relaxed">
+                  Baixe a leitura em PDF para comparar endereços ou conversar com seu arquiteto com mais contexto.
+                </p>
+              </div>
+
+              <div className="group relative isolate min-w-[280px] snap-center overflow-hidden rounded-2xl border border-sand bg-sand/40 p-4 pt-12 transition-colors hover:border-brand/40 sm:pt-4 md:col-span-2 md:min-w-0 lg:col-span-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                  <div className="relative grid h-14 w-full shrink-0 grid-cols-3 items-end gap-1 overflow-hidden rounded-xl border border-line bg-surface/70 p-2 sm:w-20" aria-hidden="true">
+                    <span className="h-5 rounded-sm bg-brand-soft" />
+                    <span className="h-8 rounded-sm bg-brand" />
+                    <span className="h-6 rounded-sm bg-sand" />
+                    <span className="animate-material-scan motion-reduce:animate-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-brand-soft/40 to-transparent" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-sand-ink">Novas ferramentas a caminho</p>
+                    <h3 className="mt-1 text-sm font-semibold text-ink">Materiais e conforto térmico</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-ink-soft">Transmitância, capacidade térmica e materiais recomendados para orientar reformas com mais contexto.</p>
                   </div>
                 </div>
-
-                {/* ── CARTA SOLAR & COBERTURA (NOVO LAYOUT) ── */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 md:p-8">
-                  {/* Cabeçalho da Seção Solar */}
-                  <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-1 flex items-center gap-2">
-                        <Sun className="size-4" /> Análise de Sombreamento (Carta Solar)
-                      </h3>
-                      <p className="text-sm text-zinc-400">Fachada Orientada ao {fachadaAtual}</p>
-                    </div>
-                    {/* Hover Info */}
-                    <div className="min-h-10 min-w-[280px] bg-cyan-950/20 border border-cyan-500/20 rounded-xl px-4 py-2 flex flex-col justify-center">
-                      {celulaSolarHover ? (
-                        <>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">
-                            {celulaSolarHover.estacao} · {celulaSolarHover.hora}
-                          </span>
-                          <span className="text-xs font-medium text-zinc-300">
-                            {celulaSolarHover.dados.status} (Az: {celulaSolarHover.dados.azimute}° | El: {celulaSolarHover.dados.elevacao}°)
-                          </span>
-                          {celulaSolarHover.dados.status === 'Sombra (obstruída)' && (
-                            <span className="text-[9px] font-bold text-rose-400 uppercase tracking-widest mt-0.5">
-                              Obstrução real detectada (Google Solar)
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold text-center">Passe o mouse nas linhas solares</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Topo: Gráfico SVG (Esquerda) e Métricas da Fachada (Direita) */}
-                  <div className="flex flex-col md:flex-row items-center gap-10">
-                    <div className="w-full max-w-sm shrink-0 relative">
-                      {(() => {
-                        const cx = 200, cy = 200, raioMax = 160;
-                        const setorPath = gerarPathSetorFachada(fachadaAtual, cx, cy, raioMax);
-                        const estacoes = ['Verao', 'Outono', 'Inverno', 'Primavera'];
-                        const calculoSolar = dadosBioclimaticos.classificacao || dadosBioclimaticos.calculo_solar;
-
-                        if (!calculoSolar || !calculoSolar['Verao']) return <div className="text-zinc-600 text-center text-sm py-10">Dados solares ausentes</div>;
-
-                        return (
-                          <svg viewBox="0 0 400 420" className="w-full h-auto drop-shadow-2xl">
-                            <defs>
-                              <radialGradient id="skyGrad" cx="50%" cy="50%" r="65%">
-                                <stop offset="0%" stopColor="#083344" stopOpacity="0.55" />
-                                <stop offset="100%" stopColor="#083344" stopOpacity="0" />
-                              </radialGradient>
-                              <filter id="glowPonto" x="-80%" y="-80%" width="260%" height="260%">
-                                <feGaussianBlur stdDeviation="4" result="blur" />
-                                <feMerge>
-                                  <feMergeNode in="blur" />
-                                  <feMergeNode in="SourceGraphic" />
-                                </feMerge>
-                              </filter>
-                            </defs>
-
-                            <circle cx={cx} cy={cy} r={raioMax} fill="url(#skyGrad)" />
-                            {setorPath && <path d={setorPath} fill="rgba(8,145,178,0.18)" stroke="rgba(34,211,238,0.35)" strokeWidth={1} />}
-                            <circle cx={cx} cy={cy} r={raioMax} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
-                            <circle cx={cx} cy={cy} r={(raioMax * 60) / 90} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} strokeDasharray="4 4" />
-                            <circle cx={cx} cy={cy} r={(raioMax * 30) / 90} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} strokeDasharray="4 4" />
-                            <text x={cx + 4} y={cy - (raioMax * 60) / 90 - 4} className="fill-zinc-600 text-[9px] font-bold">30°</text>
-                            <text x={cx + 4} y={cy - (raioMax * 30) / 90 - 4} className="fill-zinc-600 text-[9px] font-bold">60°</text>
-                            <line x1={cx} y1={cy - raioMax} x2={cx} y2={cy + raioMax} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
-                            <line x1={cx - raioMax} y1={cy} x2={cx + raioMax} y2={cy} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
-
-                            <text x={cx} y={cy - raioMax - 12} textAnchor="middle" className="fill-zinc-500 text-xs font-black">N</text>
-                            <text x={cx} y={cy + raioMax + 20} textAnchor="middle" className="fill-zinc-500 text-xs font-black">S</text>
-                            <text x={cx + raioMax + 16} y={cy + 4} textAnchor="middle" className="fill-zinc-500 text-xs font-black">L</text>
-                            <text x={cx - raioMax - 16} y={cy + 4} textAnchor="middle" className="fill-zinc-500 text-xs font-black">O</text>
-
-                            {estacoes.map((estacao) => {
-                              const horarios = calculoSolar[estacao];
-                              if (!horarios) return null;
-                              const cor = CORES_ESTACAO[estacao];
-                              
-                              const pontosArray = Object.entries(horarios).map(([hora, d]: [string, any]) => {
-                                const r = elevacaoParaRaio(Number(d.elevacao) || 0, raioMax);
-                                const { x, y } = anguloParaXY(cx, cy, r, Number(d.azimute) || 0);
-                                return { hora, x, y, dados: d };
-                              });
-
-                              const linha = pontosArray.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-                              const areaD = pontosArray.length
-                                ? `M${cx},${cy} L${pontosArray.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L')} Z`
-                                : '';
-
-                              return (
-                                <g key={estacao}>
-                                  {areaD && <path d={areaD} fill={cor} opacity={0.06} />}
-                                  <polyline
-                                    points={linha} fill="none" stroke={cor} strokeWidth={2} opacity={0.55}
-                                    strokeDasharray={estacao === 'Outono' ? '5 4' : undefined}
-                                  />
-                                  {pontosArray.map((p) => {
-  const ativo = celulaSolarHover?.estacao === estacao && celulaSolarHover?.hora === p.hora;
-  const noSetor = anguloPertenceAFaixa(Number(p.dados.azimute) || 0, fachadaAtual);
-  const estilo = estiloDoStatus(p.dados.status);
-
-  // Se estiver fora do setor da fachada avaliada, fica "apagado" em tom bem neutro
-  const opacidadeEfetiva = ativo ? 1 : noSetor ? estilo.opacidade : 0.08;
-  const corPonto = noSetor ? cor : '#52525b';
-
-  return (
-    <g key={p.hora} opacity={noSetor ? 1 : 0.25}>
-      {/* Anel de destaque só renderiza forte se pertencer à fachada contratada */}
-      {noSetor && (
-        <circle
-          cx={p.x} cy={p.y} r={estilo.raio + (estacao === 'Outono' ? 5.5 : 2.5)}
-          fill="none" stroke={cor} strokeWidth={1.5} opacity={0.85}
-          strokeDasharray={estacao === 'Outono' ? '2 2' : undefined}
-        />
-      )}
-
-      {noSetor && estilo.anel && (
-        <circle
-          cx={p.x} cy={p.y} r={estilo.raio + 5}
-          fill="none" stroke={estilo.anel} strokeWidth={1.5} strokeDasharray="2 2" opacity={0.85}
-        />
-      )}
-
-      {/* Bolinha principal */}
-      <circle
-        cx={p.x} cy={p.y} r={ativo ? estilo.raio + 3 : estilo.raio} fill={corPonto}
-        opacity={opacidadeEfetiva}
-        stroke="#0a0a0a" strokeWidth={2}
-        filter={ativo && noSetor ? 'url(#glowPonto)' : undefined}
-        className="transition-all duration-200 pointer-events-none"
-      />
-
-      {/* Hitbox: só ativa interação com hover nos pontos da fachada avaliada */}
-      <circle
-        cx={p.x} cy={p.y} r={14}
-        fill="transparent"
-        className={noSetor ? "cursor-pointer" : "cursor-default"}
-        onMouseEnter={() => {
-          if (noSetor) setCelulaSolarHover({ estacao, hora: p.hora, dados: p.dados });
-        }}
-        onMouseLeave={() => setCelulaSolarHover(null)}
-      />
-    </g>
-  );
-})}
-                                </g>
-                              );
-                            })}
-                          </svg>
-                        );
-                      })()}
-
-                      {/* Legenda de status */}
-                      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
-                        {Object.entries(ESTILO_STATUS).map(([status, estilo]) => (
-                          <div key={status} className="flex items-center gap-1.5">
-                            <span
-                              className="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400"
-                              style={{ opacity: estilo.opacidade, boxShadow: estilo.anel ? `0 0 0 2px ${estilo.anel}` : undefined }}
-                            />
-                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">{status}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 space-y-6">
-                      <div>
-                        <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mb-2">Diagnóstico da Fachada</p>
-                        <p className="text-lg font-medium text-white">{dadosBioclimaticos.resumo?.avaliacao || "Avaliação de insolação concluída."}</p>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-[10px] font-bold tracking-widest uppercase mb-2">
-                          <span className="text-zinc-500">Índice de Iluminação Direta (real)</span>
-                          <span className="text-cyan-400">{percentualReal ?? 0}%</span>
-                        </div>
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full" style={{ width: `${percentualReal ?? 0}%` }} />
-                        </div>
-                        {deltaSombreamento !== null && deltaSombreamento !== 0 && (
-                          <p className="text-[10px] text-zinc-500 mt-1.5">
-                            Cálculo geométrico puro seria <strong className="text-zinc-300">{percentualGeometrico}%</strong> — o sombreamento real reduziu em <strong className="text-rose-400">{Math.abs(deltaSombreamento)} p.p.</strong>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── CARD GOOGLE SOLAR (AGORA HORIZONTAL ABAIXO) ── */}
-                  {temSombreamentoReal ? (
-                    <div className="mt-10 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-[#0a0a0a] to-[#0a0a0a] p-6 relative overflow-hidden shadow-[0_0_30px_rgba(99,102,241,0.05)] flex flex-col md:flex-row items-center justify-between gap-8">
-                      {/* Efeito visual de brilho no fundo */}
-                      <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/4 pointer-events-none" />
-
-                      <div className="relative z-10 flex-1">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Satellite className="size-4 text-indigo-400" />
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
-                            Análise da Cobertura (Google Solar API)
-                          </h4>
-                        </div>
-                        <p className="text-sm text-zinc-300 leading-relaxed mb-4 max-w-lg">
-                          O plano principal do telhado avaliado via satélite possui fator de exposição solar útil de <strong className="text-indigo-300 bg-indigo-950/50 border border-indigo-500/20 px-1.5 py-0.5 rounded">{Math.round((sombreamentoReal.fator ?? 0) * 100)}%</strong>.
-                        </p>
-                        
-                        {sombreamentoReal.qualidade_imagem && (
-                          <p className="text-[9px] text-zinc-600 uppercase tracking-widest">
-                            Qualidade da captura: {sombreamentoReal.qualidade_imagem}
-                          </p>
-                        )}
-                      </div>
-
-                      {sombreamentoReal.segmento_usado && (
-                        <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 shrink-0">
-                          <div className="grid grid-cols-2 gap-3 text-center">
-                            <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-xl px-4 py-2">
-                              <p className="text-[9px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Inclinação</p>
-                              <p className="text-lg font-black text-white">{sombreamentoReal.segmento_usado.pitchDegrees?.toFixed(1)}°</p>
-                            </div>
-                            <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-xl px-4 py-2">
-                              <p className="text-[9px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Azimute</p>
-                              <p className="text-lg font-black text-white">{sombreamentoReal.segmento_usado.azimuthDegrees?.toFixed(1)}°</p>
-                            </div>
-                          </div>
-
-                          <div className="relative size-32 flex items-center justify-center bg-indigo-950/30 rounded-full border border-indigo-500/20 shadow-[inset_0_0_40px_rgba(99,102,241,0.1)]">
-                            <svg viewBox="0 0 100 100" className="w-24 h-24 drop-shadow-xl">
-                              <defs>
-                                <linearGradient id="roofGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                  <stop offset="0%" stopColor="#818cf8" stopOpacity="0.95" />
-                                  <stop offset="100%" stopColor="#312e81" stopOpacity="0.95" />
-                                </linearGradient>
-                              </defs>
-                              
-                              <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(99, 102, 241, 0.25)" strokeWidth="1" strokeDasharray="2 2" />
-                              <text x="50" y="13" textAnchor="middle" className="fill-indigo-400/80 text-[8px] font-bold">N</text>
-                              <text x="50" y="92" textAnchor="middle" className="fill-indigo-400/80 text-[8px] font-bold">S</text>
-                              <text x="91" y="53" textAnchor="middle" className="fill-indigo-400/80 text-[8px] font-bold">L</text>
-                              <text x="9" y="53" textAnchor="middle" className="fill-indigo-400/80 text-[8px] font-bold">O</text>
-
-                              <g transform={`rotate(${sombreamentoReal.segmento_usado.azimuthDegrees || 0}, 50, 50)`}>
-                                <line x1="50" y1="50" x2="50" y2="16" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 2" />
-                                <polygon points="50,11 54,18 46,18" fill="#c7d2fe" />
-                                <path d="M 30 35 L 70 35 L 80 65 L 20 65 Z" fill="url(#roofGrad)" stroke="#6366f1" strokeWidth="1.5" strokeLinejoin="round" />
-                                <line x1="43" y1="35" x2="38" y2="65" stroke="#4f46e5" strokeWidth="1.5" opacity="0.5" />
-                                <line x1="57" y1="35" x2="62" y2="65" stroke="#4f46e5" strokeWidth="1.5" opacity="0.5" />
-                                <line x1="50" y1="35" x2="50" y2="65" stroke="#4f46e5" strokeWidth="1.5" opacity="0.5" />
-                                <line x1="27" y1="50" x2="73" y2="50" stroke="#4f46e5" strokeWidth="1.5" opacity="0.5" />
-                              </g>
-                            </svg>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <Satellite className="size-3 text-zinc-500" />
-                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Cobertura (Satélite)</h4>
-                      </div>
-                      <p className="text-xs text-zinc-500">
-                        Dados de telhado indisponíveis pra este endereço{sombreamentoReal?.erro ? ` (${sombreamentoReal.erro})` : ''}. Avaliação baseada puramente na geometria da fachada.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* ── BOTÃO PARA ABRIR SIMULADOR 3D ── */}
-                  {calculoSolarAtual && (
-                    <div className="mt-8 pt-6 border-t border-white/5 text-center">
-                      {!mostrarSimulador ? (
-                        <Button 
-                          onClick={() => setMostrarSimulador(true)}
-                          variant="outline" 
-                          className="bg-transparent border-cyan-500/30 text-cyan-400 hover:bg-cyan-950/30 hover:text-cyan-300 font-bold tracking-widest uppercase text-[10px]"
-                        >
-                          <Eye className="size-3.5 mr-2" />
-                          Abrir Simulador 3D de Sombreamento da Fachada
-                        </Button>
-                      ) : (
-                        <div className="animate-in fade-in zoom-in-95 duration-300 bg-black/40 border border-white/5 rounded-2xl p-6">
-                          <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
-                            <div className="text-left">
-                              <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-1 flex items-center gap-2">
-                                <Building2 className="size-4" /> Simulador de Sombreamento 3D
-                              </h3>
-                              <p className="text-sm text-zinc-400">Como o sol se move sobre a fachada {fachadaAtual} ao longo do dia</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => setAnimando((a) => !a)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${animando ? 'bg-cyan-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}
-                              >
-                                {animando ? <Pause className="size-3" /> : <Play className="size-3" />}
-                                {animando ? 'Pausar' : 'Animar dia'}
-                              </button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => setMostrarSimulador(false)}
-                                className="text-zinc-500 hover:text-white"
-                              >
-                                Esconder
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-1.5 mb-3 justify-start">
-                            {['Verao', 'Outono', 'Inverno', 'Primavera'].map((estacao) => (
-                              <button
-                                key={estacao}
-                                onClick={() => { setAnimando(false); setEstacaoSim(estacao); }}
-                                className="px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors border"
-                                style={estacaoSim === estacao
-                                  ? { backgroundColor: CORES_ESTACAO[estacao], borderColor: CORES_ESTACAO[estacao], color: '#0a0a0a' }
-                                  : { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: '#a1a1aa' }}
-                              >
-                                {estacao}
-                              </button>
-                            ))}
-                          </div>
-
-                          {(() => {
-                            const spread = azExtremosSim.max - azExtremosSim.min;
-                            const t = spread > 0
-                              ? Math.min(1, Math.max(0, (azExtremosSim.max - (dadosHoraSim?.azimuteUnwrap ?? 0)) / spread))
-                              : 0.5;
-                            const elevacao = Math.max(0, Number(dadosHoraSim?.elevacao) || 0);
-                            const elevPercent = Math.min(1, elevacao / 90);
-                            const sunX = 60 + t * 360;
-                            const sunY = 195 - elevPercent * 165;
-                            const noturno = (Number(dadosHoraSim?.elevacao) ?? 0) <= 0;
-
-                            const status = dadosHoraSim?.status;
-                            const corFace = noturno ? '#1e293b' : (CORES_STATUS_SIM[status] ?? '#334155');
-                            const opacidadeFace = noturno ? 0.9 : (status === 'Pleno Sol' ? 0.92 : status === 'Meia Sombra' ? 0.65 : 0.35);
-
-                            const dirX = t < 0.5 ? 1 : -1;
-                            const shadowLen = noturno ? 150 : 20 + (1 - elevPercent) * 130;
-                            const shadowCx = 260 + dirX * shadowLen * 0.55;
-                            const shadowOpacidade = noturno ? 0.35 : (status === 'Sombra (obstruída)' ? 0.55 : status === 'Sombra' ? 0.4 : status === 'Meia Sombra' ? 0.25 : 0.15);
-                            const shadowCor = status === 'Sombra (obstruída)' ? '#fb7185' : '#020617';
-
-                  
-                              return (
-                              <svg viewBox="0 0 480 250" className="w-full h-auto rounded-xl bg-gradient-to-b from-[#080d1a] to-[#04060a] border border-white/5">
-                                <defs>
-                                  <filter id="glowSol" x="-100%" y="-100%" width="300%" height="300%">
-                                    <feGaussianBlur stdDeviation="6" result="blur" />
-                                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                                  </filter>
-                                  <linearGradient id="wallGradLeft" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" stopColor="#1e293b" />
-                                    <stop offset="100%" stopColor="#0f172a" />
-                                  </linearGradient>
-                                  {/* Grid isométrico do chão */}
-                                  <pattern id="isoGrid" width="40" height="20" patternUnits="userSpaceOnUse">
-                                    <path d="M0,10 L20,0 L40,10 L20,20 Z" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5"/>
-                                  </pattern>
-                                </defs>
-
-                                {/* Chão Isométrico */}
-                                <rect x="0" y="150" width="480" height="100" fill="url(#isoGrid)" />
-
-                                {/* ── BLOCOS DO ENTORNO ("MINECRAFT") ── */}
-                                {(() => {
-                                  // Calcula o fator de obstrução com base no dado real do Google (se houver)
-                                  const fatorExp = sombreamentoReal?.fator ?? 0.85;
-                                  const obstruido = fatorExp < 0.8; // Se exp abaixo de 80%, gera barreiras vizinhas
-                                  
-                                  if (!obstruido) return null;
-
-                                  // Altura dos blocos vizinhos proporcional ao nível de sombreamento
-                                  const alturaBloco = Math.round((1 - fatorExp) * 120);
-
-                                  return (
-                                    <g opacity="0.75">
-                                      {/* Prédio Vizinho Esquerda (Fundo) */}
-                                      <polygon points={`120,${180 - alturaBloco} 120,165 170,140 170,${155 - alturaBloco}`} fill="#0f172a" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
-                                      <polygon points={`170,${155 - alturaBloco} 170,140 200,155 200,${170 - alturaBloco}`} fill="#1e293b" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
-                                      <polygon points={`120,${180 - alturaBloco} 170,${155 - alturaBloco} 200,${170 - alturaBloco} 150,195`} fill="#334155" opacity="0.4" />
-
-                                      {/* Prédio Vizinho Direta (Fundo) */}
-                                      <polygon points={`310,${160 - alturaBloco} 310,145 350,125 350,${140 - alturaBloco}`} fill="#0b0f19" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
-                                      <polygon points={`350,${140 - alturaBloco} 350,125 390,145 390,${160 - alturaBloco}`} fill="#161e2e" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
-                                    </g>
-                                  );
-                                })()}
-
-                                <path d="M60,195 Q260,20 460,195" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={1} strokeDasharray="3 4" />
-                                <line x1={0} y1={195} x2={480} y2={195} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
-                                <ellipse cx={shadowCx} cy={200} rx={Math.max(28, shadowLen * 0.65)} ry={13} fill={shadowCor} opacity={shadowOpacidade} />
-
-                                {!noturno && (
-                                  <circle cx={sunX} cy={sunY} r={9 + elevPercent * 5} fill="#fbbf24" filter="url(#glowSol)" />
-                                )}
-                                {noturno && (
-                                  <circle cx={sunX} cy={190} r={7} fill="#334155" opacity={0.7} />
-                                )}
-
-                                {/* Prédio Principal Isométrico */}
-                                <polygon points="205,167 205,77 260,49 260,105" fill="#1e293b" opacity={0.95} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-                                <polygon points="260,195 205,167 205,77 260,105" fill="url(#wallGradLeft)" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
-                                
-                                <g>
-                                  <polygon points="260,195 315,167 315,77 260,105" fill={corFace} opacity={opacidadeFace} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-                                  {!noturno && status !== 'Sombra' && status !== 'Sombra (obstruída)' && (
-                                    <polygon points="260,195 285,181 315,100 290,114" fill="#ffffff" opacity={0.05} />
-                                  )}
-                                </g>
-
-                                <text x={287} y={135} textAnchor="middle" className="fill-white text-[9px] font-black uppercase tracking-wider" style={{ paintOrder: 'stroke', stroke: '#0a0a0a', strokeWidth: 3 }}>
-                                  {fachadaAtual}
-                                </text>
-                              </svg>
-                            );
-                          })()}
-
-                          {horasNumericas.length > 1 && (
-                            <div className="mt-5 px-1">
-                              <input
-                                type="range"
-                                min={horasNumericas[0]}
-                                max={horasNumericas[horasNumericas.length - 1]}
-                                step={0.1}
-                                value={horaSlider}
-                                onChange={(e) => { setAnimando(false); setHoraSlider(parseFloat(e.target.value)); }}
-                                className="w-full accent-cyan-500 cursor-pointer"
-                              />
-                              <div className="flex justify-between mt-1">
-                                {horasNumericas.map((h) => (
-                                  <span key={h} className="text-[9px] font-bold text-zinc-600 uppercase tracking-wider">{h}h</span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {dadosHoraSim && (
-                            <p className="text-center text-xs text-zinc-400 mt-3">
-                              <strong className="text-white">{dadosHoraSim.status}</strong> às {Math.floor(horaSlider)}h{Math.round((horaSlider % 1) * 60).toString().padStart(2, '0')}
-                              {' '}(mais próximo do dado real: {dadosHoraSim.horaProximaLabel}) · Elevação {dadosHoraSim.elevacao}° · Azimute {dadosHoraSim.azimute}°
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* MATERIAIS RECOMENDADOS */}
-                {(melhorMaterial || outrosMateriais.length > 0) && (
-                  <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 md:p-8">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Layers className="size-4 text-emerald-400" />
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Materiais Recomendados · Envoltória</h3>
-                    </div>
-                    {dadosBioclimaticos.espessura_considerada_cm && (
-                      <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-6 flex items-center gap-1">
-                        <Ruler className="size-3" /> Espessura considerada: {dadosBioclimaticos.espessura_considerada_cm}cm
-                      </p>
-                    )}
-
-                    {melhorMaterial && (
-                      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/30 to-transparent p-6 mb-6">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Award className="size-4 text-emerald-400" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Melhor Escolha pra Este Cenário</span>
-                        </div>
-                        <p className="text-xl font-black text-white mb-1">{melhorMaterial.aplicacao}</p>
-                        {melhorMaterial.grupo && (
-                          <p className="text-xs text-zinc-500 uppercase tracking-widest mb-4">{melhorMaterial.grupo}</p>
-                        )}
-
-                        {(melhorMaterial.transmitancia_termica_U_Wm2K != null || melhorMaterial.capacidade_termica_kJm2K != null || melhorMaterial.atraso_termico_estimado_h != null) && (
-                          <div className="grid grid-cols-3 gap-4 mb-4">
-                            <div>
-                              <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Transmitância (U)</p>
-                              <p className="text-lg font-black text-white">{melhorMaterial.transmitancia_termica_U_Wm2K ?? '—'} <span className="text-[10px] text-zinc-500">W/m²K</span></p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Capacidade Térmica</p>
-                              <p className="text-lg font-black text-white">{melhorMaterial.capacidade_termica_kJm2K ?? '—'} <span className="text-[10px] text-zinc-500">kJ/m²K</span></p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Atraso Térmico</p>
-                              <p className="text-lg font-black text-white">{melhorMaterial.atraso_termico_estimado_h ?? '—'} <span className="text-[10px] text-zinc-500">h</span></p>
-                            </div>
-                          </div>
-                        )}
-
-                        {(melhorMaterial.ganho_termico_verao_Wm2 > 0 || melhorMaterial.perda_termica_inverno_Wm2 > 0) && (
-                          <div className="grid grid-cols-2 gap-4 mb-4 pt-4 border-t border-emerald-900/30">
-                            <div>
-                              <p className="text-[10px] text-orange-400 uppercase font-bold mb-1">Ganho Térmico (Verão)</p>
-                              <p className="text-lg font-black text-white">{melhorMaterial.ganho_termico_verao_Wm2} <span className="text-[10px] text-zinc-500">W/m²</span></p>
-                              <p className="text-[9px] text-zinc-600">a remover, ΔT vs {dadosBioclimaticos.referencia_conforto?.verao_C ?? 24}°C</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-blue-400 uppercase font-bold mb-1">Perda Térmica (Inverno)</p>
-                              <p className="text-lg font-black text-white">{melhorMaterial.perda_termica_inverno_Wm2} <span className="text-[10px] text-zinc-500">W/m²</span></p>
-                              <p className="text-[9px] text-zinc-600">a repor, ΔT vs {dadosBioclimaticos.referencia_conforto?.inverno_C ?? 18}°C</p>
-                            </div>
-                          </div>
-                        )}
-
-                        <p className="text-sm text-zinc-300 leading-relaxed">
-                          {justificativaIA || melhorMaterial.observacao || 'Melhor pontuação entre os materiais candidatos pra essa zona bioclimática e orientação.'}
-                        </p>
-                        {melhorMaterial.norma_referencia && (
-                          <p className="text-[9px] text-zinc-600 uppercase tracking-widest mt-3">Ref: {melhorMaterial.norma_referencia}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {outrosMateriais.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Outros Candidatos Avaliados</p>
-                        {outrosMateriais.map((m, i) => (
-                          <div key={i} className="flex items-center gap-4 rounded-xl px-4 py-3 border border-white/5 bg-white/[0.02]">
-                            <div className="flex-1">
-                              <p className="text-sm font-bold text-white">{m.aplicacao}</p>
-                              <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{m.grupo}</p>
-                            </div>
-                            <div className="flex gap-4 text-xs text-zinc-400">
-                              <span>U <strong className="text-white">{m.transmitancia_termica_U_Wm2K}</strong></span>
-                              <span>CT <strong className="text-white">{m.capacidade_termica_kJm2K}</strong></span>
-                            </div>
-                            <div className="w-20 shrink-0">
-                              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-emerald-700 to-emerald-400 rounded-full" style={{ width: `${Math.round((m.score ?? 0) * 100)}%` }} />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ESTRATÉGIAS CONSTRUTIVAS */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* CONFORTO */}
-                  <div className="bg-gradient-to-br from-teal-950/20 to-transparent border border-teal-900/50 rounded-2xl p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Wind className="size-5 text-teal-400" />
-                      <h3 className="text-sm font-black uppercase tracking-widest text-teal-400">Estratégias de Conforto</h3>
-                    </div>
-                    <div className="space-y-4">
-                      {categorizarEstrategias(dadosBioclimaticos.recomendacoes_conforto ?? dadosBioclimaticos.estrategias_conforto, 'conforto').map((categoria) => (
-                        <div key={categoria.nome}>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-teal-500/70 mb-2">{categoria.nome}</p>
-                          <ul className="space-y-2">
-                            {categoria.itens.map((item, i) => (
-                              <li key={i} className="text-sm font-medium text-zinc-300 bg-teal-950/10 border border-teal-900/30 px-3 py-2 rounded-lg leading-snug">
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* RESILIÊNCIA */}
-                  <div className="bg-gradient-to-br from-orange-950/20 to-transparent border border-orange-900/50 rounded-2xl p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <ShieldCheck className="size-5 text-orange-400" />
-                      <h3 className="text-sm font-black uppercase tracking-widest text-orange-400">Estratégias de Resiliência</h3>
-                    </div>
-                    <div className="space-y-4">
-                      {categorizarEstrategias(dadosBioclimaticos.recomendacoes_resiliencia ?? dadosBioclimaticos.estrategias_resiliencia, 'resiliencia').map((categoria) => (
-                        <div key={categoria.nome}>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-orange-500/70 mb-2">{categoria.nome}</p>
-                          <ul className="space-y-2">
-                            {categoria.itens.map((item, i) => (
-                              <li key={i} className="text-sm font-medium text-zinc-300 bg-orange-950/10 border border-orange-900/30 px-3 py-2 rounded-lg leading-snug">
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* LAUDO TÉCNICO */}
-                <div className="bg-white/[0.02] border border-white/5 border-l-2 border-l-cyan-500 rounded-2xl p-6 md:p-8">
-                  <div className="flex items-center gap-2 mb-4">
-                    <FileText className="size-4 text-cyan-500" />
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Parecer Técnico (NBR 15220)</h3>
-                  </div>
-                  <div className="prose prose-invert prose-sm max-w-none text-zinc-300 leading-loose">
-                    <p className="whitespace-pre-wrap">{dadosBioclimaticos.resumo_executivo || dadosBioclimaticos.leitura_ia || 'Nenhuma consideração adicional processada.'}</p>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-white/5 flex justify-between items-center text-[9px] font-bold uppercase tracking-widest text-zinc-600">
-                  <span>Gerado via Vector-X Intelligence API</span>
-                  <span>{new Date().toLocaleDateString('pt-BR')}</span>
-                </div>
-
+                <span className="absolute right-3 top-3 shrink-0 rounded-full border border-transparent bg-sand px-2 py-1 text-xs font-medium text-sand-ink">Em breve</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* LOADING STATE */}
+        {loading && (
+          <div className="h-[60vh] md:h-full flex flex-col items-center justify-center">
+            <div className="relative size-24">
+              <div className="absolute inset-0 border-t-2 border-brand rounded-full animate-spin"></div>
+              <div className="absolute inset-2 border-b-2 border-brand-soft rounded-full animate-spin" style={{ animationDirection: 'reverse' }}></div>
+              <Cpu className="absolute inset-0 m-auto size-6 text-brand-strong animate-pulse" />
+            </div>
+            <p className="mt-6 text-xs font-medium text-brand-strong animate-pulse">Cruzando dados NBR 15220...</p>
+          </div>
+        )}
+
+        {/* LAUDO TÉCNICO EXECUTIVO */}
+        {dadosBioclimaticos && !loading && (
+          <div className="max-w-[850px] mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-20">
+            <div className="flex items-center justify-between bg-surface border border-line rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-2 w-2 rounded-full bg-brand animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-brand-strong">Laudo Técnico Executivo Pronto</span>
+              </div>
+              <Button onClick={exportarPDF} className="bg-brand-strong hover:bg-brand text-white rounded-full h-9 text-xs font-bold uppercase tracking-wider">
+                <Download className="size-3 mr-2" /> Baixar Laudo Profissional
+              </Button>
+            </div>
+
+            <div ref={relatorioRef} className="bg-surface-soft flex flex-col gap-8 p-4 rounded-xl">
+              
+              <CapaLaudo
+        nomeProjeto={form.nomeProjeto || "Projeto Bioclimático"}
+        endereco={
+          dadosBioclimaticos.endereco ||
+          `${form.logradouro}${form.numero ? ", " + form.numero : ""}${form.bairro ? " - " + form.bairro : ""}, ${form.cidade} - ${form.uf}`
+        }
+        fachada={fachadaAtual}
+        zona={dadosBioclimaticos.zona}
+        subzona={dadosBioclimaticos.subzona}
+        nota={dadosBioclimaticos.score_bioclimatico?.nota}
+        resumoScore={dadosBioclimaticos.score_bioclimatico?.resumo}
+        fonteSolar={fonteSombreamentoResumo === "perfil_real_dsm" ? "Trajetória + DSM" : "Trajetória calculada"}
+        clima={{
+          tempMedia: dadosBioclimaticos.temp_media,
+          tempMin: dadosBioclimaticos.temp_bulbo_seco_min,
+          tempMax: dadosBioclimaticos.temp_bulbo_seco_max,
+          umidade: dadosBioclimaticos.umidade_media,
+          radiacao: dadosBioclimaticos.radiacao_media,
+        }}
+        economiaAgua={economiaAgua}
+        economiaSolar={economiaSolar}
+        potencialFotovoltaico={potencialFotovoltaico}
+      />
+
+              {/* PÁGINA 2: CARTA SOLAR E SOMBREAMENTO */}
+              <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
+                <h3 className="text-xs font-black uppercase tracking-[0.15em] text-ink mb-3 flex items-center gap-2"><Sun className="size-4 text-brand-strong" /> Incidência Direta e Sombreamento · Fachada {fachadaAtual}</h3>
+                <div className="bg-surface-soft border border-line rounded-xl p-4">
+                  <p className="text-xs text-ink-soft leading-relaxed mb-3 font-medium">{dadosBioclimaticos.resumo?.avaliacao || "Avaliação de insolação concluída."}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-ink-soft mb-2">Carta solar e interpretação da fachada</p>
+                  {calculoSolarAtual?.Verao ? (() => {
+                    const cx = 190, cy = 150, raio = 108;
+                    const estacoes = ['Verao', 'Outono', 'Inverno', 'Primavera'];
+                    return (
+                      <div className="grid grid-cols-[1.15fr_0.85fr] gap-4 items-center">
+                        <div className="bg-white border border-line rounded-xl p-2">
+                          <svg viewBox="0 0 380 320" className="w-full h-auto max-h-[245px]">
+                            <circle cx={cx} cy={cy} r={raio} fill="#EEF5EF" stroke="#E5E7EB" />
+                            <circle cx={cx} cy={cy} r={raio * 0.66} fill="none" stroke="#E5E7EB" strokeDasharray="4 4" />
+                            <circle cx={cx} cy={cy} r={raio * 0.33} fill="none" stroke="#E5E7EB" strokeDasharray="4 4" />
+                            <line x1={cx} y1={cy - raio} x2={cx} y2={cy + raio} stroke="#E5E7EB" />
+                            <line x1={cx - raio} y1={cy} x2={cx + raio} y2={cy} stroke="#E5E7EB" />
+                            <text x={cx} y={cy - raio - 10} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">N</text>
+                            <text x={cx} y={cy + raio + 17} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">S</text>
+                            <text x={cx + raio + 14} y={cy + 4} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">L</text>
+                            <text x={cx - raio - 14} y={cy + 4} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">O</text>
+                            <path d={gerarPathSetorFachada(fachadaAtual, cx, cy, raio)} fill="#4C9A74" fillOpacity="0.14" stroke="#3A7D5E" strokeWidth="1.5" />
+                            {estacoes.map((estacao) => {
+                              const horarios = calculoSolarAtual[estacao];
+                              if (!horarios) return null;
+                              const pontos = Object.entries(horarios).map(([hora, d]: [string, any]) => {
+                                const r = elevacaoParaRaio(Number(d.elevacao) || 0, raio);
+                                return { hora, ...anguloParaXY(cx, cy, r, Number(d.azimute) || 0) };
+                              });
+                              return <g key={estacao}><polyline points={pontos.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={CORES_ESTACAO[estacao]} strokeWidth="2" strokeDasharray={estacao === 'Outono' ? '5 4' : undefined} />{pontos.map((p) => <circle key={p.hora} cx={p.x} cy={p.y} r="3.5" fill={CORES_ESTACAO[estacao]} />)}</g>;
+                            })}
+                          </svg>
+                          <div className="flex flex-wrap justify-center gap-3 text-[9px] font-bold uppercase tracking-wider text-ink-soft">
+                            {estacoes.map((estacao) => <span key={estacao} className="flex items-center gap-1"><i className="size-2 rounded-full" style={{ backgroundColor: CORES_ESTACAO[estacao] }} />{estacao}</span>)}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="bg-white rounded-xl border border-line p-3"><p className="text-[9px] font-black uppercase tracking-widest text-ink-soft">O que isso significa</p><p className="text-xs font-semibold text-ink mt-1">A faixa verde representa a orientação {fachadaAtual}. Os trajetos mostram por onde o sol passa em cada estação; pontos mais afastados do centro indicam sol mais baixo e sombras mais longas.</p></div>
+                          <div className="bg-white rounded-xl border border-line p-3">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-ink-soft">
+                              {fonteSombreamentoResumo === 'perfil_real_dsm' ? 'Resultado medido' : 'Resultado estimado'}
+                            </p>
+                            <p className="text-xs text-ink-soft mt-1">
+                              {percentualReal != null
+                                ? `${percentualReal}% de iluminação direta ${fonteSombreamentoResumo === 'perfil_real_dsm' ? 'real, com correção por satélite' : 'estimada pela trajetória solar, sem considerar vizinhos ou árvores'}.`
+                                : 'Trajetória solar calculada para a fachada.'}
+                            </p>
+                            {leituraSolar.pontosComDado > 0 && <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-700 mt-1">Horizonte 360° real recebido do DSM</p>}
+                          </div>
+                          {obstrucaoPrincipal && (
+                            <div className="bg-rose-50 rounded-xl border border-rose-200 p-3">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-rose-700">Obstrução solar encontrada ({obstrucaoPrincipal.direcao})</p>
+                              <p className="text-xs text-rose-900 mt-1">
+                                Obstrução a {formatarNumero(obstrucaoPrincipal.distanciaMetros, 0)}m, com {formatarNumero(obstrucaoPrincipal.alturaMetros, 1)}m de altura, bloqueando o sol abaixo de {formatarNumero(obstrucaoPrincipal.anguloObstrucaoGraus, 1)}°.{" "}
+                                {obstrucaoPrincipal.mascara === 0
+                                  ? "No modelo, esse ponto não tem telhado: possivelmente vegetação."
+                                  : obstrucaoPrincipal.mascara === 1
+                                  ? "No modelo, esse ponto é classificado como telhado: provável edificação vizinha."
+                                  : "Pode ser edificação vizinha ou vegetação."}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })() : <p className="text-sm text-ink-soft">Dados solares indisponíveis.</p>}
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {['Verao', 'Outono', 'Inverno', 'Primavera'].map((estacao) => {
+                      const ensolaradas = Object.values(calculoSolarAtual?.[estacao] || {}).filter((d: any) => d?.status === 'Pleno Sol' || d?.status === 'Meia Sombra').length;
+                      return <div key={estacao} className="bg-surface-soft rounded-lg p-2"><p className="text-[8px] font-black uppercase tracking-widest text-ink-soft">{estacao}</p><p className="text-base font-black text-ink mt-0.5">{ensolaradas} <span className="text-[10px] font-semibold text-ink-soft">horários com sol</span></p></div>;
+                    })}
+                  </div>
+                </div>
+                <div className="mt-auto shrink-0 pt-2 text-right text-[8px] font-bold uppercase tracking-widest text-ink-soft/70">Gerado via Vector-X Intelligence API · {new Date().toLocaleDateString('pt-BR')}</div>
+              </div>
+
+              {/* PÁGINA 3: LEITURA APLICADA */}
+              <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
+                <div className="flex items-start justify-between border-b-2 border-ink pb-3 mb-4 gap-4">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-brand-strong">Leitura aplicada · Vector-X</p>
+                    <h2 className="text-2xl font-black text-ink mt-1">O que a orientação significa</h2>
+                    <p className="text-xs text-ink-soft mt-1">Fachada {fachadaAtual} · {form.cidade}/{form.uf} · Zona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}</p>
+                  </div>
+                  <div className="shrink-0 text-right"><p className="text-[9px] uppercase tracking-widest font-bold text-ink-soft">Fonte solar</p><p className="text-sm font-black text-ink mt-1">{fonteSombreamentoResumo === "perfil_real_dsm" ? "Trajetória + DSM" : "Trajetória calculada"}</p></div>
+                </div>
+
+                <section className="mb-4">
+                  {(() => {
+                    const comDados = leituraSolar.porEstacao.filter((item) => item.percentualSol != null);
+                    const maiorExposicao = [...comDados].sort((a, b) => (b.percentualSol ?? 0) - (a.percentualSol ?? 0))[0];
+                    const menorExposicao = [...comDados].sort((a, b) => (a.percentualSol ?? 0) - (b.percentualSol ?? 0))[0];
+                    return comDados.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div className="rounded-lg bg-brand-soft/60 border border-line p-3"><p className="text-[8px] font-black uppercase tracking-[0.14em] text-brand-strong">Maior exposição observada</p><p className="text-base font-black text-ink mt-0.5">{maiorExposicao.estacao} · {maiorExposicao.percentualSol}%</p><p className="text-[9px] text-ink-soft mt-0.5">{maiorExposicao.solDireto} de {maiorExposicao.total} amostras com sol direto</p></div>
+                        <div className="rounded-lg bg-surface-soft border border-line p-3"><p className="text-[8px] font-black uppercase tracking-[0.14em] text-ink-soft">Menor exposição observada</p><p className="text-base font-black text-ink mt-0.5">{menorExposicao.estacao} · {menorExposicao.percentualSol}%</p><p className="text-[9px] text-ink-soft mt-0.5">Menor incidência direta entre as estações avaliadas</p></div>
+                      </div>
+                    );
+                  })()}
+                  <div className="flex items-end justify-between mb-2">
+                    <div><h3 className="text-xs font-black uppercase tracking-[0.14em] text-ink">Exposição direta ao longo do ano</h3><p className="text-[10px] text-ink-soft mt-1">Cada proporção compara amostras classificadas com o total de horários fornecidos para a estação.</p></div>
+                    <span className="text-[9px] uppercase tracking-wider text-ink-soft/70">Amostras, não horas acumuladas</span>
+                  </div>
+                  <div className="space-y-2">
+                    {leituraSolar.porEstacao.map((item) => (
+                      <div key={item.estacao} className="grid grid-cols-[68px_1fr_88px] items-center gap-2 rounded-lg border border-line px-2.5 py-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-ink-soft">{item.estacao}</span>
+                        <div>
+                          <div className="h-2.5 rounded-full bg-surface-soft overflow-hidden"><div className="h-full rounded-full bg-brand-strong" style={{ width: `${item.percentualSol ?? 0}%` }} /></div>
+                          {(() => {
+                            const { comSol, bloqueados } = horariosDaEstacao(calculoSolarAtual?.[item.estacao]);
+                            return (
+                              <p className="text-[8px] leading-tight text-ink-soft mt-0.5">
+                                {comSol.length > 0 ? `Sol direto às ${comSol.join(", ")}` : "Sem sol direto nesta estação"}
+                                {bloqueados.length > 0 && ` · Bloqueado pelo entorno às ${bloqueados.join(", ")}`}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                        <div className="text-right"><strong className="text-sm text-ink">{item.solDireto}/{item.total}</strong><p className="text-[9px] text-ink-soft">{item.percentualSol ?? 0}%{leituraSolar.pontosComDado > 0 ? ` · ${item.obstruidos} bloqueios` : ''}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* ALERTA DE QUANDO NÃO HÁ DADOS DE ENTORNO */}
+                {leituraSolar.pontosComDado === 0 && (
+                  <p className="text-[9px] leading-snug text-amber-800 bg-amber-50 border border-amber-100 rounded-md p-2 mb-3">
+                    Sem cobertura de elevação da Google para este endereço: as sombras do entorno (vizinhos e árvores) não foram medidas. O percentual de sol é uma estimativa pela trajetória solar e pelo telhado.
+                  </p>
+                )}
+
+                <section className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="rounded-lg bg-sky-50 border border-sky-100 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-sky-800">Luz natural e bem-estar</p>
+                    <p className="text-[10px] leading-snug text-ink-soft mt-1.5">Os períodos com incidência direta podem favorecer luz natural e contato com o ciclo do dia. Sol direto também pode causar ofuscamento; a carta indica quando investigar proteção ajustável. A iluminância interna não é calculada: faltam dimensões/orientação das aberturas, vidro e obstruções internas.</p>
+                  </div>
+                  <div className="rounded-lg bg-amber-50 border border-amber-100 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-amber-800">Conforto térmico e energia</p>
+                    <p className="text-[10px] leading-snug text-ink-soft mt-1.5">Radiação na fachada representa ganho de calor: pode ser útil em períodos frios e aumentar carga de resfriamento em períodos quentes. A orientação ajuda a localizar horários críticos para brises, vegetação ou sombreamento externo; não substitui simulação térmica e não converte fachada em kWh de economia.</p>
+                  </div>
+                </section>
+
+                <section className="mt-auto rounded-lg bg-ink text-surface p-3">
+                  <p className="text-[8px] font-black uppercase tracking-[0.14em] text-brand-soft">Implicação para o partido arquitetônico</p>
+                  <p className="text-[10px] leading-snug text-surface/80 mt-1.5">Use a faixa horária observada para posicionar usos sensíveis ao calor/ofuscamento e dimensionar proteção solar externa. Preserve entrada de luz difusa e ventilação; não bloqueie toda a fachada com base apenas no percentual. Confirme a solução com geometria das aberturas, entorno construído atualizado e simulação térmica do edifício.</p>
+                </section>
+
+                <div className="mt-3 shrink-0 flex justify-between border-t border-line pt-2 text-[7px] font-bold uppercase tracking-widest text-ink-soft/70"><span>Interpretação baseada nos horários classificados e no horizonte DSM recebido</span><span>Vector-X · {new Date().toLocaleDateString('pt-BR')}</span></div>
+              </div>
+              
+              {/* PÁGINA 4: O ENTORNO QUE INTERFERE */}
+              {leituraSolar.pontosComDado > 0 && (
+                <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
+                  <div className="border-b-2 border-ink pb-3 mb-5">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-brand-strong">Entorno · Vector-X</p>
+                    <h2 className="text-2xl font-black text-ink mt-1">O que interfere no sol desta fachada</h2>
+                    <p className="text-xs text-ink-soft mt-1">
+                      Fachada {fachadaAtual} · Perfil DSM: {leituraSolar.pontosComDado}/{leituraSolar.pontosTotais} direções com dado válido
+                    </p>
+                  </div>
+                  
+                  <ResumoEntorno
+                      setores={setoresEntorno}
+                       direcaoPrincipal={direcaoPrincipal}
+                        azimuteFachada={azimuteFachadaAtual}
+                        />
+                        
+                  
+                  <div className="mt-5 flex-1 min-h-0">
+                    <MapaEntorno
+                      mapa={sombreamentoReal?.mapa}
+                      perfil={perfilHorizonteReal}
+                      azimuteFachada={azimuteFachadaAtual}
+                      calculoSolar={calculoSolarAtual}
+                    />
+                  </div>
+                  
+                  <p className="mt-3 text-[9px] leading-snug text-ink-soft">
+                   Só entram na leitura os obstáculos na frente da fachada que cruzam a trajetória solar local.
+                   Obstáculos mais baixos que o sol naquela direção não geram alerta de bloqueio.
+                    {sombreamentoReal?.aviso_imagery_antiga && (<><br /><span className="font-semibold text-amber-700">Nota sobre o satélite:</span> {sombreamentoReal.aviso_imagery_antiga}</>)}
+                     </p>
+                  
+                  <div className="mt-auto shrink-0 pt-2 text-right text-[8px] font-bold uppercase tracking-widest text-ink-soft/70">Vector-X · {new Date().toLocaleDateString('pt-BR')}</div>
+                </div>
+              )}
+
+            </div>
+
+            {calculoSolarAtual?.Verao && (
+              <section className="rounded-3xl border border-line bg-surface p-4 md:p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-strong">Exploração espacial</p>
+                    <h3 className="text-xl font-black text-ink">Simulação 3D da fachada e trajetória solar</h3>
+                    <p className="text-xs text-ink-soft mt-1">Arraste para orbitar, use a roda para aproximar e altere estação e horário dentro da cena.</p>
+                  </div>
+                  <Building2 className="size-6 text-brand shrink-0" />
+                </div>
+                <SimuladorSombreamento3D
+                  calculoSolar={calculoSolarAtual}
+                  obstrucao={obstrucaoPrincipal}
+                  fachadaAtual={fachadaAtual}
+                  telhado={sombreamentoReal?.segmento_usado}
+                  mostrarJanelasIlustrativas
+                  perfilHorizonte={perfilHorizonteReal}
+                  observador={sombreamentoReal?.mapa?.observador ?? null}
+                  azimuteFachadaUsado={azimuteFachadaAtual}
+                  avisoImageryAntiga={sombreamentoReal?.aviso_imagery_antiga}
+                  azimutesBloqueantes={azimutesBloqueantes}
+                />
+              </section>
+            )}
           </div>
         )}
       </main>
@@ -1247,64 +1963,18 @@ export default function VectorZoneamento() {
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(8, 145, 178, 0.5); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(76,154,116,0.25); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(76,154,116,0.5); }
+        .custom-scrollbar-hide::-webkit-scrollbar { display: none; }
+        @keyframes material-scan {
+          from { transform: translateX(-140%); }
+          to { transform: translateX(320%); }
+        }
+        .animate-material-scan { animation: material-scan 2.6s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-material-scan { animation: none; }
+        }
       `}</style>
-    </div>
-  );
-}
-
-function IntroDiagnosticoBioclimatico() {
-  return (
-    <div className="min-h-screen bg-[#050505] text-zinc-300 font-sans">
-      <header data-local-nav className="sticky top-0 z-40 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <a href="/" className="flex items-center gap-3 transition-opacity hover:opacity-80">
-            <div className="flex size-8 items-center justify-center rounded border border-cyan-500/30 bg-cyan-950">
-              <Cpu className="size-4 text-cyan-400" />
-            </div>
-            <div className="flex flex-col justify-center leading-none">
-              <span className="text-base font-bold tracking-tight text-white">Vector-X</span>
-              <span className="mt-0.5 text-[9px] uppercase tracking-[0.15em] text-cyan-500/70">By EcomindsX</span>
-            </div>
-          </a>
-          <nav className="flex items-center gap-4 sm:gap-6">
-            <a href="/noticias" className="text-sm text-zinc-400 transition-colors hover:text-white">Notícias</a>
-            <button disabled className="cursor-not-allowed rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-1.5 text-sm font-semibold text-zinc-500 sm:px-4">
-              <span className="hidden sm:inline">EM BREVE · Diagnóstico</span><span className="sm:hidden">EM BREVE</span>
-            </button>
-          </nav>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="mb-5 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-cyan-400">
-          <span className="relative flex size-1.5"><span className="absolute inline-flex size-full animate-ping rounded-full bg-cyan-400 opacity-60" /><span className="relative inline-flex size-1.5 rounded-full bg-cyan-400" /></span>
-          Diagnóstico Bioclimático
-        </div>
-        <h1 className="mb-5 max-w-2xl text-3xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-4xl">
-          Radiação, azimute e zoneamento,<br /><span className="text-cyan-400">calculados para um endereço exato.</span>
-        </h1>
-        <p className="mb-10 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base">
-          Um dado a mais na sua prancheta: zona bioclimática (NBR 15220-3:2024), clima horário histórico (INMET) e posicionamento solar do terreno, prontos antes da primeira decisão de projeto para embasar a especificação de material, ventilação e orientação.
-        </p>
-
-        <div className="mb-12 grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
-          <BrazilZonesMap />
-
-          <div className="flex flex-col rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/20 to-transparent p-6">
-            <div className="mb-4 flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Exemplo ilustrativo</p><span className="rounded bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-zinc-300">Demo</span></div>
-            <div className="mb-1 flex items-baseline gap-4"><span className="text-3xl font-black text-cyan-400">ZB 03</span><span className="text-2xl font-black text-white">34° NE</span></div>
-            <div className="mb-6 flex items-center gap-4 text-[9px] font-bold uppercase tracking-widest text-zinc-500"><span>NBR 15220-3 · Mista</span><span>Azimute da Fachada</span></div>
-            <ul className="space-y-2.5 text-sm text-zinc-300">
-              {['Radiação média: 4,8 kWh/m²/dia (estação INMET mais próxima)', 'Amplitude térmica: moderada', 'Inércia recomendada: alta'].map((item) => <li key={item} className="flex items-center gap-2"><span className="size-1 rounded-full bg-cyan-400" />{item}</li>)}
-            </ul>
-          </div>
-        </div>
-        <button disabled className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 px-8 py-4 text-sm font-black uppercase tracking-widest text-zinc-500">
-          EM BREVE · Diagnóstico Bioclimático
-        </button>
-      </main>
     </div>
   );
 }
