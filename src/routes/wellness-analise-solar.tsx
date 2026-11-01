@@ -31,7 +31,6 @@ import {
 } from "@/utils/calculosBioclimaticos";
 import { gerarPDFPaginado } from "@/utils/geradorPDF";
 
-
 // ── IMPORTAÇÃO DO NOVO COMPONENTE ISOLADO ──
 import SimuladorSombreamento3D from "@/components/SimuladorSombreamento3D";
 import CapaLaudo from "./CapaLaudo";
@@ -82,6 +81,120 @@ function carregarGoogleMaps(apiKey: string) {
 }
 
 type PontoMapa = { lat: number; lng: number };
+
+// ── AUXILIARES DE CARTA SOLAR E SOMBREAMENTO ──
+const ROSA_NOME = [
+  "Norte", "Norte-nordeste", "Nordeste", "Leste-nordeste",
+  "Leste", "Leste-sudeste", "Sudeste", "Sul-sudeste",
+  "Sul", "Sul-sudoeste", "Sudoeste", "Oeste-sudoeste",
+  "Oeste", "Oeste-noroeste", "Noroeste", "Norte-noroeste",
+];
+const ROSA_SIGLA = ["N", "NNE", "NE", "ENE", "L", "ESE", "SE", "SSE", "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO"];
+
+const norm360 = (g: number) => ((g % 360) + 360) % 360;
+const diffAngular = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+const semAcento = (s: string) =>
+  String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+function nomeOrientacao(az: number) {
+  const i = Math.round(norm360(az) / 22.5) % 16;
+  return { nome: ROSA_NOME[i], sigla: ROSA_SIGLA[i] };
+}
+
+const AZ_NOMINAL: Record<string, number> = {
+  norte: 0, nordeste: 45, leste: 90, sudeste: 135, sul: 180, sudoeste: 225, oeste: 270, noroeste: 315,
+};
+const azimuteNominal = (fachada: string) => AZ_NOMINAL[semAcento(fachada)] ?? 180;
+
+const ROTULO_ESTACAO: Record<string, string> = {
+  Verao: "Verão", Outono: "Outono", Inverno: "Inverno", Primavera: "Primavera",
+};
+// CORREÇÃO: a chave estava "Outorno" (typo), o que gerava `undefined` no resumo quando o outono era a estação principal.
+const NO_ESTACAO: Record<string, string> = {
+  Verao: "no verão", Outono: "no outono", Inverno: "no inverno", Primavera: "na primavera",
+};
+
+const anguloParaXY = (cx: number, cy: number, r: number, azimuteDeg: number) => {
+  const rad = (azimuteDeg * Math.PI) / 180;
+  return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
+};
+const elevacaoParaRaio = (elevacao: number, raioMax: number) => (raioMax * (90 - Math.max(elevacao, 0))) / 90;
+
+function gerarPathSetorFachadaAz(az: number, cx: number, cy: number, raio: number) {
+  const p = (g: number) => {
+    const r = (g * Math.PI) / 180;
+    return { x: cx + raio * Math.sin(r), y: cy - raio * Math.cos(r) };
+  };
+  const a = p(az - 90);
+  const b = p(az + 90);
+  return `M ${cx} ${cy} L ${a.x} ${a.y} A ${raio} ${raio} 0 0 1 ${b.x} ${b.y} Z`;
+}
+
+function gerarPathMascara(perfil: any[], azReal: number, cx: number, cy: number, raio: number) {
+  const pts = (perfil || [])
+    .filter((p) => !p?.referenciaNaoEncontrada && typeof p?.azimute === "number")
+    .map((p) => ({
+      az: p.azimute as number,
+      off: ((p.azimute - azReal + 540) % 360) - 180,
+      ang: Math.max(0, Number(p.anguloObstrucaoGraus) || 0),
+    }))
+    .filter((p) => Math.abs(p.off) <= 91)
+    .sort((a, b) => a.off - b.off);
+  if (pts.length < 2 || pts.every((p) => p.ang <= 0)) return "";
+
+  const interno = pts.map((p) => anguloParaXY(cx, cy, elevacaoParaRaio(p.ang, raio), p.az));
+  const externo = pts.map((p) => anguloParaXY(cx, cy, raio, p.az)).reverse();
+  const f = (q: { x: number; y: number }) => `${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+  
+  const pathInterno = interno.slice(1).map((q) => "L " + f(q)).join(" ");
+  const pathExterno = externo.map((q) => "L " + f(q)).join(" ");
+  return `M ${f(interno[0])} ${pathInterno} ${pathExterno} Z`;
+}
+
+type EstadoPonto = "sol" | "bloqueado" | "sem";
+function estadoDoPonto(status?: string): EstadoPonto {
+  if (status === "Pleno Sol" || status === "Meia Sombra") return "sol";
+  const s = (status || "").toLowerCase();
+  if (s.includes("obstru") || s.includes("vegeta")) return "bloqueado";
+  return "sem";
+}
+
+function horasComSol(horarios: any): number[] {
+  return Object.entries(horarios || {})
+    .filter(([, d]: [string, any]) => estadoDoPonto(d?.status) === "sol")
+    .map(([h]) => parseFloat(h.replace("h", "")))
+    .filter((h) => !Number.isNaN(h))
+    .sort((a, b) => a - b);
+}
+
+function resumoSolarGerado(calculo: any, rotulo: string, percentual: number | null): string {
+  const ordem = ["Verao", "Outono", "Inverno", "Primavera"];
+  const dados = ordem.map((e) => ({ e, horas: horasComSol(calculo?.[e]) }));
+  const total = dados.reduce((s, d) => s + d.horas.length, 0);
+  if (!total) return `Fachada voltada para ${rotulo}: nenhum dos horários avaliados recebe sol direto.`;
+
+  const principal = [...dados].sort((a, b) => b.horas.length - a.horas.length)[0];
+  const sem = dados.filter((d) => d.horas.length === 0).map((d) => NO_ESTACAO[d.e]);
+  const hs = principal.horas;
+  const manha = hs.some((h) => h <= 9);
+  const tarde = hs.some((h) => h >= 15);
+  const meio = hs.some((h) => h > 9 && h < 15);
+  const periodo = meio
+    ? "incluindo o meio do dia"
+    : manha && tarde
+    ? "nas primeiras e últimas horas do dia"
+    : manha
+    ? "pela manhã"
+    : "à tarde";
+
+  return (
+    `Fachada voltada para ${rotulo}: o sol direto chega sobretudo ${NO_ESTACAO[principal.e]} ` +
+    `(${hs.length} ${hs.length === 1 ? "horário" : "horários"}, ${periodo})` +
+    (sem.length ? ` e não aparece ${sem.join(" nem ")}` : "") +
+    "." +
+    (percentual != null ? ` No conjunto, ${percentual}% dos horários de luz solar têm sol direto.` : "")
+  );
+}
 
 function SeletorLocalizacao({
   apiKey,
@@ -349,13 +462,18 @@ function SeletorLocalizacao({
 
 async function persistirAnaliseVectorX(obraId: string, analiseNormalizada: any) {
   const colunas = [
-    "zona", "subzona", "municipio", "uf", "caracteristica", "fachada", "endereco",
+    "zona", "subzona", "codigo_zona", "municipio", "uf", "caracteristica", "fachada", "endereco",
     "nome_estacao", "temp_bulbo_seco_min", "temp_bulbo_seco_max", "temp_media",
     "umidade_media", "radiacao_media", "distancia_km", "resumo", "classificacao",
     "clima", "potencial_hidrico", "score_bioclimatico", "estrategias_conforto",
     "estrategias_resiliencia", "recomendacoes_conforto", "recomendacoes_resiliencia",
     "resumo_executivo", "leitura_ia", "calculo_solar",
     "sombreamento_real", "potencial_fotovoltaico", "cards_materiais", "material_recomendado",
+    "intervalo_nbr15575", "cidade_representativa", "estado_representativo",
+    "umidade_relativa_limiar", "umidade_relativa_condicao",
+    "resumo_climatico", "criterio_classificacao", "desafio_inverno", "desafio_verao",
+    "amplitude_termica", "temp_projeto_inverno_c", "temp_projeto_verao_c",
+    "diretrizes_conforto_detalhadas", "diretrizes_resiliencia_detalhadas",
   ];
   const campos = Object.fromEntries(
     colunas
@@ -394,6 +512,7 @@ const normalizarAnalise = (raw: any) => {
     'score_bioclimatico', 'estrategias_conforto', 'estrategias_resiliencia',
     'recomendacoes_conforto', 'recomendacoes_resiliencia', 'calculo_solar',
     'sombreamento_real', 'potencial_fotovoltaico', 'cards_materiais', 'material_recomendado',
+    'diretrizes_conforto_detalhadas', 'diretrizes_resiliencia_detalhadas',
   ];
   const normalizado = { ...resposta };
   camposJson.forEach((campo) => {
@@ -471,61 +590,7 @@ function AnaliseLoadingState() {
   );
 }
 
-// ── LÓGICA DA CARTA SOLAR SVG ──
-const FAIXAS_FACHADA: Record<string, { min: number; max: number }> = {
-  Norte: { min: 270, max: 90 }, Nordeste: { min: 315, max: 135 },
-  Leste: { min: 0, max: 180 }, Sudeste: { min: 45, max: 225 },
-  Sul: { min: 90, max: 270 }, Sudoeste: { min: 135, max: 315 },
-  Oeste: { min: 180, max: 360 }, Noroeste: { min: 225, max: 45 },
-};
-
-const anguloPertenceAFaixa = (azimuteDeg: number, fachadaNome: string) => {
-  const fLimpa = (fachadaNome || 'Norte').trim();
-  const formatada = fLimpa.charAt(0).toUpperCase() + fLimpa.slice(1).toLowerCase();
-  const faixa = FAIXAS_FACHADA[formatada] || FAIXAS_FACHADA['Norte'];
-  const az = ((azimuteDeg % 360) + 360) % 360;
-
-  if (faixa.min > faixa.max) {
-    return az >= faixa.min || az <= faixa.max;
-  }
-  return az >= faixa.min && az <= faixa.max;
-};
-
 const CORES_ESTACAO: Record<string, string> = { Verao: '#F59E0B', Outono: '#DC2626', Inverno: '#3B82F6', Primavera: '#10B981' };
-
-const ESTILO_STATUS: Record<string, { opacidade: number; raio: number; anel?: string }> = {
-  'Pleno Sol': { opacidade: 1, raio: 5 },
-  'Meia Sombra': { opacidade: 0.65, raio: 4.5, anel: '#38bdf8' },
-  'Sombra': { opacidade: 0.3, raio: 3.5, anel: '#64748b' },
-  'Sombra (obstruída)': { opacidade: 0.5, raio: 5, anel: '#fb7185' },
-};
-const estiloDoStatus = (status?: string) => ESTILO_STATUS[status ?? ''] ?? { opacidade: 0.8, raio: 4.5 };
-
-const CORES_STATUS_SIM: Record<string, string> = {
-  'Pleno Sol': '#fbbf24',
-  'Meia Sombra': '#60a5fa',
-  'Sombra': '#475569',
-  'Sombra (obstruída)': '#fb7185',
-};
-
-const anguloParaXY = (cx: number, cy: number, r: number, azimuteDeg: number) => {
-  const rad = (azimuteDeg * Math.PI) / 180;
-  return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
-};
-const elevacaoParaRaio = (elevacao: number, raioMax: number) => (raioMax * (90 - Math.max(elevacao, 0))) / 90;
-
-const gerarPathSetorFachada = (fachada: string, cx: number, cy: number, raioMax: number) => {
-  const fachadaLimpa = (fachada || 'Norte').trim();
-  const nomeFormatado = fachadaLimpa.charAt(0).toUpperCase() + fachadaLimpa.slice(1).toLowerCase();
-  
-  const faixa = FAIXAS_FACHADA[nomeFormatado] || FAIXAS_FACHADA['Norte'];
-  const wraps = faixa.min > faixa.max;
-  const anguloFim = wraps ? faixa.max + 360 : faixa.max;
-  const p1 = anguloParaXY(cx, cy, raioMax, faixa.min);
-  const p2 = anguloParaXY(cx, cy, raioMax, anguloFim);
-  const largeArc = anguloFim - faixa.min > 180 ? 1 : 0;
-  return `M${cx},${cy} L${p1.x.toFixed(1)},${p1.y.toFixed(1)} A${raioMax},${raioMax} 0 ${largeArc},1 ${p2.x.toFixed(1)},${p2.y.toFixed(1)} Z`;
-};
 
 const ESTACOES_RELATORIO = ["Verao", "Outono", "Inverno", "Primavera"];
 const DIRECOES_ENTORNO = ["Norte", "Nordeste", "Leste", "Sudeste", "Sul", "Sudoeste", "Oeste", "Noroeste"];
@@ -545,14 +610,6 @@ type HorizontePonto = {
   aviso?: string | null;
 };
 
-const rotuloTipoObstaculo = (p?: any) =>
-  p?.ponto?.mascara === 0 ? "possivelmente vegetação"
-  : p?.ponto?.mascara === 1 ? "edificação vizinha"
-  : null;
-
-const difAngular = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
-
-// ── 1. VERIFICA SE O OBSTÁCULO REALMENTE INTERCEPTA O SOL EM ALGUMA ESTAÇÃO ──
 function obstaculoGeraSombraReal(
   ponto: HorizontePonto,
   calculoSolar: any,
@@ -571,7 +628,7 @@ function obstaculoGeraSombraReal(
       const elevSol = Number(d?.elevacao);
       if (!Number.isFinite(azSol) || elevSol <= 0) continue;
 
-      if (difAngular(ponto.azimute, azSol) <= margemAzimute) {
+      if (diffAngular(ponto.azimute, azSol) <= margemAzimute) {
         if (d?.obstruidoReal === true || d?.status === "Sombra (obstruída)") {
           return true;
         }
@@ -584,23 +641,60 @@ function obstaculoGeraSombraReal(
   return false;
 }
 
-// ── 2. FILTRA RUÍDO PONTUAL DE 1 PIXEL NO DSM (POSTES, CAMINHÕES NA RUA, ARTEFATOS) ──
+// CORREÇÃO: o filtro antigo comparava só ângulos e descartava o obstáculo de 72° (21,4° a 14 m)
+// por 0,09° de diferença (vizinho 7,4° < 21,4 × 0,35 = 7,49°). Agora um obstáculo próximo e alto
+// (distância ≤ 45 m e ≥ 6 m acima do solo) nunca é tratado como ruído, e o limiar caiu de 0,35 para 0,25.
 function filtrarRuidoPontual(pontos: HorizontePonto[]): HorizontePonto[] {
   if (pontos.length <= 2) return pontos;
 
   const consistentes = pontos.filter((p) => {
+    const ang = Number(p.anguloObstrucaoGraus) || 0;
+    if (ang < 8) return true;
+
+    const proximoEAlto =
+      (p.distanciaObstaculoMetros ?? Infinity) <= 45 &&
+      (p.alturaObstaculoAcimaDoSoloMetros ?? 0) >= 6;
+    if (proximoEAlto) return true;
+
     const vizinhos = pontos.filter(
-      (outro) => outro !== p && difAngular(p.azimute, outro.azimute) <= 15
+      (outro) => outro !== p && diffAngular(p.azimute, outro.azimute) <= 15
     );
     if (vizinhos.length === 0) return true;
     const maiorVizinho = Math.max(...vizinhos.map((v) => Number(v.anguloObstrucaoGraus) || 0));
-    return maiorVizinho >= (Number(p.anguloObstrucaoGraus) || 0) * 0.35;
+    return maiorVizinho >= ang * 0.25;
   });
 
   return consistentes.length > 0 ? consistentes : pontos;
 }
 
-// ── 3. CALCULAR BLOQUEIOS REAIS POR AZIMUTE ──
+// NOVO: fonte única do "obstáculo principal". Mapa, tabela e página 3 usam a mesma regra.
+function escolherObstaculoPrincipal(
+  perfil: HorizontePonto[] | null | undefined,
+  azimuteFachada: number | null,
+  calculoSolar: any,
+): HorizontePonto | null {
+  const brutos = (perfil || []).filter(
+    (p) =>
+      p?.ponto &&
+      !p.referenciaNaoEncontrada &&
+      Number.isFinite(p.azimute) &&
+      typeof p.anguloObstrucaoGraus === "number",
+  );
+  const limpos = filtrarRuidoPontual(brutos);
+
+  return limpos
+    .filter(
+      (p) =>
+        (azimuteFachada === null || diffAngular(p.azimute, azimuteFachada) <= 90) &&
+        obstaculoGeraSombraReal(p, calculoSolar),
+    )
+    .reduce<HorizontePonto | null>(
+      (m, p) =>
+        !m || (p.anguloObstrucaoGraus as number) > (m.anguloObstrucaoGraus as number) ? p : m,
+      null,
+    );
+}
+
 function calcularBloqueios(calculoSolar: any, perfilHorizonte: HorizontePonto[]) {
   const mapa = new Map<number, { azimute: number; horas: string[] }>();
   if (!calculoSolar) return mapa;
@@ -622,11 +716,13 @@ function calcularBloqueios(calculoSolar: any, perfilHorizonte: HorizontePonto[])
   return mapa;
 }
 
-// ── 4. RESUMO DOS 8 SETORES CARDEAIS COM VALIDAÇÃO SOLAR E DE FACHADA (90°) ──
+// CORREÇÃO: antes o 3º parâmetro recebia o Map de bloqueios, e `obstaculoGeraSombraReal` fazia
+// `calculoSolar["Verao"]` num Map (undefined), então nunca marcava sombra real. Agora são dois parâmetros separados.
 function resumirEntornoPorSetor(
   perfil: HorizontePonto[] | null | undefined,
   azimuteFachada: number | null,
-  bloqueiosOuCalculoSolar?: any
+  calculoSolar: any,
+  bloqueios: Map<number, { azimute: number; horas: string[] }>,
 ) {
   const todos = perfil || [];
   const validosBrutos = todos.filter(
@@ -636,14 +732,14 @@ function resumirEntornoPorSetor(
 
   return DIRECOES_ENTORNO.map((direcao, i) => {
     const centro = i * 45;
-    const doSetor = validos.filter((p) => difAngular(p.azimute, centro) <= 22.5);
-    const doSetorBruto = validosBrutos.filter((p) => difAngular(p.azimute, centro) <= 22.5);
+    const doSetor = validos.filter((p) => diffAngular(p.azimute, centro) <= 22.5);
+    const doSetorBruto = validosBrutos.filter((p) => diffAngular(p.azimute, centro) <= 22.5);
     const baseSetor = doSetor.length > 0 ? doSetor : doSetorBruto;
 
     const candidatosSombraReal = baseSetor.filter(
       (p) =>
-        (azimuteFachada === null || difAngular(p.azimute, azimuteFachada) <= 90) &&
-        obstaculoGeraSombraReal(p, bloqueiosOuCalculoSolar)
+        (azimuteFachada === null || diffAngular(p.azimute, azimuteFachada) <= 90) &&
+        obstaculoGeraSombraReal(p, calculoSolar)
     );
     const listaParaPico = candidatosSombraReal.length > 0 ? candidatosSombraReal : baseSetor;
 
@@ -652,24 +748,23 @@ function resumirEntornoPorSetor(
       null,
     );
 
-    const todosDoSetor = todos.filter((p) => difAngular(p.azimute, centro) <= 22.5);
+    const todosDoSetor = todos.filter((p) => diffAngular(p.azimute, centro) <= 22.5);
     const avisoSetor = !pico ? (todosDoSetor.find((p) => p.aviso)?.aviso || undefined) : undefined;
     const atrasDaFachada =
       !pico && (todosDoSetor.length === 0 || !!avisoSetor?.toLowerCase().includes("dentro do prédio"));
 
-    const naFrente = azimuteFachada !== null && pico !== null && difAngular(pico.azimute, azimuteFachada) <= 90;
-    const geraSombra = pico !== null && obstaculoGeraSombraReal(pico, bloqueiosOuCalculoSolar);
+    const naFrente = azimuteFachada !== null && pico !== null && diffAngular(pico.azimute, azimuteFachada) <= 90;
+    const geraSombra = pico !== null && obstaculoGeraSombraReal(pico, calculoSolar);
     const afetaFachada = naFrente && geraSombra;
 
-    let bloqueio: { horas: string[] } | null = null;
-    if (bloqueiosOuCalculoSolar instanceof Map && pico) {
-      for (const [az, b] of bloqueiosOuCalculoSolar.entries()) {
-        if (difAngular(az, centro) <= 22.5) {
-          bloqueio = b;
-          break;
-        }
+    // CORREÇÃO: soma as horas de todos os azimutes bloqueados do setor (antes pegava só o primeiro).
+    const horas: string[] = [];
+    if (pico) {
+      for (const [az, b] of bloqueios.entries()) {
+        if (diffAngular(az, centro) <= 22.5) horas.push(...b.horas);
       }
     }
+    const bloqueio = horas.length > 0 ? { horas } : null;
 
     return { direcao, pico, afetaFachada, avisoSetor, atrasDaFachada, bloqueio };
   });
@@ -745,18 +840,9 @@ function MapaEntorno({
   const R: number = mapa.raioMetros ?? 60;
   const obs = mapa.observador;
  
+  // O mapa continua desenhando todas as linhas (brutos), mas o "principal" vem da função única.
   const pontosBrutos = (perfil || []).filter((p) => p?.ponto && typeof p.anguloObstrucaoGraus === "number");
-  const pontosLimpos = filtrarRuidoPontual(pontosBrutos);
- 
-  const candidatosSombraReal = pontosLimpos.filter(
-    (p) =>
-      (azimuteFachada === null || difAngular(p.azimute, azimuteFachada) <= 90) &&
-      obstaculoGeraSombraReal(p, calculoSolar),
-  );
-  const principal = candidatosSombraReal.reduce<any>(
-    (m, p) => (!m || p.anguloObstrucaoGraus > m.anguloObstrucaoGraus ? p : m),
-    null,
-  );
+  const principal: any = escolherObstaculoPrincipal(perfil, azimuteFachada, calculoSolar);
  
   const poli: number[][] = mapa.poligonoXY || [];
  
@@ -782,7 +868,7 @@ function MapaEntorno({
  
   const aneis = [20, 40, 60].filter((d) => d < R);
   const tam = Math.max(svgWidth, svgHeight);
-  const fonte = tam / 70; // rótulos proporcionais ao tamanho da cena
+  const fonte = tam / 70;
  
   return (
     <div className="mt-3">
@@ -794,7 +880,6 @@ function MapaEntorno({
           aria-label="Mapa do entorno com obstáculos solares"
         >
           <image href={mapa.imagem} x={-R} y={-R} width={2 * R} height={2 * R} style={{ imageRendering: "pixelated" }} />
-          {/* véu que esmaece o DSM colorido */}
           <rect x={-R} y={-R} width={2 * R} height={2 * R} fill="#ffffff" fillOpacity="0.55" />
  
           {azimuteFachada !== null && (
@@ -815,7 +900,7 @@ function MapaEntorno({
           )}
  
           {pontosBrutos.map((p) => {
-            const naFrente = azimuteFachada === null || difAngular(p.azimute, azimuteFachada) <= 90;
+            const naFrente = azimuteFachada === null || diffAngular(p.azimute, azimuteFachada) <= 90;
             const geraSombra = naFrente && obstaculoGeraSombraReal(p, calculoSolar);
             const ehPrincipal = p === principal;
             return (
@@ -834,7 +919,7 @@ function MapaEntorno({
           })}
  
           {pontosBrutos
-            .filter((p) => p.anguloObstrucaoGraus >= 5 && (azimuteFachada === null || difAngular(p.azimute, azimuteFachada) <= 90))
+            .filter((p) => p.anguloObstrucaoGraus >= 5 && (azimuteFachada === null || diffAngular(p.azimute, azimuteFachada) <= 90))
             .map((p) => {
               const ehPrincipal = p === principal;
               const geraSombra = obstaculoGeraSombraReal(p, calculoSolar);
@@ -866,7 +951,6 @@ function MapaEntorno({
             </text>
           )}
  
-          {/* observador / fachada */}
           <polygon
             points={`${obs.x},${-obs.y - fonte * 0.9} ${obs.x - fonte * 0.7},${-obs.y + fonte * 0.5} ${obs.x + fonte * 0.7},${-obs.y + fonte * 0.5}`}
             fill="#3A7D5E"
@@ -874,7 +958,6 @@ function MapaEntorno({
             strokeWidth={fonte * 0.15}
           />
  
-          {/* seta de norte (norte para cima) */}
           <g transform={`translate(${svgX + fonte * 2.2}, ${svgY + fonte * 3.2})`}>
             <polygon points={`0,${-fonte * 1.6} ${fonte * 0.6},${fonte * 0.4} 0,${fonte * 0.05} ${-fonte * 0.6},${fonte * 0.4}`} fill="#1f2937" />
             <text x={0} y={fonte * 1.6} fontSize={fonte * 1.1} textAnchor="middle" fontWeight="bold" fill="#1f2937" stroke="#fff" strokeWidth={fonte * 0.25} paintOrder="stroke">N</text>
@@ -891,6 +974,197 @@ function MapaEntorno({
       </ul>
       <p className="mt-1 text-[9px] text-ink-soft">Imagem de elevação do satélite esmaecida; anéis a cada 20 m a partir da fachada.</p>
     </div>
+  );
+}
+
+// ── COMPONENTE DA PÁGINA 3 (CARTA SOLAR) ──
+function PaginaCartaSolar({
+  fachadaAtual,
+  sombreamentoReal,
+  calculoSolarAtual,
+  percentualReal,
+  fonteSombreamentoResumo,
+  leituraSolar,
+  obstrucaoPrincipal,
+}: any) {
+  const azNominal = azimuteNominal(fachadaAtual);
+  const azUsadoBruto = sombreamentoReal?.azimuteFachadaUsado ?? sombreamentoReal?.azimute_fachada_usado;
+  const azReal: number = typeof azUsadoBruto === "number" ? azUsadoBruto : azNominal;
+  const orient = nomeOrientacao(azReal);
+  const rotuloFachada = `${orient.nome} (${Math.round(azReal)}°)`;
+  const divergeDoInformado = diffAngular(azReal, azNominal) >= 5;
+  const perfilHorizonte: any[] = sombreamentoReal?.perfil ?? [];
+  const resumoSolar = resumoSolarGerado(calculoSolarAtual, rotuloFachada, percentualReal);
+
+  return (
+    <>
+      <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
+        <h3 className="text-xs font-black uppercase tracking-[0.15em] text-ink mb-3 flex items-center gap-2">
+          <Sun className="size-4 text-brand-strong" /> Incidência Direta e Sombreamento · Fachada voltada para {rotuloFachada}
+        </h3>
+        {divergeDoInformado && (
+          <p className="text-[10px] text-ink-soft -mt-1 mb-3">
+            Você informou {fachadaAtual}; o contorno do prédio indica {Math.round(azReal)}°, e a análise usa essa orientação.
+          </p>
+        )}
+        <div className="bg-surface-soft border border-line rounded-xl p-4">
+          <p className="text-xs text-ink-soft leading-relaxed mb-3 font-medium">{resumoSolar}</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-ink-soft mb-2">Carta solar e interpretação da fachada</p>
+          {calculoSolarAtual?.Verao ? (() => {
+            const cx = 190, cy = 150, raio = 108;
+            const estacoes = ["Verao", "Outono", "Inverno", "Primavera"];
+            const ordemDesenho = ["Verao", "Inverno", "Primavera", "Outono"];
+            const pathMascara = gerarPathMascara(perfilHorizonte, azReal, cx, cy, raio);
+            const ini = nomeOrientacao(azReal - 90).nome;
+            const fim = nomeOrientacao(azReal + 90).nome;
+            const pa = anguloParaXY(cx, cy, raio, azReal - 90);
+            const pb = anguloParaXY(cx, cy, raio, azReal + 90);
+            const pRotulo = anguloParaXY(cx, cy, raio * 0.86, azReal);
+
+            return (
+              <div className="grid grid-cols-[1.15fr_0.85fr] gap-4 items-center">
+                <div className="bg-white border border-line rounded-xl p-2">
+                  <svg viewBox="0 0 380 320" className="w-full h-auto max-h-[245px]">
+                    <circle cx={cx} cy={cy} r={raio} fill="#EEF5EF" stroke="#E5E7EB" />
+                    <circle cx={cx} cy={cy} r={raio * 0.66} fill="none" stroke="#E5E7EB" strokeDasharray="4 4" />
+                    <circle cx={cx} cy={cy} r={raio * 0.33} fill="none" stroke="#E5E7EB" strokeDasharray="4 4" />
+                    <line x1={cx} y1={cy - raio} x2={cx} y2={cy + raio} stroke="#E5E7EB" />
+                    <line x1={cx - raio} y1={cy} x2={cx + raio} y2={cy} stroke="#E5E7EB" />
+                    <text x={cx} y={cy - raio - 10} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">N</text>
+                    <text x={cx} y={cy + raio + 17} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">S</text>
+                    <text x={cx + raio + 14} y={cy + 4} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">L</text>
+                    <text x={cx - raio - 14} y={cy + 4} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">O</text>
+
+                    <path d={gerarPathSetorFachadaAz(azReal, cx, cy, raio)} fill="#4C9A74" fillOpacity="0.14" stroke="#3A7D5E" strokeWidth="1.5" />
+                    <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="#3A7D5E" strokeWidth="2.5" />
+                    <text x={pRotulo.x} y={pRotulo.y} textAnchor="middle" className="fill-brand-strong text-[9px] font-black">
+                      {orient.sigla} · {Math.round(azReal)}°
+                    </text>
+
+                    {pathMascara && (
+                      <path d={pathMascara} fill="#F43F5E" fillOpacity="0.22" stroke="#F43F5E" strokeOpacity="0.55" strokeWidth="1" />
+                    )}
+
+                    {ordemDesenho.map((estacao) => {
+                      const horarios = calculoSolarAtual[estacao];
+                      if (!horarios) return null;
+                      const cor = CORES_ESTACAO[estacao];
+                      const equinocioSobreposto = estacao === "Outono";
+                      const pontos = Object.entries(horarios).map(([hora, d]: [string, any]) => {
+                        const r = elevacaoParaRaio(Number(d.elevacao) || 0, raio);
+                        return { hora, estado: estadoDoPonto(d.status), ...anguloParaXY(cx, cy, r, Number(d.azimute) || 0) };
+                      });
+                      const rp = equinocioSobreposto ? 2.2 : 3.8;
+                      return (
+                        <g key={estacao}>
+                          <polyline
+                            points={pontos.map((p) => `${p.x},${p.y}`).join(" ")}
+                            fill="none"
+                            stroke={cor}
+                            strokeWidth={equinocioSobreposto ? 1.5 : 2.5}
+                            strokeDasharray={equinocioSobreposto ? "5 4" : undefined}
+                          />
+                          {pontos.map((p) =>
+                            p.estado === "bloqueado" ? (
+                              <circle key={p.hora} cx={p.x} cy={p.y} r={rp} fill="#FFFFFF" stroke={cor} strokeWidth="1.6" />
+                            ) : (
+                              <circle key={p.hora} cx={p.x} cy={p.y} r={rp} fill={cor} fillOpacity={p.estado === "sol" ? 1 : 0.3} />
+                            ),
+                          )}
+                        </g>
+                      );
+                    })}
+
+                    {calculoSolarAtual.Inverno &&
+                      Object.entries(calculoSolarAtual.Inverno).map(([hora, d]: [string, any]) => {
+                        const h = parseFloat(hora.replace("h", ""));
+                        if (!Number.isInteger(h) || h % 2 !== 0) return null;
+                        const r = elevacaoParaRaio(Number(d.elevacao) || 0, raio) + 10;
+                        const p = anguloParaXY(cx, cy, r, Number(d.azimute) || 0);
+                        return (
+                          <text key={hora} x={p.x} y={p.y + 3} textAnchor="middle" className="fill-ink-soft text-[8px] font-bold">
+                            {h}h
+                          </text>
+                        );
+                      })}
+                  </svg>
+
+                  <div className="flex flex-wrap justify-center gap-3 text-[9px] font-bold uppercase tracking-wider text-ink-soft">
+                    {estacoes.map((estacao) => (
+                      <span key={estacao} className="flex items-center gap-1">
+                        <i className="size-2 rounded-full" style={{ backgroundColor: CORES_ESTACAO[estacao] }} />
+                        {ROTULO_ESTACAO[estacao]}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-3 mt-1.5 text-[8px] font-semibold text-ink-soft">
+                    <span className="flex items-center gap-1"><i className="size-2 rounded-full bg-ink-soft" />Sol na fachada</span>
+                    <span className="flex items-center gap-1"><i className="size-2 rounded-full border-2 border-ink-soft bg-white" />Bloqueado pelo entorno</span>
+                    <span className="flex items-center gap-1"><i className="size-2 rounded-full bg-ink-soft/30" />Sem sol na fachada</span>
+                    {pathMascara && <span className="flex items-center gap-1"><i className="size-2 rounded-sm bg-rose-300" />Céu bloqueado</span>}
+                  </div>
+                  <p className="text-center text-[8px] text-ink-soft/70 mt-1">Outono e primavera têm trajetória quase idêntica: o outono aparece tracejado, por cima.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="bg-white rounded-xl border border-line p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-ink-soft">O que isso significa</p>
+                    <p className="text-xs font-semibold text-ink mt-1">
+                      A faixa verde é o que a parede enxerga: do {ini} ao {fim} ({Math.round(norm360(azReal - 90))}° a {Math.round(norm360(azReal + 90))}°), com a fachada voltada para {orient.nome}.{" "}
+                      {pathMascara ? "A área rosa é o céu bloqueado pelo entorno. " : ""}
+                      Os trajetos mostram por onde o sol passa em cada estação; pontos mais afastados do centro indicam sol mais baixo e sombras mais longas.
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-line p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-ink-soft">
+                      {fonteSombreamentoResumo === "perfil_real_dsm" ? "Resultado medido" : "Resultado estimado"}
+                    </p>
+                    <p className="text-xs text-ink-soft mt-1">
+                      {percentualReal != null
+                        ? `${percentualReal}% de iluminação direta ${fonteSombreamentoResumo === "perfil_real_dsm" ? "real, com correção por satélite" : "estimada pela trajetória solar, sem considerar vizinhos ou árvores"}.`
+                        : "Trajetória solar calculada para a fachada."}
+                    </p>
+                    {leituraSolar.pontosComDado > 0 && (
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-700 mt-1">Horizonte do campo de visão da fachada (DSM)</p>
+                    )}
+                  </div>
+                  {obstrucaoPrincipal && (
+                    <div className="bg-rose-50 rounded-xl border border-rose-200 p-3">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-rose-700">Obstrução solar encontrada ({obstrucaoPrincipal.direcao})</p>
+                      <p className="text-xs text-rose-900 mt-1">
+                        Obstrução a {formatarNumero(obstrucaoPrincipal.distanciaMetros, 0)}m, com {formatarNumero(obstrucaoPrincipal.alturaMetros, 1)}m de altura, bloqueando o sol abaixo de {formatarNumero(obstrucaoPrincipal.anguloObstrucaoGraus, 1)}°.{" "}
+                        {obstrucaoPrincipal.mascara === 0
+                          ? "No modelo, esse ponto não tem telhado: possivelmente vegetação."
+                          : obstrucaoPrincipal.mascara === 1
+                          ? "No modelo, esse ponto é classificado como telhado: provável edificação vizinha."
+                          : "Pode ser edificação vizinha ou vegetação."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })() : <p className="text-sm text-ink-soft">Dados solares indisponíveis.</p>}
+
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {["Verao", "Outono", "Inverno", "Primavera"].map((estacao) => {
+              const ensolaradas = horasComSol(calculoSolarAtual?.[estacao]).length;
+              return (
+                <div key={estacao} className="bg-surface-soft rounded-lg p-2">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-ink-soft">{ROTULO_ESTACAO[estacao]}</p>
+                  <p className="text-base font-black text-ink mt-0.5">
+                    {ensolaradas} <span className="text-[10px] font-semibold text-ink-soft">horários com sol</span>
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="mt-auto shrink-0 pt-2 text-right text-[8px] font-bold uppercase tracking-widest text-ink-soft/70">
+          Gerado via Vector-X Intelligence API · {new Date().toLocaleDateString("pt-BR")}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1049,13 +1323,12 @@ export default function VectorZoneamento() {
     dadosBioclimaticos?.potencial_hidrico?.precipitacao_mm ??
     extrairMm(dadosBioclimaticos?.potencial_hidrico?.indice_chuvas);
 
-     const areaTelhado = obterAreaTelhadoComOrigem(
-        dadosBioclimaticos?.potencial_hidrico && typeof dadosBioclimaticos.potencial_hidrico === "object"
-          ? (dadosBioclimaticos.potencial_hidrico as Record<string, unknown>) : null,
-        potencialFotovoltaicoBruto && typeof potencialFotovoltaicoBruto === "object"
-          ? (potencialFotovoltaicoBruto as Record<string, unknown>) : null,
-      );
-    
+  const areaTelhado = obterAreaTelhadoComOrigem(
+    dadosBioclimaticos?.potencial_hidrico && typeof dadosBioclimaticos.potencial_hidrico === "object"
+      ? (dadosBioclimaticos.potencial_hidrico as Record<string, unknown>) : null,
+    potencialFotovoltaicoBruto && typeof potencialFotovoltaicoBruto === "object"
+      ? (potencialFotovoltaicoBruto as Record<string, unknown>) : null,
+  );
 
   const perfilHorizonteReal = dadosBioclimaticos?.horizontePerfil
     ?? sombreamentoReal?.perfil_horizonte
@@ -1069,17 +1342,8 @@ export default function VectorZoneamento() {
   const exportarPDF = () => {
     gerarPDFPaginado(relatorioRef, `Laudo_Bioclimatico_${form.nomeProjeto.replace(/\s+/g, "_")}`);
   };
-  const gerarPDF = exportarPDF;
-  const temSombreamentoReal = Boolean(sombreamentoReal?.disponivel);
   const percentualReal = dadosBioclimaticos?.resumo?.percentualIluminacao;
-
-  const horasComDadoRealResumo = dadosBioclimaticos?.resumo?.horasComDadoReal ?? 0;
-  const totalHorasAvaliadasResumo = dadosBioclimaticos?.resumo?.totalHorasAvaliadas ?? 0;
   const fonteSombreamentoResumo = dadosBioclimaticos?.resumo?.fonteSombreamento;
-  const percentualGeometrico = dadosBioclimaticos?.resumo?.percentualIluminacaoGeometrico ?? percentualReal;
-  const deltaSombreamento = (percentualGeometrico != null && percentualReal != null)
-    ? Math.round((percentualGeometrico - percentualReal) * 10) / 10
-    : null;
 
   const calculoSolarAtual = dadosBioclimaticos?.classificacao || dadosBioclimaticos?.calculo_solar;
 
@@ -1088,12 +1352,16 @@ export default function VectorZoneamento() {
     [calculoSolarAtual, perfilHorizonteReal],
   );
 
+  // CORREÇÃO: lê as duas grafias (snake_case e camelCase) do azimute da fachada.
+  // Antes só lia snake_case e caía no azimute nominal (Sul = 180°) em vez de 162°.
   const azimuteFachadaAtual = useMemo(() => {
-    const real = Number(sombreamentoReal?.azimute_fachada_usado);
+    const real = Number(
+      sombreamentoReal?.azimute_fachada_usado ?? sombreamentoReal?.azimuteFachadaUsado,
+    );
     if (Number.isFinite(real)) return real;
     const chave = String(fachadaAtual || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     return AZIMUTE_POR_FACHADA[chave] ?? null;
-  }, [fachadaAtual, sombreamentoReal?.azimute_fachada_usado]);
+  }, [fachadaAtual, sombreamentoReal?.azimute_fachada_usado, sombreamentoReal?.azimuteFachadaUsado]);
 
   const bloqueios = useMemo(
     () => calcularBloqueios(calculoSolarAtual, perfilHorizonteReal),
@@ -1103,30 +1371,33 @@ export default function VectorZoneamento() {
   const azimutesBloqueantes = useMemo(() => [...bloqueios.keys()], [bloqueios]);
 
   const setoresEntorno = useMemo(
-    () => resumirEntornoPorSetor(perfilHorizonteReal, azimuteFachadaAtual, bloqueios),
-    [perfilHorizonteReal, azimuteFachadaAtual, bloqueios],
+    () => resumirEntornoPorSetor(perfilHorizonteReal, azimuteFachadaAtual, calculoSolarAtual, bloqueios),
+    [perfilHorizonteReal, azimuteFachadaAtual, calculoSolarAtual, bloqueios],
+  );
+
+  // NOVO: um único "principal" para tabela, mapa e página 3.
+  const pontoPrincipal = useMemo(
+    () => escolherObstaculoPrincipal(perfilHorizonteReal, azimuteFachadaAtual, calculoSolarAtual),
+    [perfilHorizonteReal, azimuteFachadaAtual, calculoSolarAtual],
   );
 
   const direcaoPrincipal = useMemo(() => {
-    const c = setoresEntorno.filter((s) => s.pico && s.bloqueio);
-    c.sort((a, b) => (b.bloqueio?.horas?.length || 0) - (a.bloqueio?.horas?.length || 0));
-    return c[0]?.direcao;
-  }, [setoresEntorno]);
+    if (!pontoPrincipal) return undefined;
+    return setoresEntorno.find((s) => s.pico?.azimute === pontoPrincipal.azimute)?.direcao;
+  }, [setoresEntorno, pontoPrincipal]);
 
-  // Obstrução principal sincronizada (página 2, página 4 e simulador 3D)
   const obstrucaoPrincipal = useMemo(() => {
-    const setor = setoresEntorno.find((s) => s.direcao === direcaoPrincipal);
-    const p = setor?.pico;
-    if (!p) return null;
+    const p = pontoPrincipal;
+    if (!p || !direcaoPrincipal) return null;
     return {
       azimute: p.azimute,
-      direcao: setor!.direcao,
+      direcao: direcaoPrincipal,
       anguloObstrucaoGraus: p.anguloObstrucaoGraus,
       distanciaMetros: p.distanciaObstaculoMetros,
       alturaMetros: p.alturaObstaculoAcimaDoSoloMetros ?? p.alturaObstaculoMetros,
       mascara: p.ponto?.mascara ?? null,
     };
-  }, [setoresEntorno, direcaoPrincipal]);
+  }, [pontoPrincipal, direcaoPrincipal]);
 
   const horasNumericas: number[] = useMemo(() => {
     const horas = calculoSolarAtual?.[estacaoSim];
@@ -1159,40 +1430,6 @@ export default function VectorZoneamento() {
     return () => window.removeEventListener("keydown", onKey);
   }, [formAberto]);
 
-  const desembrulharAzimute = (hora: number, azimute: number) =>
-    (hora > 12 && azimute > 180) ? azimute - 360 : azimute;
-
-  const dadosHoraSim = useMemo(() => {
-    const horarios = calculoSolarAtual?.[estacaoSim];
-    if (!horarios || !horasNumericas.length) return null;
-    const min = horasNumericas[0], max = horasNumericas[horasNumericas.length - 1];
-    const alvo = Math.min(max, Math.max(min, horaSlider));
-    let h0 = min, h1 = max;
-    for (let i = 0; i < horasNumericas.length - 1; i++) {
-      if (alvo >= horasNumericas[i] && alvo <= horasNumericas[i + 1]) { h0 = horasNumericas[i]; h1 = horasNumericas[i + 1]; break; }
-    }
-    const d0 = horarios[`${h0}h`], d1 = horarios[`${h1}h`];
-    const f = h1 === h0 ? 0 : (alvo - h0) / (h1 - h0);
-    const az0 = desembrulharAzimute(h0, Number(d0?.azimute) || 0);
-    const az1 = desembrulharAzimute(h1, Number(d1?.azimute) || 0);
-    const azimuteUnwrap = az0 + (az1 - az0) * f;
-    const elevacao = (Number(d0?.elevacao) || 0) + ((Number(d1?.elevacao) || 0) - (Number(d0?.elevacao) || 0)) * f;
-    return {
-      elevacao: Math.round(elevacao * 10) / 10,
-      azimute: Math.round((((azimuteUnwrap % 360) + 360) % 360) * 10) / 10,
-      azimuteUnwrap,
-      status: f < 0.5 ? d0?.status : d1?.status,
-      horaProximaLabel: f < 0.5 ? `${h0}h` : `${h1}h`,
-    };
-  }, [calculoSolarAtual, estacaoSim, horaSlider, horasNumericas]);
-
-  const azExtremosSim = useMemo(() => {
-    const horarios = calculoSolarAtual?.[estacaoSim];
-    if (!horarios || !horasNumericas.length) return { min: -1, max: 1 };
-    const vals = horasNumericas.map((h) => desembrulharAzimute(h, Number(horarios[`${h}h`]?.azimute) || 0));
-    return { min: Math.min(...vals), max: Math.max(...vals) };
-  }, [calculoSolarAtual, estacaoSim, horasNumericas]);
-
   return (
     <div className="min-h-screen bg-canvas text-ink-soft font-sans selection:bg-brand-soft selection:text-ink flex flex-col md:flex-row relative">
       <Toaster theme="light" position="top-center" />
@@ -1205,7 +1442,6 @@ export default function VectorZoneamento() {
         </div>
       )}
 
-      {/* ── MODAL DE CONFIRMAÇÃO ── */}
       {confirmando && (
         <div className="fixed inset-0 z-[70] bg-ink/40 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-surface border border-line rounded-3xl p-8 max-w-md w-full shadow-[0_24px_80px_rgba(46,53,50,0.18)]">
@@ -1235,7 +1471,6 @@ export default function VectorZoneamento() {
         </div>
       )}
 
-      {/* Overlay da gaveta */}
       {formAberto && (
         <div
           className="fixed inset-0 z-[60] bg-ink/30 backdrop-blur-sm animate-in fade-in duration-300"
@@ -1243,7 +1478,6 @@ export default function VectorZoneamento() {
         />
       )}
 
-      {/* ── GAVETA (FORMULÁRIO VECTOR-X) ── */}
       <aside
         aria-hidden={!formAberto}
         className={`fixed inset-y-0 left-0 z-[65] w-full sm:w-[560px] xl:w-[640px] bg-surface border-r border-line flex flex-col shadow-[8px_0_32px_rgba(46,53,50,0.08)] transition-[transform,opacity,visibility] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
@@ -1274,7 +1508,6 @@ export default function VectorZoneamento() {
           </>}
         </div>
 
-        {/* ── FORMULÁRIO vs RESUMO BLOQUEADO ── */}
         {!dadosBioclimaticos ? (
           <form onSubmit={submit} className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar">
             <div>
@@ -1535,7 +1768,6 @@ export default function VectorZoneamento() {
           </div>
         )}
 
-        {/* ── BOTÃO DE SUBMIT (SOME APÓS LAUDO) ── */}
         {!dadosBioclimaticos && (
           <div className="p-6 border-t border-line bg-surface">
             <Button
@@ -1555,10 +1787,8 @@ export default function VectorZoneamento() {
         )}
       </aside>
 
-      {/* ── ÁREA PRINCIPAL (CANVAS DO LAUDO) ── */}
       <main className="flex-1 w-full min-w-0 min-h-screen bg-canvas p-4 md:p-8 custom-scrollbar">
 
-        {/* Barra superior: Voltar + abrir formulário */}
         <div className="max-w-6xl mx-auto flex items-center justify-between mb-6">
           <button
             onClick={voltar}
@@ -1578,7 +1808,6 @@ export default function VectorZoneamento() {
           </Button>
         </div>
 
-        {/* CARDS APARECEM AQUI QUANDO AINDA NÃO HÁ LAUDO */}
         {!dadosBioclimaticos && !loading && (
           <div className="max-w-6xl mx-auto flex flex-col justify-center min-h-[50vh] md:min-h-full animate-in fade-in zoom-in-95 duration-500 py-8">
             <div className="mb-8 md:mb-12">
@@ -1669,28 +1898,10 @@ export default function VectorZoneamento() {
                   Baixe a leitura em PDF para comparar endereços ou conversar com seu arquiteto com mais contexto.
                 </p>
               </div>
-
-              <div className="group relative isolate min-w-[280px] snap-center overflow-hidden rounded-2xl border border-sand bg-sand/40 p-4 pt-12 transition-colors hover:border-brand/40 sm:pt-4 md:col-span-2 md:min-w-0 lg:col-span-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                  <div className="relative grid h-14 w-full shrink-0 grid-cols-3 items-end gap-1 overflow-hidden rounded-xl border border-line bg-surface/70 p-2 sm:w-20" aria-hidden="true">
-                    <span className="h-5 rounded-sm bg-brand-soft" />
-                    <span className="h-8 rounded-sm bg-brand" />
-                    <span className="h-6 rounded-sm bg-sand" />
-                    <span className="animate-material-scan motion-reduce:animate-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-brand-soft/40 to-transparent" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-sand-ink">Novas ferramentas a caminho</p>
-                    <h3 className="mt-1 text-sm font-semibold text-ink">Materiais e conforto térmico</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-ink-soft">Transmitância, capacidade térmica e materiais recomendados para orientar reformas com mais contexto.</p>
-                  </div>
-                </div>
-                <span className="absolute right-3 top-3 shrink-0 rounded-full border border-transparent bg-sand px-2 py-1 text-xs font-medium text-sand-ink">Em breve</span>
-              </div>
             </div>
           </div>
         )}
 
-        {/* LOADING STATE */}
         {loading && (
           <div className="h-[60vh] md:h-full flex flex-col items-center justify-center">
             <div className="relative size-24">
@@ -1702,7 +1913,6 @@ export default function VectorZoneamento() {
           </div>
         )}
 
-        {/* LAUDO TÉCNICO EXECUTIVO */}
         {dadosBioclimaticos && !loading && (
           <div className="max-w-[850px] mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-20">
             <div className="flex items-center justify-between bg-surface border border-line rounded-2xl p-4">
@@ -1718,107 +1928,236 @@ export default function VectorZoneamento() {
             <div ref={relatorioRef} className="bg-surface-soft flex flex-col gap-8 p-4 rounded-xl">
               
               <CapaLaudo
-        nomeProjeto={form.nomeProjeto || "Projeto Bioclimático"}
-        endereco={
-          dadosBioclimaticos.endereco ||
-          `${form.logradouro}${form.numero ? ", " + form.numero : ""}${form.bairro ? " - " + form.bairro : ""}, ${form.cidade} - ${form.uf}`
-        }
-        fachada={fachadaAtual}
-        zona={dadosBioclimaticos.zona}
-        subzona={dadosBioclimaticos.subzona}
-        nota={dadosBioclimaticos.score_bioclimatico?.nota}
-        resumoScore={dadosBioclimaticos.score_bioclimatico?.resumo}
-        fonteSolar={fonteSombreamentoResumo === "perfil_real_dsm" ? "Trajetória + DSM" : "Trajetória calculada"}
-        clima={{
-          tempMedia: dadosBioclimaticos.temp_media,
-          tempMin: dadosBioclimaticos.temp_bulbo_seco_min,
-          tempMax: dadosBioclimaticos.temp_bulbo_seco_max,
-          umidade: dadosBioclimaticos.umidade_media,
-          radiacao: dadosBioclimaticos.radiacao_media,
-        }}
-        economiaAgua={economiaAgua}
-        economiaSolar={economiaSolar}
-        potencialFotovoltaico={potencialFotovoltaico}
-      />
+                nomeProjeto={form.nomeProjeto || "Projeto Bioclimático"}
+                endereco={
+                  dadosBioclimaticos.endereco ||
+                  `${form.logradouro}${form.numero ? ", " + form.numero : ""}${form.bairro ? " - " + form.bairro : ""}, ${form.cidade} - ${form.uf}`
+                }
+                fachada={fachadaAtual}
+                zona={dadosBioclimaticos.zona}
+                subzona={dadosBioclimaticos.subzona}
+                nota={dadosBioclimaticos.score_bioclimatico?.nota}
+                resumoScore={dadosBioclimaticos.score_bioclimatico?.resumo}
+                fonteSolar={fonteSombreamentoResumo === "perfil_real_dsm" ? "Trajetória + DSM" : "Trajetória calculada"}
+                clima={{
+                  tempMedia: dadosBioclimaticos.temp_media,
+                  tempMin: dadosBioclimaticos.temp_bulbo_seco_min,
+                  tempMax: dadosBioclimaticos.temp_bulbo_seco_max,
+                  umidade: dadosBioclimaticos.umidade_media,
+                  radiacao: dadosBioclimaticos.radiacao_media,
+                }}
+                economiaAgua={economiaAgua}
+                economiaSolar={economiaSolar}
+                potencialFotovoltaico={potencialFotovoltaico}
+              />
 
-              {/* PÁGINA 2: CARTA SOLAR E SOMBREAMENTO */}
+              {/* PÁGINA 2: DIAGNÓSTICO DETALHADO DA ZONA BIOCLIMÁTICA */}
               <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
-                <h3 className="text-xs font-black uppercase tracking-[0.15em] text-ink mb-3 flex items-center gap-2"><Sun className="size-4 text-brand-strong" /> Incidência Direta e Sombreamento · Fachada {fachadaAtual}</h3>
-                <div className="bg-surface-soft border border-line rounded-xl p-4">
-                  <p className="text-xs text-ink-soft leading-relaxed mb-3 font-medium">{dadosBioclimaticos.resumo?.avaliacao || "Avaliação de insolação concluída."}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-ink-soft mb-2">Carta solar e interpretação da fachada</p>
-                  {calculoSolarAtual?.Verao ? (() => {
-                    const cx = 190, cy = 150, raio = 108;
-                    const estacoes = ['Verao', 'Outono', 'Inverno', 'Primavera'];
+                <div className="flex items-start justify-between border-b-2 border-ink pb-3 mb-3.5 gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-black uppercase tracking-[0.18em] text-brand-strong">
+                        Enquadramento Normativo · ABNT NBR 15220-3:2024
+                      </span>
+                      {dadosBioclimaticos.intervalo_nbr15575 && (
+                        <span className="rounded bg-surface-soft border border-line px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-ink-soft">
+                          NBR 15575 · Intervalo {dadosBioclimaticos.intervalo_nbr15575}
+                        </span>
+                      )}
+                    </div>
+                    <h2 className="text-2xl font-black text-ink mt-1">
+                      Zona Bioclimática {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona} · {dadosBioclimaticos.caracteristica || "Classificação Oficial"}
+                    </h2>
+                    <p className="text-[11px] text-ink-soft mt-0.5">
+                      Local analisado: <strong className="text-ink">{dadosBioclimaticos.municipio || form.cidade}/{dadosBioclimaticos.uf || form.uf}</strong>
+                      {dadosBioclimaticos.cidade_representativa && (
+                        <> · Cidade-referência da subzona: <strong className="text-ink">{dadosBioclimaticos.cidade_representativa}/{dadosBioclimaticos.estado_representativo || dadosBioclimaticos.uf}</strong></>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <span className="inline-block rounded-full bg-brand-soft border border-brand/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-brand-strong">
+                      {dadosBioclimaticos.amplitude_termica || `Subzona ${dadosBioclimaticos.zona}${dadosBioclimaticos.subzona}`}
+                    </span>
+                    {dadosBioclimaticos.nome_estacao && (
+                      <p className="text-[8px] text-ink-soft mt-1">
+                        Estação INMET: {dadosBioclimaticos.nome_estacao} ({formatarNumero(dadosBioclimaticos.distancia_km, 1)} km)
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-surface-soft border border-line rounded-xl p-3.5 mb-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-brand-strong flex items-center gap-1.5">
+                      <Thermometer className="size-3.5" /> Comportamento Climático da Subzona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}
+                    </p>
+                  </div>
+                  <p className="text-[10.5px] text-ink leading-relaxed font-medium">
+                    {dadosBioclimaticos.resumo_climatico ||
+                      `O município de ${dadosBioclimaticos.municipio || form.cidade} insere-se na Zona Bioclimática ${dadosBioclimaticos.zona}${dadosBioclimaticos.subzona} (${dadosBioclimaticos.caracteristica}), demandando soluções arquitetónicas adaptadas às condições higrotérmicas locais.`}
+                  </p>
+                  {dadosBioclimaticos.criterio_classificacao && (
+                    <p className="text-[9.5px] text-ink-soft mt-1.5 pt-1.5 border-t border-line/80 leading-snug">
+                      <strong className="text-ink uppercase tracking-wider text-[8.5px]">Critério da Norma: </strong>
+                      {dadosBioclimaticos.criterio_classificacao}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  <div className="rounded-lg border border-line bg-white p-2.5">
+                    <p className="text-[8px] font-black uppercase tracking-wider text-ink-soft">Limiar TBSm (Norma)</p>
+                    <p className="text-xs font-black text-ink mt-0.5">
+                      {dadosBioclimaticos.temp_bulbo_seco_min != null && dadosBioclimaticos.temp_bulbo_seco_max != null
+                        ? `${formatarNumero(dadosBioclimaticos.temp_bulbo_seco_min, 1)}°C a ${formatarNumero(dadosBioclimaticos.temp_bulbo_seco_max, 1)}°C`
+                        : dadosBioclimaticos.temp_bulbo_seco_max != null
+                        ? `≤ ${formatarNumero(dadosBioclimaticos.temp_bulbo_seco_max, 1)}°C`
+                        : dadosBioclimaticos.temp_bulbo_seco_min != null
+                        ? `> ${formatarNumero(dadosBioclimaticos.temp_bulbo_seco_min, 1)}°C`
+                        : "Conforme subzona"}
+                    </p>
+                    <p className="text-[8px] text-ink-soft mt-0.5">Média anual de bulbo seco</p>
+                  </div>
+
+                  <div className="rounded-lg border border-line bg-white p-2.5">
+                    <p className="text-[8px] font-black uppercase tracking-wider text-ink-soft">Extremos de Projeto</p>
+                    <p className="text-xs font-black text-ink mt-0.5">
+                      {dadosBioclimaticos.temp_projeto_inverno_c != null && dadosBioclimaticos.temp_projeto_verao_c != null
+                        ? `${formatarNumero(dadosBioclimaticos.temp_projeto_inverno_c, 1)}°C / ${formatarNumero(dadosBioclimaticos.temp_projeto_verao_c, 1)}°C`
+                        : `${formatarNumero(dadosBioclimaticos.temp_media, 1)}°C (média)`}
+                    </p>
+                    <p className="text-[8px] text-ink-soft mt-0.5">Ref. Inverno / Verão na zona</p>
+                  </div>
+
+                  <div className="rounded-lg border border-line bg-white p-2.5">
+                    <p className="text-[8px] font-black uppercase tracking-wider text-ink-soft">Humidade e Limiar</p>
+                    <p className="text-xs font-black text-ink mt-0.5">
+                      {dadosBioclimaticos.umidade_media != null ? `${formatarNumero(dadosBioclimaticos.umidade_media, 1)}% real` : "N/D"}
+                    </p>
+                    <p className="text-[8px] text-ink-soft mt-0.5">
+                      {dadosBioclimaticos.umidade_relativa_limiar != null
+                        ? `Limiar subzona: ${dadosBioclimaticos.umidade_relativa_condicao === "maior" ? ">" : "≤"} ${formatarNumero(dadosBioclimaticos.umidade_relativa_limiar, 1)}%`
+                        : "Subzona definida por inverno (R/M)"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-line bg-white p-2.5">
+                    <p className="text-[8px] font-black uppercase tracking-wider text-ink-soft">Radiação e Chuva Local</p>
+                    <p className="text-xs font-black text-ink mt-0.5">
+                      {dadosBioclimaticos.radiacao_media != null ? `${formatarNumero(dadosBioclimaticos.radiacao_media, 0)} W/m²` : "N/D"}
+                    </p>
+                    <p className="text-[8px] text-ink-soft mt-0.5">
+                      {chuvaMilimetros != null ? `Precipitação: ${formatarNumero(chuvaMilimetros, 0)} mm/ano` : "Média horária insolada"}
+                    </p>
+                  </div>
+                </div>
+
+                {(dadosBioclimaticos.desafio_inverno || dadosBioclimaticos.desafio_verao) && (
+                  <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+                    <div className="rounded-xl bg-sky-50/70 border border-sky-100 p-3">
+                      <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-sky-800">
+                        Solicitação de Inverno na Zona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}
+                      </p>
+                      <p className="text-[9.5px] leading-snug text-ink-soft mt-1">
+                        {dadosBioclimaticos.desafio_inverno || "Requer avaliação de estanqueidade e retenção térmica conforme orientação solar."}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-amber-50/70 border border-amber-100 p-3">
+                      <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-amber-800">
+                        Solicitação de Verão na Zona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}
+                      </p>
+                      <p className="text-[9.5px] leading-snug text-ink-soft mt-1">
+                        {dadosBioclimaticos.desafio_verao || "Requer controlo de ganho solar direto nas aberturas e ventilação seletiva."}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex-1 min-h-0 flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.14em] text-ink flex items-center gap-1.5">
+                      <ShieldCheck className="size-3.5 text-brand-strong" /> Diretrizes Construtivas Recomendadas para a Zona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}
+                    </h3>
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-ink-soft">
+                      NBR 15220-3:2024 + Guia de Resiliência
+                    </span>
+                  </div>
+
+                  {(() => {
+                    const confortoDetalhado: Array<{ diretriz: string; detalhamento?: string }> =
+                      Array.isArray(dadosBioclimaticos.diretrizes_conforto_detalhadas) && dadosBioclimaticos.diretrizes_conforto_detalhadas.length > 0
+                        ? dadosBioclimaticos.diretrizes_conforto_detalhadas
+                        : (Array.isArray(dadosBioclimaticos.estrategias_conforto) ? dadosBioclimaticos.estrategias_conforto : []).map((d: string) => ({
+                            diretriz: d,
+                            detalhamento: "Estratégia passiva de desempenho térmico catalogada para esta zona bioclimática.",
+                          }));
+
+                    const resilienciaDetalhada: Array<{ diretriz: string; detalhamento?: string }> =
+                      Array.isArray(dadosBioclimaticos.diretrizes_resiliencia_detalhadas) && dadosBioclimaticos.diretrizes_resiliencia_detalhadas.length > 0
+                        ? dadosBioclimaticos.diretrizes_resiliencia_detalhadas
+                        : (Array.isArray(dadosBioclimaticos.estrategias_resiliencia) ? dadosBioclimaticos.estrategias_resiliencia : []).map((d: string) => ({
+                            diretriz: d,
+                            detalhamento: "Medida de adaptação e resiliência física recomendada para eventos climáticos da região.",
+                          }));
+
                     return (
-                      <div className="grid grid-cols-[1.15fr_0.85fr] gap-4 items-center">
-                        <div className="bg-white border border-line rounded-xl p-2">
-                          <svg viewBox="0 0 380 320" className="w-full h-auto max-h-[245px]">
-                            <circle cx={cx} cy={cy} r={raio} fill="#EEF5EF" stroke="#E5E7EB" />
-                            <circle cx={cx} cy={cy} r={raio * 0.66} fill="none" stroke="#E5E7EB" strokeDasharray="4 4" />
-                            <circle cx={cx} cy={cy} r={raio * 0.33} fill="none" stroke="#E5E7EB" strokeDasharray="4 4" />
-                            <line x1={cx} y1={cy - raio} x2={cx} y2={cy + raio} stroke="#E5E7EB" />
-                            <line x1={cx - raio} y1={cy} x2={cx + raio} y2={cy} stroke="#E5E7EB" />
-                            <text x={cx} y={cy - raio - 10} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">N</text>
-                            <text x={cx} y={cy + raio + 17} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">S</text>
-                            <text x={cx + raio + 14} y={cy + 4} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">L</text>
-                            <text x={cx - raio - 14} y={cy + 4} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">O</text>
-                            <path d={gerarPathSetorFachada(fachadaAtual, cx, cy, raio)} fill="#4C9A74" fillOpacity="0.14" stroke="#3A7D5E" strokeWidth="1.5" />
-                            {estacoes.map((estacao) => {
-                              const horarios = calculoSolarAtual[estacao];
-                              if (!horarios) return null;
-                              const pontos = Object.entries(horarios).map(([hora, d]: [string, any]) => {
-                                const r = elevacaoParaRaio(Number(d.elevacao) || 0, raio);
-                                return { hora, ...anguloParaXY(cx, cy, r, Number(d.azimute) || 0) };
-                              });
-                              return <g key={estacao}><polyline points={pontos.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={CORES_ESTACAO[estacao]} strokeWidth="2" strokeDasharray={estacao === 'Outono' ? '5 4' : undefined} />{pontos.map((p) => <circle key={p.hora} cx={p.x} cy={p.y} r="3.5" fill={CORES_ESTACAO[estacao]} />)}</g>;
-                            })}
-                          </svg>
-                          <div className="flex flex-wrap justify-center gap-3 text-[9px] font-bold uppercase tracking-wider text-ink-soft">
-                            {estacoes.map((estacao) => <span key={estacao} className="flex items-center gap-1"><i className="size-2 rounded-full" style={{ backgroundColor: CORES_ESTACAO[estacao] }} />{estacao}</span>)}
+                      <div className="grid grid-cols-2 gap-3 flex-1 min-h-0">
+                        <div className="rounded-xl border border-line bg-surface-soft/60 p-3 flex flex-col">
+                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-brand-strong mb-2">
+                            Estratégias de Conforto Térmico ({confortoDetalhado.length})
+                          </p>
+                          <div className="space-y-2">
+                            {confortoDetalhado.slice(0, 4).map((item, idx) => (
+                              <div key={idx} className="rounded-lg bg-white border border-line/80 p-2">
+                                <p className="text-[9.5px] font-bold text-ink leading-tight">{item.diretriz}</p>
+                                {item.detalhamento && (
+                                  <p className="text-[8.5px] text-ink-soft leading-snug mt-0.5">{item.detalhamento}</p>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <div className="bg-white rounded-xl border border-line p-3"><p className="text-[9px] font-black uppercase tracking-widest text-ink-soft">O que isso significa</p><p className="text-xs font-semibold text-ink mt-1">A faixa verde representa a orientação {fachadaAtual}. Os trajetos mostram por onde o sol passa em cada estação; pontos mais afastados do centro indicam sol mais baixo e sombras mais longas.</p></div>
-                          <div className="bg-white rounded-xl border border-line p-3">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-ink-soft">
-                              {fonteSombreamentoResumo === 'perfil_real_dsm' ? 'Resultado medido' : 'Resultado estimado'}
-                            </p>
-                            <p className="text-xs text-ink-soft mt-1">
-                              {percentualReal != null
-                                ? `${percentualReal}% de iluminação direta ${fonteSombreamentoResumo === 'perfil_real_dsm' ? 'real, com correção por satélite' : 'estimada pela trajetória solar, sem considerar vizinhos ou árvores'}.`
-                                : 'Trajetória solar calculada para a fachada.'}
-                            </p>
-                            {leituraSolar.pontosComDado > 0 && <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-700 mt-1">Horizonte 360° real recebido do DSM</p>}
+
+                        <div className="rounded-xl border border-line bg-surface-soft/60 p-3 flex flex-col">
+                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-ink mb-2">
+                            Resiliência e Adaptação Climática ({resilienciaDetalhada.length})
+                          </p>
+                          <div className="space-y-2">
+                            {resilienciaDetalhada.slice(0, 4).map((item, idx) => (
+                              <div key={idx} className="rounded-lg bg-white border border-line/80 p-2">
+                                <p className="text-[9.5px] font-bold text-ink leading-tight">{item.diretriz}</p>
+                                {item.detalhamento && (
+                                  <p className="text-[8.5px] text-ink-soft leading-snug mt-0.5">{item.detalhamento}</p>
+                                )}
+                              </div>
+                            ))}
                           </div>
-                          {obstrucaoPrincipal && (
-                            <div className="bg-rose-50 rounded-xl border border-rose-200 p-3">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-rose-700">Obstrução solar encontrada ({obstrucaoPrincipal.direcao})</p>
-                              <p className="text-xs text-rose-900 mt-1">
-                                Obstrução a {formatarNumero(obstrucaoPrincipal.distanciaMetros, 0)}m, com {formatarNumero(obstrucaoPrincipal.alturaMetros, 1)}m de altura, bloqueando o sol abaixo de {formatarNumero(obstrucaoPrincipal.anguloObstrucaoGraus, 1)}°.{" "}
-                                {obstrucaoPrincipal.mascara === 0
-                                  ? "No modelo, esse ponto não tem telhado: possivelmente vegetação."
-                                  : obstrucaoPrincipal.mascara === 1
-                                  ? "No modelo, esse ponto é classificado como telhado: provável edificação vizinha."
-                                  : "Pode ser edificação vizinha ou vegetação."}
-                              </p>
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
-                  })() : <p className="text-sm text-ink-soft">Dados solares indisponíveis.</p>}
-                  <div className="mt-3 grid grid-cols-4 gap-2">
-                    {['Verao', 'Outono', 'Inverno', 'Primavera'].map((estacao) => {
-                      const ensolaradas = Object.values(calculoSolarAtual?.[estacao] || {}).filter((d: any) => d?.status === 'Pleno Sol' || d?.status === 'Meia Sombra').length;
-                      return <div key={estacao} className="bg-surface-soft rounded-lg p-2"><p className="text-[8px] font-black uppercase tracking-widest text-ink-soft">{estacao}</p><p className="text-base font-black text-ink mt-0.5">{ensolaradas} <span className="text-[10px] font-semibold text-ink-soft">horários com sol</span></p></div>;
-                    })}
-                  </div>
+                  })()}
                 </div>
-                <div className="mt-auto shrink-0 pt-2 text-right text-[8px] font-bold uppercase tracking-widest text-ink-soft/70">Gerado via Vector-X Intelligence API · {new Date().toLocaleDateString('pt-BR')}</div>
+
+                <div className="mt-3 shrink-0 flex justify-between border-t border-line pt-2 text-[7px] font-bold uppercase tracking-widest text-ink-soft/70">
+                  <span>Diagnóstico de Zoneamento Bioclimático · Base ABNT NBR 15220-3:2024 e INMET</span>
+                  <span>Vector-X · {new Date().toLocaleDateString("pt-BR")}</span>
+                </div>
               </div>
 
-              {/* PÁGINA 3: LEITURA APLICADA */}
+              {/* PÁGINA 3: CARTA SOLAR E SOMBREAMENTO */}
+              <PaginaCartaSolar
+                fachadaAtual={fachadaAtual}
+                sombreamentoReal={sombreamentoReal}
+                calculoSolarAtual={calculoSolarAtual}
+                percentualReal={percentualReal}
+                fonteSombreamentoResumo={fonteSombreamentoResumo}
+                leituraSolar={leituraSolar}
+                obstrucaoPrincipal={obstrucaoPrincipal}
+              />
+
+              {/* PÁGINA 4: LEITURA APLICADA */}
               <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
                 <div className="flex items-start justify-between border-b-2 border-ink pb-3 mb-4 gap-4">
                   <div>
@@ -1867,7 +2206,6 @@ export default function VectorZoneamento() {
                   </div>
                 </section>
 
-                {/* ALERTA DE QUANDO NÃO HÁ DADOS DE ENTORNO */}
                 {leituraSolar.pontosComDado === 0 && (
                   <p className="text-[9px] leading-snug text-amber-800 bg-amber-50 border border-amber-100 rounded-md p-2 mb-3">
                     Sem cobertura de elevação da Google para este endereço: as sombras do entorno (vizinhos e árvores) não foram medidas. O percentual de sol é uma estimativa pela trajetória solar e pelo telhado.
@@ -1893,7 +2231,7 @@ export default function VectorZoneamento() {
                 <div className="mt-3 shrink-0 flex justify-between border-t border-line pt-2 text-[7px] font-bold uppercase tracking-widest text-ink-soft/70"><span>Interpretação baseada nos horários classificados e no horizonte DSM recebido</span><span>Vector-X · {new Date().toLocaleDateString('pt-BR')}</span></div>
               </div>
               
-              {/* PÁGINA 4: O ENTORNO QUE INTERFERE */}
+              {/* PÁGINA 5: O ENTORNO QUE INTERFERE */}
               {leituraSolar.pontosComDado > 0 && (
                 <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
                   <div className="border-b-2 border-ink pb-3 mb-5">
@@ -1905,12 +2243,11 @@ export default function VectorZoneamento() {
                   </div>
                   
                   <ResumoEntorno
-                      setores={setoresEntorno}
-                       direcaoPrincipal={direcaoPrincipal}
-                        azimuteFachada={azimuteFachadaAtual}
-                        />
-                        
-                  
+                    setores={setoresEntorno}
+                    direcaoPrincipal={direcaoPrincipal}
+                    azimuteFachada={azimuteFachadaAtual}
+                  />
+                
                   <div className="mt-5 flex-1 min-h-0">
                     <MapaEntorno
                       mapa={sombreamentoReal?.mapa}
@@ -1921,10 +2258,10 @@ export default function VectorZoneamento() {
                   </div>
                   
                   <p className="mt-3 text-[9px] leading-snug text-ink-soft">
-                   Só entram na leitura os obstáculos na frente da fachada que cruzam a trajetória solar local.
-                   Obstáculos mais baixos que o sol naquela direção não geram alerta de bloqueio.
-                    {sombreamentoReal?.aviso_imagery_antiga && (<><br /><span className="font-semibold text-amber-700">Nota sobre o satélite:</span> {sombreamentoReal.aviso_imagery_antiga}</>)}
-                     </p>
+                  Só entram na leitura os obstáculos na frente da fachada que cruzam a trajetória solar local.
+                  Obstáculos mais baixos que o sol naquela direção não geram alerta de bloqueio.
+                  {sombreamentoReal?.aviso_imagery_antiga && (<><br /><span className="font-semibold text-amber-700">Nota sobre o satélite:</span> {sombreamentoReal.aviso_imagery_antiga}</>)}
+                   </p>
                   
                   <div className="mt-auto shrink-0 pt-2 text-right text-[8px] font-bold uppercase tracking-widest text-ink-soft/70">Vector-X · {new Date().toLocaleDateString('pt-BR')}</div>
                 </div>
