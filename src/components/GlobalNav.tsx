@@ -4,6 +4,7 @@ import { EcomondsLogo } from "@/components/EcomondsLogo";
 const ITEMS = [
   { label: "Notícias", href: "/noticias" },
   { label: "Sobre", href: "/sobre" },
+  { label: "Educativo", href: "/educativo" },
   { label: "Certificações", href: "/referencias" },
 ] as const;
 

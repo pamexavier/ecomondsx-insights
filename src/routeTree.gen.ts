@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcervoRouteImport } from './routes/acervo'
+import { Route as EducativoRouteImport } from './routes/educativo'
 import { Route as InteligenciaRouteImport } from './routes/inteligencia'
 import { Route as NoticiasRouteImport } from './routes/noticias'
 import { Route as RadarRouteImport } from './routes/radar'
@@ -28,6 +29,11 @@ const IndexRoute = IndexRouteImport.update({
 const AcervoRoute = AcervoRouteImport.update({
   id: '/acervo',
   path: '/acervo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EducativoRoute = EducativoRouteImport.update({
+  id: '/educativo',
+  path: '/educativo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InteligenciaRoute = InteligenciaRouteImport.update({
@@ -74,6 +80,7 @@ const ApiTendenciasRoute = ApiTendenciasRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
+  '/educativo': typeof EducativoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/noticias': typeof NoticiasRoute
   '/radar': typeof RadarRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
+  '/educativo': typeof EducativoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/noticias': typeof NoticiasRoute
   '/radar': typeof RadarRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
+  '/educativo': typeof EducativoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/noticias': typeof NoticiasRoute
   '/radar': typeof RadarRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/acervo'
+    | '/educativo'
     | '/inteligencia'
     | '/noticias'
     | '/radar'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/acervo'
+    | '/educativo'
     | '/inteligencia'
     | '/noticias'
     | '/radar'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/acervo'
+    | '/educativo'
     | '/inteligencia'
     | '/noticias'
     | '/radar'
@@ -150,6 +162,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcervoRoute: typeof AcervoRoute
+  EducativoRoute: typeof EducativoRoute
   InteligenciaRoute: typeof InteligenciaRoute
   NoticiasRoute: typeof NoticiasRoute
   RadarRoute: typeof RadarRoute
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/acervo'
       fullPath: '/acervo'
       preLoaderRoute: typeof AcervoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/educativo': {
+      id: '/educativo'
+      path: '/educativo'
+      fullPath: '/educativo'
+      preLoaderRoute: typeof EducativoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inteligencia': {
@@ -238,6 +258,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcervoRoute: AcervoRoute,
+  EducativoRoute: EducativoRoute,
   InteligenciaRoute: InteligenciaRoute,
   NoticiasRoute: NoticiasRoute,
   RadarRoute: RadarRoute,

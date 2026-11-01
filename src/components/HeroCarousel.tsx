@@ -5,7 +5,7 @@ import type { ComponentType } from "react";
 /* ────────────────────────────────────────────────────────────────────────
    HeroCarousel · Integrado ao Tema Claro/Suave da Página
    Troca automática contínua (sem travar no hover/foco), ilustrações
-   leves integradas ao fundo do card e link direto para #laboratorio-3d.
+   leves integradas ao fundo do card e link direto para o Educativo.
 ──────────────────────────────────────────────────────────────────────── */
 
 interface SlideMetric {
@@ -835,7 +835,7 @@ const SLIDES: Slide[] = [
     ctaLabel: "Explorar Notícias",
     ctaHref: "/noticias",
     secondaryLabel: "Simulador 3D",
-    secondaryHref: "/sobre",
+    secondaryHref: "/educativo",
     secondaryHash: "laboratorio-3d",
     metrics: [
       { label: "Foco", value: "Eficiência & Materiais" },
@@ -855,7 +855,7 @@ const SLIDES: Slide[] = [
     ctaLabel: "Abrir Diagnóstico Solar",
     ctaHref: "/wellness-analise-solar",
     secondaryLabel: "Testar Simulador 3D",
-    secondaryHref: "/sobre",
+    secondaryHref: "/educativo",
     secondaryHash: "laboratorio-3d",
     metrics: [
       { label: "Norma Base", value: "NBR 15220 (6 Zonas)" },
@@ -875,7 +875,7 @@ const SLIDES: Slide[] = [
     ctaLabel: "Ver Certificações & Cases",
     ctaHref: "/referencias",
     secondaryLabel: "Laboratório 3D",
-    secondaryHref: "/sobre",
+    secondaryHref: "/educativo",
     secondaryHash: "laboratorio-3d",
     metrics: [
       { label: "Referências", value: "WELL · LEED · AQUA" },
