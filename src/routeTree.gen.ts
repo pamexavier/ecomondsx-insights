@@ -14,6 +14,7 @@ import { Route as AcervoRouteImport } from './routes/acervo'
 import { Route as EducativoRouteImport } from './routes/educativo'
 import { Route as InteligenciaRouteImport } from './routes/inteligencia'
 import { Route as NoticiasRouteImport } from './routes/noticias'
+import { Route as PadroesWellnessRouteImport } from './routes/padroes-wellness'
 import { Route as RadarRouteImport } from './routes/radar'
 import { Route as ReferenciasRouteImport } from './routes/referencias'
 import { Route as SobreRouteImport } from './routes/sobre'
@@ -44,6 +45,11 @@ const InteligenciaRoute = InteligenciaRouteImport.update({
 const NoticiasRoute = NoticiasRouteImport.update({
   id: '/noticias',
   path: '/noticias',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PadroesWellnessRoute = PadroesWellnessRouteImport.update({
+  id: '/padroes-wellness',
+  path: '/padroes-wellness',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RadarRoute = RadarRouteImport.update({
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/educativo': typeof EducativoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/noticias': typeof NoticiasRoute
+  '/padroes-wellness': typeof PadroesWellnessRoute
   '/radar': typeof RadarRoute
   '/referencias': typeof ReferenciasRoute
   '/sobre': typeof SobreRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/educativo': typeof EducativoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/noticias': typeof NoticiasRoute
+  '/padroes-wellness': typeof PadroesWellnessRoute
   '/radar': typeof RadarRoute
   '/referencias': typeof ReferenciasRoute
   '/sobre': typeof SobreRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/educativo': typeof EducativoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/noticias': typeof NoticiasRoute
+  '/padroes-wellness': typeof PadroesWellnessRoute
   '/radar': typeof RadarRoute
   '/referencias': typeof ReferenciasRoute
   '/sobre': typeof SobreRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/educativo'
     | '/inteligencia'
     | '/noticias'
+    | '/padroes-wellness'
     | '/radar'
     | '/referencias'
     | '/sobre'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/educativo'
     | '/inteligencia'
     | '/noticias'
+    | '/padroes-wellness'
     | '/radar'
     | '/referencias'
     | '/sobre'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/educativo'
     | '/inteligencia'
     | '/noticias'
+    | '/padroes-wellness'
     | '/radar'
     | '/referencias'
     | '/sobre'
@@ -165,6 +177,7 @@ export interface RootRouteChildren {
   EducativoRoute: typeof EducativoRoute
   InteligenciaRoute: typeof InteligenciaRoute
   NoticiasRoute: typeof NoticiasRoute
+  PadroesWellnessRoute: typeof PadroesWellnessRoute
   RadarRoute: typeof RadarRoute
   ReferenciasRoute: typeof ReferenciasRoute
   SobreRoute: typeof SobreRoute
@@ -208,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/noticias'
       fullPath: '/noticias'
       preLoaderRoute: typeof NoticiasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/padroes-wellness': {
+      id: '/padroes-wellness'
+      path: '/padroes-wellness'
+      fullPath: '/padroes-wellness'
+      preLoaderRoute: typeof PadroesWellnessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/radar': {
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   EducativoRoute: EducativoRoute,
   InteligenciaRoute: InteligenciaRoute,
   NoticiasRoute: NoticiasRoute,
+  PadroesWellnessRoute: PadroesWellnessRoute,
   RadarRoute: RadarRoute,
   ReferenciasRoute: ReferenciasRoute,
   SobreRoute: SobreRoute,

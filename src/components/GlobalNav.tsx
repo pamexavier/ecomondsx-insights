@@ -6,6 +6,7 @@ const ITEMS = [
   { label: "Sobre", href: "/sobre" },
   { label: "Educativo", href: "/educativo" },
   { label: "Certificações", href: "/referencias" },
+  { label: "Wellness", href: "/padroes-wellness" },
 ] as const;
 
 export function GlobalNav() {
