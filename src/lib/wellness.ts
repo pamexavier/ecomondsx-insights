@@ -25,7 +25,6 @@ export interface PontoSerieCo2 {
  * Balanço de massa de mistura perfeita para CO₂:
  * C(t) = C_ext + (G / Q) + (C0 - C_ext - (G / Q)) * e^(-ACH * t)
  * onde G (m³/h) = ocupantes * (geracaoLh / 1000) e Q (m³/h) = ACH * volumeM3.
- * Como 1 m³/m³ = 10⁶ ppm, a razão (G / Q) é multiplicada por 10⁶.
  */
 export function co2NoTempo(tempoH: number, params: ParametrosCo2): number {
   const volume = Math.max(0.1, params.volumeM3);
@@ -36,7 +35,6 @@ export function co2NoTempo(tempoH: number, params: ParametrosCo2): number {
   const c0 = params.c0Ppm ?? cExt;
   const t = Math.max(0, tempoH);
 
-  // G em m³/h convertida para cm³/h (ou × 10⁶ ppm·m³/h): geracaoLh * 1000
   const geracaoPpmM3h = ocupantes * geracaoLh * 1000;
 
   if (ach < 1e-6) {
@@ -96,33 +94,47 @@ export interface ParametrosVocRelativo {
   ach: number;
 }
 
+function respostaBrutaEmissaoDecaimento(t: number, k: number, ach: number): number {
+  if (t <= 0) return 0;
+  if (Math.abs(ach - k) < 1e-5) {
+    return t * Math.exp(-ach * t);
+  }
+  return (Math.exp(-k * t) - Math.exp(-ach * t)) / (ach - k);
+}
+
+function picoAnaliticoEmissaoDecaimento(k: number, ach: number): number {
+  if (Math.abs(ach - k) < 1e-5) {
+    return (1 / ach) * Math.exp(-1);
+  }
+  const tPico = Math.log(ach / k) / (ach - k);
+  return respostaBrutaEmissaoDecaimento(tPico, k, ach);
+}
+
 /**
  * Índice relativo de VOCs no tempo (adimensional, sem prometer µg/m³):
- * Normalizado para que t = 0 no cenário de referência (ACH = 0,5, intensidade = 3)
- * parta de 100, combinando carga inicial e fonte com decaimento de 1ª ordem e^(-k*t)
- * diluída pela taxa de ventilação ACH.
+ * - Parte de C(0) = 0, modelando apenas a fonte com emissão de 1ª ordem E(t) = E0 * e^(-k * t)
+ *   diluída pela renovação de ar ACH: dC/dt + ACH * C = E(t).
+ * - Normalizado pelo pico analítico do cenário de referência (ACH = 0,5 h⁻¹, intensidade = 3),
+ *   de modo que a fonte com fator 1,0 atinja exatamente 100 no pico do cenário de referência.
+ * - Sem teto artificial que achate a curva em ventilações muito baixas.
  */
 export function vocRelativoNoTempo(tempoH: number, params: ParametrosVocRelativo): number {
   const t = Math.max(0, tempoH);
+  if (t === 0) return 0;
+
   const ach = Math.max(0.05, params.ach);
   const dadosFonte = FONTES_VOC[params.fonte];
   const k = dadosFonte.kDecaimentoHora.valor;
-  const escalaIntensidade = params.intensidade / 3;
+  const achReferencia = 0.5;
 
-  const c0Relativo = 100 * escalaIntensidade * dadosFonte.fatorEmissaoRelativo.valor;
-  const taxaEmissaoInicial = c0Relativo * (0.5 + k);
+  const picoRef = picoAnaliticoEmissaoDecaimento(k, achReferencia);
+  if (picoRef <= 0) return 0;
 
-  // Solução analítica de dC/dt + ACH*C = E0 * e^(-k*t)
-  const parcelaInicial = c0Relativo * Math.exp(-ach * t);
-  let parcelaEmissao = 0;
-  if (Math.abs(ach - k) < 1e-4) {
-    parcelaEmissao = taxaEmissaoInicial * t * Math.exp(-ach * t);
-  } else {
-    parcelaEmissao =
-      (taxaEmissaoInicial / (ach - k)) * (Math.exp(-k * t) - Math.exp(-ach * t));
-  }
+  const escalaFonte =
+    100 * (params.intensidade / 3) * dadosFonte.fatorEmissaoRelativo.valor;
+  const respostaAtual = respostaBrutaEmissaoDecaimento(t, k, ach);
 
-  return Math.max(0, Math.min(140, parcelaInicial + parcelaEmissao));
+  return Math.max(0, escalaFonte * (respostaAtual / picoRef));
 }
 
 export interface ParametrosLuzNatural {
@@ -141,7 +153,7 @@ export type MotorLuzNaturalFn = (params: ParametrosLuzNatural) => number;
 /**
  * Fator de Luz do Dia médio (fórmula do BRE) em percentual (ex.: 3.5 para 3,5%):
  * FLD (%) = (T * Aw * θ) / (A_total * (1 - R²))
- * onde T = Tv * 0,8; A_total = 2*(C*L + C*PD + L*PD); θ em graus.
+ * onde T = Tv * 0,8; A_total = 2*(C*L + C*PD + L*PD); θ em graus (máximo físico de 90° para janela vertical).
  * Arquitetura desacoplada: pode ser substituída por outro motor no futuro.
  */
 export const fatorLuzDiaMedio: MotorLuzNaturalFn = ({
@@ -158,7 +170,8 @@ export const fatorLuzDiaMedio: MotorLuzNaturalFn = ({
   const l = Math.max(0.5, larguraM);
   const pd = Math.max(1.5, peDireitoM);
   const aw = Math.max(0, areaVidroM2);
-  const theta = Math.max(5, Math.min(180, anguloCeuGraus));
+  // Limite físico de 90° para abertura vertical
+  const theta = Math.max(5, Math.min(90, anguloCeuGraus));
   const r = Math.max(0.05, Math.min(0.9, refletanciaMedia));
   const tEfetivo = Math.max(0, Math.min(1, tvVidro)) * fatorCorrecaoEsquadria;
 
@@ -177,8 +190,8 @@ export function iluminanciaMedia(
 }
 
 /**
- * Perfil ilustrativo ao longo da profundidade do cômodo,
- * normalizado para que a média da curva corresponda exatamente à iluminância média calculada.
+ * Perfil meramente ilustrativo ao longo da profundidade do cômodo,
+ * normalizado para que a média da curva corresponda à iluminância média calculada.
  */
 export function perfilIlustrativoProfundidade(
   profundidadeTotalM: number,
@@ -186,7 +199,7 @@ export function perfilIlustrativoProfundidade(
   pontos = 24,
 ): { distanciaM: number; lux: number }[] {
   const prof = Math.max(1, profundidadeTotalM);
-  const k = 1.65 / prof; // decaimento exponencial ilustrativo da janela ao fundo
+  const k = 1.65 / prof;
   const brutos = Array.from({ length: pontos + 1 }, (_, i) => {
     const distanciaM = (prof * i) / pontos;
     const peso = Math.exp(-k * distanciaM);

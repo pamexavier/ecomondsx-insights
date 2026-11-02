@@ -66,6 +66,7 @@ export default function SimuladorAr({
   const co2Eq = co2EquilibrioPpm(paramsCo2);
   const serie = serieCo2NoTempo(duracaoHoras, paramsCo2, 48);
 
+  const deltaT = Math.max(0, temperaturaExternaC - setpointC);
   const cargaRenovacaoAtualW = cargaTermicaRenovacaoW(
     ach,
     volumeM3,
@@ -129,7 +130,7 @@ export default function SimuladorAr({
         </span>
       </div>
 
-      {/* Controles sincronizados com o cômodo */}
+      {/* Controles sincronizados com o cômodo (labels separados para acessibilidade) */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-1.5">
           <span className="block text-xs text-muted-foreground">Preset de cômodo</span>
@@ -152,26 +153,28 @@ export default function SimuladorAr({
           </div>
         </div>
 
-        <label className="block space-y-1.5">
-          <span className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Ocupantes no cômodo</span>
-            <span className="font-mono text-[10px]">pessoas</span>
-          </span>
-          <input
-            type="number"
-            min={0}
-            max={30}
-            step={1}
-            value={ocupantes}
-            onChange={(e) => {
-              if (e.currentTarget.value !== "" && e.currentTarget.validity.valid) {
-                onChangeOcupantes(e.currentTarget.valueAsNumber);
-              }
-            }}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm tabular-nums text-foreground"
-          />
+        <div className="space-y-2">
+          <label className="block space-y-1.5">
+            <span className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Ocupantes no cômodo</span>
+              <span className="font-mono text-[10px]">pessoas</span>
+            </span>
+            <input
+              type="number"
+              min={0}
+              max={30}
+              step={1}
+              value={ocupantes}
+              onChange={(e) => {
+                if (e.currentTarget.value !== "" && e.currentTarget.validity.valid) {
+                  onChangeOcupantes(e.currentTarget.valueAsNumber);
+                }
+              }}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm tabular-nums text-foreground"
+            />
+          </label>
           {modoSimulador === "especialista" && (
-            <div className="pt-1">
+            <label className="block space-y-1">
               <span className="flex items-center justify-between text-[10px] text-muted-foreground">
                 <span>Taxa geração CO₂/pessoa (didática)</span>
                 <span className="font-mono">L/h</span>
@@ -187,30 +190,32 @@ export default function SimuladorAr({
                     setGeracaoLh(e.currentTarget.valueAsNumber);
                   }
                 }}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1 font-mono text-xs tabular-nums text-foreground"
+                className="w-full rounded-lg border border-border bg-background px-2.5 py-1 font-mono text-xs tabular-nums text-foreground"
               />
-            </div>
+            </label>
           )}
-        </label>
+        </div>
 
         <div className="space-y-1.5">
-          <span className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Renovação de ar (ACH)</span>
-            <span className="font-mono text-[10px]">trocas/h</span>
-          </span>
-          <input
-            type="number"
-            min={0.1}
-            max={15}
-            step={0.1}
-            value={ach}
-            onChange={(e) => {
-              if (e.currentTarget.value !== "" && e.currentTarget.validity.valid) {
-                onChangeAch(e.currentTarget.valueAsNumber);
-              }
-            }}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm tabular-nums text-foreground"
-          />
+          <label className="block space-y-1.5">
+            <span className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Renovação de ar (ACH)</span>
+              <span className="font-mono text-[10px]">trocas/h</span>
+            </span>
+            <input
+              type="number"
+              min={0.1}
+              max={15}
+              step={0.1}
+              value={ach}
+              onChange={(e) => {
+                if (e.currentTarget.value !== "" && e.currentTarget.validity.valid) {
+                  onChangeAch(e.currentTarget.valueAsNumber);
+                }
+              }}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm tabular-nums text-foreground"
+            />
+          </label>
           <div className="flex flex-wrap gap-1 pt-0.5">
             {CONSTANTES_AR.atalhosAch.map((item) => (
               <button
@@ -273,23 +278,26 @@ export default function SimuladorAr({
 
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
           <span className="block text-[10px] font-semibold text-amber-700">
-            Custo térmico da ventilação (ΔT ={" "}
-            {Math.max(0, temperaturaExternaC - setpointC).toFixed(1).replace(".", ",")} K)
+            Custo térmico da ventilação (ΔT = {deltaT.toFixed(1).replace(".", ",")} K)
           </span>
           <span className="mt-0.5 block font-mono text-sm font-bold text-amber-600">
             {Math.round(cargaRenovacaoAtualW)} W{" "}
-            <span className="text-[10px] font-normal text-muted-foreground">
-              ({diferencaCargaW >= 0 ? "+" : ""}
-              {Math.round(diferencaCargaW)} W vs 0,6 ACH)
-            </span>
+            {deltaT > 0 && (
+              <span className="text-[10px] font-normal text-muted-foreground">
+                ({diferencaCargaW >= 0 ? "+" : ""}
+                {Math.round(diferencaCargaW)} W vs 0,6 ACH)
+              </span>
+            )}
           </span>
           <span className="mt-0.5 block text-[10px] text-muted-foreground">
-            Ventilar custa energia e melhora o ar.
+            {deltaT > 0
+              ? "Com ar externo mais quente, ventilar custa energia e melhora o ar."
+              : `Com T_ext (${temperaturaExternaC.toFixed(1).replace(".", ",")} °C) ≤ setpoint (${setpointC} °C), ventilar renova o ar sem adicionar carga de resfriamento.`}
           </span>
         </div>
       </div>
 
-      {/* Gráfico SVG CO₂ × Tempo + Diagrama Conceitual */}
+      {/* Gráfico SVG CO₂ × Tempo */}
       <div className="overflow-hidden rounded-2xl border border-border bg-[#09100D] p-3">
         <svg
           viewBox="0 0 620 215"
@@ -297,7 +305,6 @@ export default function SimuladorAr({
           role="img"
           aria-label="Esquema conceitual e curva de concentração de CO₂ ao longo do tempo"
         >
-          {/* Faixas visuais de referência didática */}
           <rect
             x={chartX}
             y={y800}
@@ -323,7 +330,6 @@ export default function SimuladorAr({
             fillOpacity="0.1"
           />
 
-          {/* Linhas de referência 800 e 1000 ppm */}
           <line
             x1={chartX}
             y1={y800}
@@ -364,7 +370,6 @@ export default function SimuladorAr({
             ~1000 ppm (faixa didática)
           </text>
 
-          {/* Eixos */}
           <line
             x1={chartX}
             y1={chartY}
@@ -382,7 +387,6 @@ export default function SimuladorAr({
             strokeWidth="1.2"
           />
 
-          {/* Rótulos Y */}
           {[420, 800, 1000, maxPpmGrafico].map((val) => (
             <text
               key={val}
@@ -397,7 +401,6 @@ export default function SimuladorAr({
             </text>
           ))}
 
-          {/* Rótulos X */}
           {Array.from({ length: duracaoHoras + 1 }, (_, h) => (
             <g key={h}>
               <line
@@ -420,7 +423,6 @@ export default function SimuladorAr({
             </g>
           ))}
 
-          {/* Curva C(t) */}
           <polyline
             fill="none"
             stroke="#38BDF8"

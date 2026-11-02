@@ -183,7 +183,7 @@ export const FONTES_VOC: Record<
     },
     fatorEmissaoRelativo: {
       valor: 1.0,
-      fonte: "Escala relativa normalizada",
+      fonte: "Escala relativa normalizada pelo pico da fonte (ACH 0,5 · nível 3 = 100)",
       status: "valor didático — verificar fonte",
     },
   },
@@ -198,7 +198,7 @@ export const FONTES_VOC: Record<
     },
     fatorEmissaoRelativo: {
       valor: 0.65,
-      fonte: "Escala relativa normalizada",
+      fonte: "Escala relativa proporcional à referência",
       status: "valor didático — verificar fonte",
     },
   },
@@ -213,7 +213,7 @@ export const FONTES_VOC: Record<
     },
     fatorEmissaoRelativo: {
       valor: 0.85,
-      fonte: "Escala relativa normalizada",
+      fonte: "Escala relativa proporcional à referência",
       status: "valor didático — verificar fonte",
     },
   },
@@ -223,7 +223,7 @@ export const CONSTANTES_LUZ = {
   anguloCeuPadraoGraus: {
     valor: 90,
     unidade: "graus",
-    fonte: "Céu visível sem obstrução frontal no plano vertical",
+    fonte: "Limite físico máximo de céu visível para janela vertical desobstruída (0° a 90°)",
     status: "valor didático — verificar fonte",
   } satisfies ValorReferencia,
   refletanciaMediaInterna: {
@@ -281,4 +281,16 @@ export const CONSTANTES_LUZ = {
     fonte: "Luminária LED residencial/comercial típica",
     status: "valor didático — verificar fonte",
   } satisfies ValorReferencia,
+  // TODO: verificar decomposição típica entre equipamentos e iluminação nos ganhos internos de referência.
+  parcelaEquipamentosPadraoPorComodoWm2: {
+    valor: {
+      sala: 6,
+      quarto: 2,
+      escritorio: 10,
+      banheiro: 0,
+    },
+    unidade: "W/m²",
+    fonte: "Parcela estimada apenas de equipamentos (sem iluminação) dentro dos ganhos internos padrão de cada cômodo",
+    status: "valor didático — verificar fonte",
+  } satisfies ValorReferencia<Record<TipoComodoKey, number>>,
 } as const;

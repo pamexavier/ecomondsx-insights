@@ -11,12 +11,13 @@ import {
   type TipoComodoKey,
   type TipoVidroKey,
 } from "@/data/wellness";
+import CenaBioclimatica from "@/components/CenaBioclimatica";
 
 const TrilhaWellness = lazy(() => import("@/components/wellness/TrilhaWellness"));
 
 type IrradianciaPorCidade = Partial<Record<string, Partial<Record<OrientacaoKey, number>>>>;
 
-const FATOR_CARGA_PADRAO = 0.5; // hipótese didática: fração média da carga de pico ao longo das horas de operação
+const FATOR_CARGA_PADRAO = 0.5;
 
 const ORIENTACOES: Record<
   OrientacaoKey,
@@ -203,7 +204,7 @@ function calcularSimulacao({
   fatorCarga,
 }: ParametrosSimulacao) {
   const cor = CORES_TINTA[corTinta];
-  const hExt = 25; // Coeficiente de transferência convectiva externa padrão NBR 15220: 25 W/(m²·K)
+  const hExt = 25;
   const areaPisoM2 = comprimentoM * larguraM;
   const volumeM3 = areaPisoM2 * peDireitoM;
   const areaFachadaM2 = larguraFachadaM * peDireitoM;
@@ -225,7 +226,7 @@ function calcularSimulacao({
   const ganhoSolarVidroW =
     areaVidroM2 * irradianciaVerticalWm2 * fatorSolarVidro * (1 - reducaoSolarBrise / 100);
 
-  const fatorCalorVolumetricoAr = 1200 / 3600; // ≈ 0,3333 W/(m³/h · K)
+  const fatorCalorVolumetricoAr = 1200 / 3600;
   const cargaRenovacaoArW =
     fatorCalorVolumetricoAr * renovacoesArHora * volumeM3 * diferencaTemperaturaC;
 
@@ -1067,6 +1068,7 @@ function ComodoTecnico({
 
 /* ── Componente do Simulador de Cômodos + Guia Visual de Patologias, Física e Wellness ── */
 function LaboratorioInterativo() {
+  const [hora, setHora] = useState(16);
   const [trilhaAtiva, setTrilhaAtiva] = useState<"inicio" | "simulador" | "fisica" | "wellness">(
     "inicio",
   );
@@ -1081,6 +1083,11 @@ function LaboratorioInterativo() {
     }, 120);
     return () => window.clearTimeout(timer);
   }, []);
+
+  const [abaAjusteAtiva, setAbaAjusteAtiva] = useState<
+    "dimensoes" | "envoltoria" | "hvac" | "memoria" | null
+  >("envoltoria");
+
   const [tipoComodo, setTipoComodo] = useState<TipoComodoKey>("sala");
   const [orientacao, setOrientacao] = useState<OrientacaoKey>("O");
   const [modoSimulador, setModoSimulador] = useState<"simples" | "especialista">("simples");
@@ -1125,6 +1132,12 @@ function LaboratorioInterativo() {
     energiaKwh: number;
     descricao: string;
   } | null>(null);
+
+  function irradianciaNaHora(hora: number, o: OrientacaoKey, fator = 1) {
+    if (hora < 6 || hora > 18) return 0;
+    const { irradianciaReferenciaWm2: ref, horaPico } = ORIENTACOES[o];
+    return ref * fator * Math.exp(-(((hora - horaPico) / 3) ** 2));
+  }
 
   function selecionarTipoComodo(novoTipo: TipoComodoKey) {
     const preset = TIPOS_COMODO[novoTipo];
@@ -1174,17 +1187,16 @@ function LaboratorioInterativo() {
   const temperaturaMaximaModelo = condicaoClimatica === "quente" ? 34 : 29;
   const temperaturaModelo =
     modoSimulador === "simples"
-      ? temperaturaArNaHora(dadosOri.horaPico, temperaturaMinimaModelo, temperaturaMaximaModelo)
+      ? temperaturaArNaHora(hora, temperaturaMinimaModelo, temperaturaMaximaModelo)
       : temperaturaExternaC;
+
   const irradianciaModelo =
     modoSimulador === "simples"
-      ? condicaoClimatica === "quente"
-        ? irradianciaReferencia(orientacao)
-        : Math.round(irradianciaReferencia(orientacao) * 0.75)
+      ? Math.round(irradianciaNaHora(hora, orientacao, condicaoClimatica === "quente" ? 1 : 0.75))
       : irradianciaVerticalWm2;
   const fatorCargaModelo = modoSimulador === "especialista" ? fatorCarga : FATOR_CARGA_PADRAO;
   const horarioConsiderado =
-    modoSimulador === "simples" ? `pico às ${dadosOri.horaPico}h` : "horário manual";
+    modoSimulador === "simples" ? `${Math.floor(hora)}h` : "horário manual";
 
   const simulacaoValida = areaVidroM2 <= areaFachadaM2 * 0.8 + 0.01;
   const simulacao = simulacaoValida
@@ -1233,16 +1245,66 @@ function LaboratorioInterativo() {
     "Cargas internas": "Pessoas, iluminação e aparelhos",
   };
 
+  function trocarModo(novo: "simples" | "especialista") {
+    setModoSimulador(novo);
+    if (novo === "simples") {
+      setUVidro(VIDROS[tipoVidro].u);
+      setFatorSolarVidro(VIDROS[tipoVidro].fs);
+      if (abaAjusteAtiva === "hvac") {
+        setAbaAjusteAtiva("envoltoria");
+      }
+    } else {
+      setAreaVidroInformadaM2(Number(((areaFachadaM2 * percentualVidroSimples) / 100).toFixed(1)));
+    }
+  }
+
+  const pill = (ativo: boolean) =>
+    `rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+      ativo
+        ? "border-primary bg-primary text-primary-foreground"
+        : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+    }`;
+
   return (
     <section id="laboratorio-3d" className="mb-16 sm:mb-24 scroll-mt-24">
-      <div className="flex items-center gap-3 mb-3">
-        <span className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-primary">
-          Espaço educativo · arquitetura e bem-estar
-        </span>
-        <span className="hidden sm:inline-block h-px w-16 bg-border" />
-      </div>
+      {/* 1. BOTÃO VOLTAR "TODOS OS TEMAS" EM DESTAQUE NO TOPO QUANDO DENTRO DE UMA TRILHA */}
+      {trilhaAtiva !== "inicio" && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-4">
+          <button
+            type="button"
+            onClick={() => setTrilhaAtiva("inicio")}
+            className="inline-flex items-center gap-2.5 rounded-full border-2 border-primary/40 bg-primary/10 px-4 py-2 text-xs sm:text-sm font-bold text-primary shadow-sm transition-all hover:-translate-x-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground cursor-pointer"
+          >
+            <span aria-hidden="true" className="text-base leading-none">
+              ←
+            </span>
+            Todos os temas
+          </button>
 
-      <h2 className="max-w-3xl text-display text-2xl font-extrabold leading-tight sm:text-3xl md:text-4xl mb-2 sm:mb-3">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            {trilhaAtiva === "simulador"
+              ? "Trilha 01 · Simulador Bioclimático"
+              : trilhaAtiva === "fisica"
+                ? "Trilha 02 · Física Descomplicada"
+                : "Trilha 03 · Wellness e Ambientes"}
+          </span>
+        </div>
+      )}
+
+      {trilhaAtiva === "inicio" && (
+        <div className="mb-2 flex items-center gap-3">
+          <span className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-primary">
+            Espaço educativo · arquitetura e bem-estar
+          </span>
+          <span className="hidden sm:inline-block h-px w-16 bg-border" />
+        </div>
+      )}
+
+      <h2
+        className={`mb-3 max-w-3xl text-display font-extrabold leading-tight ${
+          trilhaAtiva === "inicio" ? "text-2xl sm:text-3xl md:text-4xl" : "text-xl sm:text-2xl"
+        }`}
+      >
         {trilhaAtiva === "inicio"
           ? "Aprenda, explore e entenda os ambientes."
           : trilhaAtiva === "simulador"
@@ -1251,17 +1313,14 @@ function LaboratorioInterativo() {
               ? "Física descomplicada"
               : "Wellness e qualidade dos ambientes"}
       </h2>
-      <p className="mb-5 max-w-3xl text-xs leading-relaxed text-muted-foreground sm:mb-8 sm:text-base">
-        {trilhaAtiva === "inicio"
-          ? "Escolha um tema para começar. Explore o balanço térmico do cômodo, fenômenos físicos da envoltória ou qualidade do ar e iluminação."
-          : trilhaAtiva === "simulador"
-            ? "Escolha um cômodo (sala, dormitório, escritório ou banheiro) para carregar suas medidas padrão ou personalize dimensões, orientação solar, cores e aberturas com cálculo físico em regime estacionário."
-            : trilhaAtiva === "fisica"
-              ? "Veja conceitos de calor, umidade e luz explicados com diagramas. Cada tema destaca o que influencia o fenômeno e o que não dá para concluir apenas pelo desenho."
-              : "Explore como a taxa de renovação de ar (CO₂), a diluição relativa de compostos orgânicos voláteis (VOCs) e o equilíbrio entre luz natural, luz artificial e ofuscamento se conectam ao mesmo cômodo."}
-      </p>
+      {trilhaAtiva === "inicio" && (
+        <p className="mb-6 max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
+          Escolha um tema para começar. Explore o balanço térmico do cômodo, fenômenos físicos da
+          envoltória ou qualidade do ar e iluminação.
+        </p>
+      )}
 
-      {trilhaAtiva === "inicio" ? (
+      {trilhaAtiva === "inicio" && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[
             {
@@ -1296,7 +1355,7 @@ function LaboratorioInterativo() {
               key={card.id}
               type="button"
               onClick={() => setTrilhaAtiva(card.id)}
-              className="group flex min-h-48 flex-col rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="group flex min-h-48 flex-col rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
             >
               <span className="flex w-full items-center justify-between">
                 <span
@@ -1322,14 +1381,6 @@ function LaboratorioInterativo() {
             </button>
           ))}
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setTrilhaAtiva("inicio")}
-          className="mb-5 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-        >
-          <span aria-hidden="true">←</span> Todos os temas
-        </button>
       )}
 
       {trilhaAtiva === "wellness" && (
@@ -1369,259 +1420,242 @@ function LaboratorioInterativo() {
       )}
 
       {trilhaAtiva === "simulador" && (
-        <>
-          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="mb-2 text-mono text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                Escolha o tipo de cômodo (carrega medidas padrão editáveis)
-              </p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {(Object.keys(TIPOS_COMODO) as TipoComodoKey[]).map((key) => {
-                  const item = TIPOS_COMODO[key];
-                  const ativo = tipoComodo === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => selecionarTipoComodo(key)}
-                      aria-pressed={ativo}
-                      className={`rounded-2xl border p-3 text-left transition-all cursor-pointer ${
-                        ativo
-                          ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30"
-                          : "border-border bg-card hover:border-primary/40"
-                      }`}
-                    >
-                      <span className="block text-xs font-extrabold text-foreground">
-                        {item.nome}
-                      </span>
-                      <span className="mt-0.5 block font-mono text-[10px] text-primary">
-                        {item.comprimentoPadraoM.toFixed(1).replace(".", ",")} ×{" "}
-                        {item.larguraPadraoM.toFixed(1).replace(".", ",")} m · PD{" "}
-                        {item.peDireitoPadraoM.toFixed(1).replace(".", ",")} m
-                      </span>
-                      <span className="mt-1 block text-[10px] text-muted-foreground">
-                        {item.subtitulo}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+        <div className="space-y-5">
+          {/* Faixa compacta de cômodo e modo de simulação */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="C&#244;modo">
+              {(Object.keys(TIPOS_COMODO) as TipoComodoKey[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => selecionarTipoComodo(key)}
+                  aria-pressed={tipoComodo === key}
+                  className={pill(tipoComodo === key)}
+                >
+                  {TIPOS_COMODO[key].nome}
+                </button>
+              ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-1.5 sm:w-80 shrink-0">
+            <div
+              className="inline-flex gap-0.5 rounded-full border border-border bg-card p-0.5"
+              role="group"
+              aria-label="Modo"
+            >
               {[
-                { key: "simples" as const, label: "Modo guiado", help: "Opções arquitetônicas" },
-                {
-                  key: "especialista" as const,
-                  label: "Modo engenharia",
-                  help: "U, FS, W/m² e ACH",
-                },
-              ].map((item) => (
+                { k: "simples" as const, l: "Guiado" },
+                { k: "especialista" as const, l: "Engenharia" },
+              ].map((modo) => (
                 <button
-                  key={item.key}
+                  key={modo.k}
                   type="button"
-                  onClick={() => {
-                    setModoSimulador(item.key);
-                    if (item.key === "simples") {
-                      setUVidro(VIDROS[tipoVidro].u);
-                      setFatorSolarVidro(VIDROS[tipoVidro].fs);
-                    } else {
-                      setAreaVidroInformadaM2(
-                        Number(((areaFachadaM2 * percentualVidroSimples) / 100).toFixed(1)),
-                      );
-                    }
-                  }}
-                  aria-pressed={modoSimulador === item.key}
-                  className={`rounded-xl px-3 py-2 text-left transition-colors ${
-                    modoSimulador === item.key
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted"
+                  onClick={() => trocarModo(modo.k)}
+                  aria-pressed={modoSimulador === modo.k}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold cursor-pointer ${
+                    modoSimulador === modo.k
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
-                  <span className="block text-xs font-bold">{item.label}</span>
-                  <span
-                    className={`mt-0.5 block text-[10px] ${
-                      modoSimulador === item.key ? "text-primary-foreground/80" : ""
-                    }`}
-                  >
-                    {item.help}
-                  </span>
+                  {modo.l}
                 </button>
               ))}
             </div>
+
+            <span className="text-xs text-muted-foreground">
+              {comprimentoM.toFixed(1).replace(".", ",")} &times;{" "}
+              {larguraM.toFixed(1).replace(".", ",")} m · {areaPisoM2.toFixed(1).replace(".", ",")}{" "}
+              m&#178;
+            </span>
           </div>
 
-          <div className="sticky top-[58px] z-30 mb-5 rounded-2xl border border-emerald-900/15 bg-background/95 p-2.5 shadow-lg shadow-black/10 backdrop-blur-md md:top-[78px] sm:p-3.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-mono text-[9px] font-bold uppercase tracking-[0.14em] text-primary">
-                  Balanço térmico estacionário · {dadosComodo.nome} (
-                  {areaPisoM2.toFixed(1).replace(".", ",")} m²)
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  {`${horarioConsiderado} · T_ext = ${temperaturaModelo.toFixed(1).replace(".", ",")} °C · T_interna = ${setpointC} °C · I_fachada = ${irradianciaModelo} W/m²${cenarioBase ? " · Comparando com a base salva" : ""}`}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => selecionarTipoComodo(tipoComodo)}
-                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                >
-                  Restaurar padrão ({dadosComodo.nome})
-                </button>
-                <button
-                  type="button"
-                  disabled={!simulacao}
-                  onClick={() => {
-                    if (simulacao) {
-                      setCenarioBase({
-                        cargaW: simulacao.cargaSensibleTotalW,
-                        energiaKwh: simulacao.consumoMensalEstimadoKwh,
-                        descricao: `${dadosComodo.nome} (${comprimentoM} × ${larguraM} m) · fachada ${dadosOri.nome} · vidro ${areaVidroM2.toFixed(1)} m² · ${dadosCor.nome} · ${dadosEnv.nome}`,
-                      });
-                    }
-                  }}
-                  className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {cenarioBase ? "Atualizar base" : "Fixar cenário para comparar"}
-                </button>
-                {cenarioBase && (
-                  <button
-                    type="button"
-                    onClick={() => setCenarioBase(null)}
-                    className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
-                  >
-                    Limpar base
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {[
-                {
-                  label: "Carga térmica sensível de pico",
-                  value: simulacao
-                    ? `${Math.round(cargaSensibleTotalW)} W (${Math.round(capacidadeTermicaBtuH).toLocaleString("pt-BR")} BTU/h)`
-                    : "—",
-                  color: "text-orange-600",
-                },
-                {
-                  label: "Densidade por área",
-                  value: simulacao ? `${densidadeCargaWm2.toFixed(1).replace(".", ",")} W/m²` : "—",
-                  color: "text-emerald-700",
-                },
-                {
-                  label: "Ganho solar total",
-                  value: simulacao ? `${Math.round(ganhoSolarTotalW)} W` : "—",
-                  color: "text-amber-600",
-                },
-                {
-                  label: `Consumo elétrico estimado (fator de carga ${Math.round(fatorCargaModelo * 100)}%)`,
-                  value: simulacao ? `${consumoMensalEstimadoKwh.toFixed(0)} kWh/mês` : "—",
-                  color: "text-sky-700",
-                },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex flex-col justify-between rounded-xl border border-border bg-card px-3 py-2"
-                >
-                  <span className="text-[9px] font-medium text-muted-foreground sm:text-[10px]">
-                    {item.label}
-                  </span>
-                  <span
-                    className={`mt-0.5 font-mono text-xs font-bold tabular-nums sm:text-sm ${item.color}`}
-                  >
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {cenarioBase && simulacao && (
-              <p className="mt-2 text-[10px] text-muted-foreground">
-                Diferença para a base ({cenarioBase.descricao}):{" "}
-                <strong className="font-mono text-foreground">
-                  {simulacao.cargaSensibleTotalW - cenarioBase.cargaW > 0 ? "+" : ""}
-                  {(simulacao.cargaSensibleTotalW - cenarioBase.cargaW).toFixed(0)} W
-                </strong>
-                {" · "}
-                <strong className="font-mono text-foreground">
-                  {simulacao.consumoMensalEstimadoKwh - cenarioBase.energiaKwh > 0 ? "+" : ""}
-                  {(simulacao.consumoMensalEstimadoKwh - cenarioBase.energiaKwh).toFixed(1)} kWh/mês
-                </strong>
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-5">
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <div className="w-full px-2 py-2 sm:px-6 sm:py-4">
-                <ComodoTecnico
-                  tipoComodo={tipoComodo}
-                  corExterna={dadosCor.hex}
-                  corInterna={dadosCor.hexInterno}
-                  corSombra={dadosCor.hexSombra}
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start">
+            <div className="sticky top-20 z-20 self-start">
+              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-md">
+                <CenaBioclimatica
+                  hora={hora}
                   orientacao={orientacao}
+                  tipoComodo={tipoComodo}
+                  corParede={dadosCor.hex}
                   envoltoria={envoltoria}
-                  larguraFachadaM={larguraFachadaM}
-                  profundidadeM={profundidadeComodoM}
-                  alturaM={peDireitoM}
-                  areaEnvidracada={areaVidroM2}
-                  areaFachada={areaFachadaM2}
-                  quantidadeJanelas={quantidadeJanelas}
-                  sombreamento={reducaoSolarBrise}
-                  posicaoJanelas={posicaoJanelas}
-                  temperaturaSolArC={temperaturaSolArC}
+                  percentualVidro={percentualVidroEfetivo}
+                  reducaoSolarBrise={reducaoSolarBrise}
+                  intensidadeSolar={Math.min(1, irradianciaModelo / 700)}
+                  calor={Math.min(1, Math.max(0, (densidadeCargaWm2 - 40) / 120))}
                 />
-              </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] text-slate-600 sm:px-6">
-                <span>{dadosComodo.notaTecnica}</span>
-                <span className="font-mono">
-                  U_parede: {uParede.toFixed(2).replace(".", ",")} W/(m²·K) · α_tinta:{" "}
-                  {dadosCor.alpha.toFixed(2).replace(".", ",")} · U_vidro:{" "}
-                  {uVidro.toFixed(2).replace(".", ",")} W/(m²·K) · FS:{" "}
-                  {fatorSolarVidro.toFixed(2).replace(".", ",")} · Tv:{" "}
-                  {VIDROS[tipoVidro].tv.toFixed(2).replace(".", ",")}
-                </span>
+                <div className="space-y-3 p-3">
+                  <div>
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800">
+                      Resultado ao vivo · {dadosComodo.nome} (
+                      {areaPisoM2.toFixed(1).replace(".", ",")} m²)
+                    </p>
+                    <p className="text-[11px] text-slate-600">
+                      {`${horarioConsiderado} · T_ext ${temperaturaModelo.toFixed(1).replace(".", ",")} °C · Setpoint ${setpointC} °C · I_fachada ${irradianciaModelo} W/m²`}
+                    </p>
+                  </div>
+
+                  <label className="flex items-center gap-3 text-sm">
+                    <span className="w-10 font-bold tabular-nums">
+                      {String(Math.floor(hora)).padStart(2, "0")}h
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={24}
+                      step={0.5}
+                      value={hora}
+                      onChange={(event) => setHora(Number(event.currentTarget.value))}
+                      className="w-full accent-primary"
+                      aria-label="Hora do dia"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      {
+                        label: "Carga térmica de pico",
+                        value: simulacao
+                          ? `${Math.round(cargaSensibleTotalW)} W (${Math.round(capacidadeTermicaBtuH).toLocaleString("pt-BR")} BTU/h)`
+                          : "—",
+                        color: "text-orange-600",
+                      },
+                      {
+                        label: "Densidade por área",
+                        value: simulacao
+                          ? `${densidadeCargaWm2.toFixed(1).replace(".", ",")} W/m²`
+                          : "—",
+                        color: "text-emerald-700",
+                      },
+                      {
+                        label: "Ganho solar total",
+                        value: simulacao ? `${Math.round(ganhoSolarTotalW)} W` : "—",
+                        color: "text-amber-600",
+                      },
+                      {
+                        label: "Consumo estimado",
+                        value: simulacao ? `${consumoMensalEstimadoKwh.toFixed(0)} kWh/mês` : "—",
+                        color: "text-sky-700",
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-xl border border-slate-200 bg-white px-2 py-1.5"
+                      >
+                        <span className="block text-[10px] font-medium text-slate-500">
+                          {item.label}
+                        </span>
+                        <span
+                          className={`mt-0.5 block font-mono text-xs font-bold tabular-nums ${item.color}`}
+                        >
+                          {item.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => selecionarTipoComodo(tipoComodo)}
+                      className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 hover:border-emerald-600 cursor-pointer"
+                    >
+                      Restaurar padrão
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!simulacao}
+                      onClick={() => {
+                        if (simulacao) {
+                          setCenarioBase({
+                            cargaW: simulacao.cargaSensibleTotalW,
+                            energiaKwh: simulacao.consumoMensalEstimadoKwh,
+                            descricao: `${dadosComodo.nome} · fachada ${dadosOri.nome} · ${dadosCor.nome}`,
+                          });
+                        }
+                      }}
+                      className="flex-1 rounded-lg bg-emerald-700 px-2 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 disabled:opacity-50 cursor-pointer"
+                    >
+                      {cenarioBase ? "Atualizar base" : "Comparar cenário"}
+                    </button>
+                    {cenarioBase && (
+                      <button
+                        type="button"
+                        onClick={() => setCenarioBase(null)}
+                        className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 cursor-pointer"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+
+                  {cenarioBase && simulacao && (
+                    <p className="text-[11px] text-slate-600">
+                      Diferença para a base ({cenarioBase.descricao}):{" "}
+                      <strong className="font-mono text-slate-900">
+                        {simulacao.cargaSensibleTotalW - cenarioBase.cargaW > 0 ? "+" : ""}
+                        {(simulacao.cargaSensibleTotalW - cenarioBase.cargaW).toFixed(0)} W
+                      </strong>
+                      {" · "}
+                      <strong className="font-mono text-slate-900">
+                        {simulacao.consumoMensalEstimadoKwh - cenarioBase.energiaKwh > 0 ? "+" : ""}
+                        {(simulacao.consumoMensalEstimadoKwh - cenarioBase.energiaKwh).toFixed(
+                          1,
+                        )}{" "}
+                        kWh/mês
+                      </strong>
+                    </p>
+                  )}
+
+                  <div className="border-t border-slate-200 pt-2 text-[10px] text-slate-600">
+                    <p>{dadosComodo.notaTecnica}</p>
+                    <p className="mt-1 font-mono">
+                      U_parede: {uParede.toFixed(2).replace(".", ",")} · α_tinta:{" "}
+                      {dadosCor.alpha.toFixed(2).replace(".", ",")} · U_vidro:{" "}
+                      {uVidro.toFixed(2).replace(".", ",")} · FS:{" "}
+                      {fatorSolarVidro.toFixed(2).replace(".", ",")} · Tv:{" "}
+                      {VIDROS[tipoVidro].tv.toFixed(2).replace(".", ",")}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="rounded-3xl border border-border bg-card p-4 sm:p-6">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
-                <div>
-                  <p className="text-mono text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                    {modoSimulador === "simples"
-                      ? `Configuração do cômodo · ${dadosComodo.nome}`
-                      : `Parâmetros de engenharia · ${dadosComodo.nome}`}
-                  </p>
-                  <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-                    As medidas padrão de <strong>{dadosComodo.nome.toLowerCase()}</strong> já estão
-                    carregadas, mas você pode alterar livremente dimensões, orientação, cores,
-                    posição das janelas e materiais abaixo.
-                  </p>
-                </div>
-                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-mono text-[8px] font-bold uppercase tracking-wider text-emerald-700">
-                  NBR 15220 / ASHRAE Sol-Ar
-                </span>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: "envoltoria" as const, titulo: "Parede e janelas" },
+                  { id: "dimensoes" as const, titulo: "Medidas e clima" },
+                  ...(modoSimulador === "especialista"
+                    ? [{ id: "hvac" as const, titulo: "Ar e energia" }]
+                    : []),
+                  { id: "memoria" as const, titulo: "Como foi calculado" },
+                ].map((aba) => (
+                  <button
+                    key={aba.id}
+                    type="button"
+                    onClick={() => setAbaAjusteAtiva(aba.id)}
+                    aria-pressed={abaAjusteAtiva === aba.id}
+                    className={pill(abaAjusteAtiva === aba.id)}
+                  >
+                    {aba.titulo}
+                  </button>
+                ))}
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <section className="space-y-3 rounded-2xl border border-border bg-background/50 p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-foreground">
-                      01 · Dimensões do cômodo, orientação e clima
+              {/* Painel 1: Dimensões, Orientação e Clima */}
+              {abaAjusteAtiva === "dimensoes" && (
+                <section className="space-y-4 rounded-2xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+                    <h3 className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-primary">
+                      Dimensões do cômodo, orientação solar e clima
                     </h3>
-                    <span className="font-mono text-[10px] text-primary">
+                    <span className="font-mono text-xs text-muted-foreground">
                       Área: {areaPisoM2.toFixed(1).replace(".", ",")} m² · Vol.:{" "}
                       {(areaPisoM2 * peDireitoM).toFixed(1).replace(".", ",")} m³
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Altere as medidas caso o seu cômodo seja diferente do tamanho padrão.
-                  </p>
+
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <NumberControl
                       label="Comprimento"
@@ -1651,106 +1685,109 @@ function LaboratorioInterativo() {
                       onChange={setPeDireitoM}
                     />
                   </div>
-                  <div>
-                    <p className="mb-2 text-xs text-muted-foreground">
-                      Qual parede do cômodo está voltada para o exterior (fachada)?
-                    </p>
-                    <div className="mb-3 grid grid-cols-2 gap-2">
-                      {[
-                        {
-                          key: "largura" as const,
-                          label: `Parede da largura · ${larguraM.toFixed(1).replace(".", ",")} m`,
-                        },
-                        {
-                          key: "comprimento" as const,
-                          label: `Parede do comprimento · ${comprimentoM.toFixed(1).replace(".", ",")} m`,
-                        },
-                      ].map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          onClick={() => setLadoFachada(item.key)}
-                          aria-pressed={ladoFachada === item.key}
-                          className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
-                            ladoFachada === item.key
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border text-muted-foreground hover:border-primary/40"
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mb-1 text-xs text-muted-foreground">
-                      Orientação solar da fachada
-                    </p>
-                    <p className="mb-2 text-[10px] leading-relaxed text-muted-foreground">
-                      Irradiância vertical de referência da fachada selecionada.
-                    </p>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {(Object.keys(ORIENTACOES) as OrientacaoKey[]).map((key) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => {
-                            setOrientacao(key);
-                            setIrradianciaVerticalWm2(ORIENTACOES[key].irradianciaReferenciaWm2);
-                          }}
-                          aria-pressed={orientacao === key}
-                          className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors ${
-                            orientacao === key
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border text-muted-foreground hover:border-primary/40"
-                          }`}
-                        >
-                          {key} · {ORIENTACOES[key].nome}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-1 text-[9px] leading-relaxed text-muted-foreground">
-                      {dadosOri.fonte} · {dadosOri.status}
-                    </p>
-                  </div>
 
-                  {modoSimulador === "simples" ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <p className="mb-2 text-xs font-medium text-foreground">
-                        Condição climática externa
+                      <p className="mb-2 text-xs text-muted-foreground">
+                        Qual parede está voltada para o exterior (fachada)?
                       </p>
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           {
-                            key: "amena" as const,
-                            label: "Dia ameno (máx. 29 °C)",
-                            detail: `Pico às ${dadosOri.horaPico}h · T_ext ${temperaturaArNaHora(dadosOri.horaPico, 21, 29).toFixed(1).replace(".", ",")} °C · I_vertical = ${Math.round(irradianciaReferencia(orientacao) * 0.75)} W/m²`,
+                            key: "largura" as const,
+                            label: `Largura (${larguraM.toFixed(1).replace(".", ",")} m)`,
                           },
                           {
-                            key: "quente" as const,
-                            label: "Dia quente de verão (máx. 34 °C)",
-                            detail: `Pico às ${dadosOri.horaPico}h · T_ext ${temperaturaArNaHora(dadosOri.horaPico, 24, 34).toFixed(1).replace(".", ",")} °C · I_vertical = ${irradianciaReferencia(orientacao)} W/m²`,
+                            key: "comprimento" as const,
+                            label: `Comprimento (${comprimentoM.toFixed(1).replace(".", ",")} m)`,
                           },
                         ].map((item) => (
                           <button
                             key={item.key}
                             type="button"
-                            onClick={() => setCondicaoClimatica(item.key)}
-                            aria-pressed={condicaoClimatica === item.key}
-                            className={`rounded-xl border p-3 text-left ${
-                              condicaoClimatica === item.key
-                                ? "border-primary bg-primary/5"
-                                : "border-border hover:border-primary/40"
+                            onClick={() => setLadoFachada(item.key)}
+                            aria-pressed={ladoFachada === item.key}
+                            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+                              ladoFachada === item.key
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border text-muted-foreground hover:border-primary/40"
                             }`}
                           >
-                            <span className="block text-xs font-semibold text-foreground">
-                              {item.label}
-                            </span>
-                            <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground">
-                              {item.detail}
-                            </span>
+                            {item.label}
                           </button>
                         ))}
                       </div>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-xs text-muted-foreground">
+                        Orientação solar da fachada
+                      </p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {(Object.keys(ORIENTACOES) as OrientacaoKey[]).map((key) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                              setOrientacao(key);
+                              setIrradianciaVerticalWm2(ORIENTACOES[key].irradianciaReferenciaWm2);
+                            }}
+                            aria-pressed={orientacao === key}
+                            className={`rounded-lg border px-2 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+                              orientacao === key
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border text-muted-foreground hover:border-primary/40"
+                            }`}
+                          >
+                            {key} · {ORIENTACOES[key].nome}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {modoSimulador === "simples" ? (
+                    <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                      <div>
+                        <p className="mb-2 text-xs font-medium text-foreground">
+                          Condição climática externa
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            {
+                              key: "amena" as const,
+                              label: "Dia ameno (máx. 29 °C)",
+                              detail: `T_ext ${temperaturaArNaHora(dadosOri.horaPico, 21, 29).toFixed(1).replace(".", ",")} °C`,
+                            },
+                            {
+                              key: "quente" as const,
+                              label: "Dia quente (máx. 34 °C)",
+                              detail: `T_ext ${temperaturaArNaHora(dadosOri.horaPico, 24, 34).toFixed(1).replace(".", ",")} °C`,
+                            },
+                          ].map((item) => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setCondicaoClimatica(item.key)}
+                              aria-pressed={condicaoClimatica === item.key}
+                              className={`rounded-xl border p-2.5 text-left cursor-pointer ${
+                                condicaoClimatica === item.key
+                                  ? "border-primary bg-primary/10"
+                                  : "border-border hover:border-primary/40"
+                              }`}
+                            >
+                              <span className="block text-xs font-semibold text-foreground">
+                                {item.label}
+                              </span>
+                              <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground">
+                                {item.detail}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
                         <NumberControl
                           label="Pessoas no cômodo"
                           value={ocupantes}
@@ -1766,13 +1803,13 @@ function LaboratorioInterativo() {
                           min={0}
                           max={24}
                           step={1}
-                          unit="horas/dia"
+                          unit="h/dia"
                           onChange={setHorasOperacaoDia}
                         />
                       </div>
                     </div>
                   ) : (
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-2 pt-2">
                       <NumberControl
                         label="Temperatura externa do ar"
                         value={temperaturaExternaC}
@@ -1794,499 +1831,418 @@ function LaboratorioInterativo() {
                     </div>
                   )}
                 </section>
+              )}
 
-                <section className="space-y-3 rounded-2xl border border-border bg-background/50 p-4">
-                  <h3 className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-foreground">
-                    02 · Envoltória, cor externa e janelas do cômodo
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    A cor altera a absortância solar (α) e a temperatura Sol-Ar da parede; a
-                    envoltória define a transmitância térmica (U).
-                  </p>
-                  <div className="grid grid-cols-1 gap-1.5">
-                    {(Object.keys(ENVOLTORIAS) as EnvoltoriaKey[]).map((key) => {
-                      const item = ENVOLTORIAS[key];
-                      const ativo = envoltoria === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => {
-                            setEnvoltoria(key);
-                            setUParede(item.u);
-                          }}
-                          aria-pressed={ativo}
-                          className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${
-                            ativo
-                              ? "border-primary bg-primary/10"
-                              : "border-border hover:border-primary/40"
-                          }`}
-                        >
-                          <span className="min-w-0">
-                            <span className="block text-xs font-semibold text-foreground">
-                              {item.nome}
-                            </span>
-                            <span className="block text-[10px] text-muted-foreground">
-                              {item.detalhe}
-                            </span>
-                          </span>
-                          <span className="shrink-0 font-mono text-[10px] font-bold text-primary">
-                            {item.transmitancia}
-                          </span>
-                        </button>
-                      );
-                    })}
+              {/* Painel 2: Parede, Cor e Janelas */}
+              {abaAjusteAtiva === "envoltoria" && (
+                <section className="space-y-4 rounded-2xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+                    <h3 className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-primary">
+                      Envoltória (parede), cor externa e janelas
+                    </h3>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      Vidro: {areaVidroM2.toFixed(1).replace(".", ",")} m² (
+                      {Math.round(percentualVidroEfetivo)}%)
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    {(Object.keys(CORES_TINTA) as CorTintaKey[]).map((key) => {
-                      const item = CORES_TINTA[key];
-                      const ativo = corTinta === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setCorTinta(key)}
-                          aria-pressed={ativo}
-                          className={`flex min-w-0 items-center gap-2 rounded-lg border p-2 text-left ${
-                            ativo
-                              ? "border-primary bg-primary/10"
-                              : "border-border hover:border-primary/40"
-                          }`}
-                        >
-                          <span
-                            className="size-4 shrink-0 rounded-full border border-black/20"
-                            style={{ backgroundColor: item.hex }}
-                          />
-                          <span className="min-w-0">
-                            <span className="block truncate text-[10px] font-semibold text-foreground">
-                              {item.nome}
-                            </span>
-                            <span className="block font-mono text-[9px] text-muted-foreground">
-                              α = {item.alpha.toFixed(2).replace(".", ",")}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {modoSimulador === "simples" ? (
+                  <div className="grid gap-4 lg:grid-cols-2">
                     <div className="space-y-3">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="block space-y-1.5">
-                          <span className="block text-xs text-muted-foreground">
-                            Proporção de janelas na fachada
-                          </span>
-                          <select
-                            value={percentualVidroSimples}
-                            onChange={(event) =>
-                              setPercentualVidroSimples(Number(event.currentTarget.value))
-                            }
-                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                          >
-                            <option value={12}>Janela reduzida / banheiro · 12%</option>
-                            <option value={25}>Janela padrão de quarto · 25%</option>
-                            <option value={30}>Janela média de sala · 30%</option>
-                            <option value={35}>Janela ampla de escritório · 35%</option>
-                            <option value={50}>Fachada bastante envidraçada · 50%</option>
-                            <option value={70}>Pano de vidro extenso · 70%</option>
-                          </select>
-                        </label>
-                        <label className="block space-y-1.5">
-                          <span className="block text-xs text-muted-foreground">
-                            Quantidade de módulos/folhas
-                          </span>
-                          <select
-                            value={quantidadeJanelas}
-                            onChange={(event) =>
-                              setQuantidadeJanelas(Number(event.currentTarget.value))
-                            }
-                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                          >
-                            <option value={1}>1 abertura</option>
-                            <option value={2}>2 aberturas</option>
-                            <option value={3}>3 aberturas</option>
-                          </select>
-                        </label>
-                      </div>
-                      <label className="block space-y-1.5">
-                        <span className="block text-xs text-muted-foreground">
-                          Posição das janelas na parede
-                        </span>
-                        <select
-                          value={posicaoJanelas}
-                          onChange={(event) => {
-                            const value = event.currentTarget.value;
-                            if (
-                              value === "centro" ||
-                              value === "altas" ||
-                              value === "baixas" ||
-                              value === "distribuidas"
-                            ) {
-                              setPosicaoJanelas(value);
-                            }
-                          }}
-                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                        >
-                          <option value="centro">
-                            Centralizadas a meia altura (peitoril padrão)
-                          </option>
-                          <option value="altas">Janelas altas (próximas ao teto / maxim-ar)</option>
-                          <option value="baixas">Peitoril baixo / porta-janela</option>
-                          <option value="distribuidas">Distribuídas ao longo da parede</option>
-                        </select>
-                      </label>
-                      <div>
-                        <p className="mb-2 text-xs text-muted-foreground">
-                          Sombreamento externo (beiral, marquise ou brise)
-                        </p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { label: "Sem proteção (0%)", value: 0 },
-                            { label: "Beiral / marquise (-40%)", value: 40 },
-                            { label: "Brise externo (-70%)", value: 70 },
-                          ].map((item) => (
+                      <p className="text-xs font-semibold text-foreground">
+                        Composição da parede e cor externa
+                      </p>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {(Object.keys(ENVOLTORIAS) as EnvoltoriaKey[]).map((key) => {
+                          const item = ENVOLTORIAS[key];
+                          const ativo = envoltoria === key;
+                          return (
                             <button
-                              key={item.label}
+                              key={key}
                               type="button"
-                              onClick={() => setReducaoSolarBrise(item.value)}
-                              aria-pressed={reducaoSolarBrise === item.value}
-                              className={`rounded-lg border px-2 py-2 text-xs font-medium ${
-                                reducaoSolarBrise === item.value
-                                  ? "border-primary bg-primary/10 text-primary"
-                                  : "border-border text-muted-foreground hover:border-primary/40"
+                              onClick={() => {
+                                setEnvoltoria(key);
+                                setUParede(item.u);
+                              }}
+                              aria-pressed={ativo}
+                              className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition-colors cursor-pointer ${
+                                ativo
+                                  ? "border-primary bg-primary/10"
+                                  : "border-border hover:border-primary/40"
                               }`}
                             >
-                              {item.label}
+                              <span className="min-w-0">
+                                <span className="block text-xs font-semibold text-foreground">
+                                  {item.nome}
+                                </span>
+                                <span className="block text-[10px] text-muted-foreground">
+                                  {item.detalhe}
+                                </span>
+                              </span>
+                              <span className="shrink-0 font-mono text-[10px] font-bold text-primary">
+                                {item.transmitancia}
+                              </span>
                             </button>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
-                      <div>
-                        <p className="mb-2 text-xs text-muted-foreground">Especificação do vidro</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {(Object.keys(VIDROS) as TipoVidroKey[]).map((tipo) => {
-                            const vidro = VIDROS[tipo];
-                            const ativo = tipoVidro === tipo;
-                            return (
+
+                      <div className="grid grid-cols-3 gap-2">
+                        {(Object.keys(CORES_TINTA) as CorTintaKey[]).map((key) => {
+                          const item = CORES_TINTA[key];
+                          const ativo = corTinta === key;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => setCorTinta(key)}
+                              aria-pressed={ativo}
+                              className={`flex min-w-0 items-center gap-2 rounded-lg border p-2 text-left cursor-pointer ${
+                                ativo
+                                  ? "border-primary bg-primary/10"
+                                  : "border-border hover:border-primary/40"
+                              }`}
+                            >
+                              <span
+                                className="size-4 shrink-0 rounded-full border border-black/20"
+                                style={{ backgroundColor: item.hex }}
+                              />
+                              <span className="min-w-0">
+                                <span className="block truncate text-[10px] font-semibold text-foreground">
+                                  {item.nome}
+                                </span>
+                                <span className="block font-mono text-[9px] text-muted-foreground">
+                                  α = {item.alpha.toFixed(2).replace(".", ",")}
+                                </span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {modoSimulador === "simples" ? (
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold text-foreground">
+                          Aberturas, proteção solar e vidro
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="block space-y-1">
+                            <span className="block text-xs text-muted-foreground">
+                              Proporção de janelas
+                            </span>
+                            <select
+                              value={percentualVidroSimples}
+                              onChange={(event) =>
+                                setPercentualVidroSimples(Number(event.currentTarget.value))
+                              }
+                              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground"
+                            >
+                              <option value={12}>Reduzida / banheiro · 12%</option>
+                              <option value={25}>Padrão de quarto · 25%</option>
+                              <option value={30}>Média de sala · 30%</option>
+                              <option value={35}>Ampla de escritório · 35%</option>
+                              <option value={50}>Bastante envidraçada · 50%</option>
+                              <option value={70}>Pano de vidro · 70%</option>
+                            </select>
+                          </label>
+                          <label className="block space-y-1">
+                            <span className="block text-xs text-muted-foreground">
+                              Posição na parede
+                            </span>
+                            <select
+                              value={posicaoJanelas}
+                              onChange={(event) =>
+                                setPosicaoJanelas(event.currentTarget.value as PosicaoJanelaKey)
+                              }
+                              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground"
+                            >
+                              <option value="centro">Centralizadas (meia altura)</option>
+                              <option value="altas">Altas (próximas ao teto)</option>
+                              <option value="baixas">Peitoril baixo / porta-janela</option>
+                              <option value="distribuidas">Distribuídas</option>
+                            </select>
+                          </label>
+                        </div>
+
+                        <div>
+                          <p className="mb-1.5 text-xs text-muted-foreground">
+                            Sombreamento externo (beiral ou brise)
+                          </p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { label: "Sem brise (0%)", value: 0 },
+                              { label: "Beiral (-40%)", value: 40 },
+                              { label: "Brise (-70%)", value: 70 },
+                            ].map((item) => (
                               <button
-                                key={tipo}
+                                key={item.label}
                                 type="button"
-                                onClick={() => selecionarTipoVidro(tipo)}
-                                aria-pressed={ativo}
-                                className={`rounded-lg border px-3 py-2 text-left text-xs font-medium ${
-                                  ativo
+                                onClick={() => setReducaoSolarBrise(item.value)}
+                                aria-pressed={reducaoSolarBrise === item.value}
+                                className={`rounded-lg border px-2 py-2 text-xs font-medium cursor-pointer ${
+                                  reducaoSolarBrise === item.value
                                     ? "border-primary bg-primary/10 text-primary"
                                     : "border-border text-muted-foreground hover:border-primary/40"
                                 }`}
                               >
-                                {`${vidro.nome} (U=${vidro.u} · FS=${vidro.fs} · Tv=${vidro.tv})`}
+                                {item.label}
                               </button>
-                            );
-                          })}
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="mb-1.5 text-xs text-muted-foreground">Tipo de vidro</p>
+                          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+                            {(Object.keys(VIDROS) as TipoVidroKey[]).map((tipo) => {
+                              const vidro = VIDROS[tipo];
+                              const ativo = tipoVidro === tipo;
+                              return (
+                                <button
+                                  key={tipo}
+                                  type="button"
+                                  onClick={() => selecionarTipoVidro(tipo)}
+                                  aria-pressed={ativo}
+                                  className={`rounded-lg border px-2.5 py-2 text-left text-xs font-medium cursor-pointer ${
+                                    ativo
+                                      ? "border-primary bg-primary/10 text-primary"
+                                      : "border-border text-muted-foreground hover:border-primary/40"
+                                  }`}
+                                >
+                                  <span className="block font-bold">{vidro.nome}</span>
+                                  <span className="font-mono text-[10px]">
+                                    U={vidro.u} · FS={vidro.fs} · Tv={vidro.tv}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
+                    ) : (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <NumberControl
+                          label="Transmitância da parede (U)"
+                          value={uParede}
+                          min={0.15}
+                          max={6}
+                          step={0.05}
+                          unit="W/(m²·K)"
+                          onChange={setUParede}
+                        />
+                        <NumberControl
+                          label="Área total das janelas"
+                          value={areaVidroInformadaM2}
+                          min={0}
+                          max={Number((areaFachadaM2 * 0.8).toFixed(1))}
+                          step={0.1}
+                          unit="m²"
+                          onChange={setAreaVidroInformadaM2}
+                        />
+                        <NumberControl
+                          label="Transmitância do vidro (U)"
+                          value={uVidro}
+                          min={0.5}
+                          max={7}
+                          step={0.1}
+                          unit="W/(m²·K)"
+                          onChange={setUVidro}
+                        />
+                        <NumberControl
+                          label="Fator solar do vidro (FS / g)"
+                          value={fatorSolarVidro}
+                          min={0.05}
+                          max={0.95}
+                          step={0.01}
+                          unit="adim."
+                          onChange={setFatorSolarVidro}
+                        />
+                        <NumberControl
+                          label="Bloqueio solar por brise/beiral"
+                          value={reducaoSolarBrise}
+                          min={0}
+                          max={95}
+                          step={5}
+                          unit="%"
+                          onChange={setReducaoSolarBrise}
+                        />
+                        <label className="block space-y-1.5">
+                          <span className="block text-xs text-muted-foreground">
+                            Posição das janelas
+                          </span>
+                          <select
+                            value={posicaoJanelas}
+                            onChange={(event) =>
+                              setPosicaoJanelas(event.currentTarget.value as PosicaoJanelaKey)
+                            }
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                          >
+                            <option value="centro">Centralizadas</option>
+                            <option value="altas">Altas (junto ao teto)</option>
+                            <option value="baixas">Baixas (peitoril baixo)</option>
+                            <option value="distribuidas">Distribuídas</option>
+                          </select>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* Painel 3: Parâmetros Avançados de HVAC (Modo Engenharia) */}
+              {abaAjusteAtiva === "hvac" && modoSimulador === "especialista" && (
+                <section className="space-y-3 rounded-2xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm">
+                  <h3 className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-primary">
+                    Renovação de ar, cargas internas e eficiência do HVAC
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                    <NumberControl
+                      label="Renovação de ar"
+                      value={renovacoesArHora}
+                      min={0}
+                      max={15}
+                      step={0.1}
+                      unit="ACH (trocas/h)"
+                      onChange={setRenovacoesArHora}
+                    />
+                    <NumberControl
+                      label="Ocupantes (75 W/p)"
+                      value={ocupantes}
+                      min={0}
+                      max={100}
+                      step={1}
+                      unit="pessoas"
+                      onChange={setOcupantes}
+                    />
+                    <NumberControl
+                      label="Luz e equipamentos"
+                      value={ganhosInternosWm2}
+                      min={0}
+                      max={120}
+                      step={1}
+                      unit="W/m²"
+                      onChange={setGanhosInternosWm2}
+                    />
+                    <NumberControl
+                      label="Setpoint interno"
+                      value={setpointC}
+                      min={18}
+                      max={28}
+                      step={0.5}
+                      unit="°C"
+                      onChange={setSetpointC}
+                    />
+                    <NumberControl
+                      label="Operação diária"
+                      value={horasOperacaoDia}
+                      min={0}
+                      max={24}
+                      step={1}
+                      unit="h/dia"
+                      onChange={setHorasOperacaoDia}
+                    />
+                    <NumberControl
+                      label="Eficiência (COP)"
+                      value={cop}
+                      min={1.5}
+                      max={6.5}
+                      step={0.1}
+                      unit="W/W"
+                      onChange={setCop}
+                    />
+                  </div>
+                </section>
+              )}
+
+              {/* Painel 4: Memória Física de Cálculo Auditável */}
+              {abaAjusteAtiva === "memoria" && (
+                <section className="rounded-2xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm">
+                  <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                      <p className="text-mono text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                        Memória física de cálculo · Regime estacionário
+                      </p>
+                      <h3 className="mt-1 text-display text-lg font-bold text-foreground">
+                        Decomposição das 6 parcelas térmicas ({dadosComodo.nome})
+                      </h3>
+                    </div>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      {`A_piso: ${areaPisoM2.toFixed(1)} m² · A_fachada: ${areaFachadaM2.toFixed(1)} m² · A_vidro: ${areaVidroM2.toFixed(1)} m²`}
+                    </p>
+                  </div>
+                  {simulacao ? (
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {[
+                        {
+                          label: "Condução na parede",
+                          value: cargaConducaoParedeW,
+                          formula: `U_par (${uParede}) × A_opaca (${simulacao.areaOpacaM2.toFixed(1)} m²) × ΔT (${Math.max(0, temperaturaModelo - setpointC).toFixed(1)} K)`,
+                        },
+                        {
+                          label: "Sol absorvido pela parede",
+                          value: ganhoSolarParedeW,
+                          formula: `U_par (${uParede}) × A_opaca (${simulacao.areaOpacaM2.toFixed(1)} m²) × [α (${dadosCor.alpha}) × I (${irradianciaModelo}) / 25] × (1 - 0,5 × ${reducaoSolarBrise}%)`,
+                        },
+                        {
+                          label: "Condução no vidro",
+                          value: cargaVidroConducaoW,
+                          formula: `U_vid (${uVidro}) × A_vid (${areaVidroM2.toFixed(1)} m²) × ΔT (${Math.max(0, temperaturaModelo - setpointC).toFixed(1)} K)`,
+                        },
+                        {
+                          label: "Sol pelo vidro",
+                          value: ganhoSolarVidroW,
+                          formula: `A_vid (${areaVidroM2.toFixed(1)} m²) × I (${irradianciaModelo}) × FS (${fatorSolarVidro}) × (1 - ${reducaoSolarBrise}%)`,
+                        },
+                        {
+                          label: "Renovação de ar",
+                          value: cargaRenovacaoArW,
+                          formula: `0,333 × ACH (${renovacoesArHora}) × Vol (${simulacao.volumeM3.toFixed(1)} m³) × ΔT (${Math.max(0, temperaturaModelo - setpointC).toFixed(1)} K)`,
+                        },
+                        {
+                          label: "Cargas internas",
+                          value: cargaInternaW,
+                          formula: `${ocupantes} p × 75 W + ${areaPisoM2.toFixed(1)} m² × ${ganhosInternosWm2} W/m²`,
+                        },
+                      ].map((parcela) => {
+                        const percentualTotal =
+                          cargaSensibleTotalW > 0
+                            ? Math.round((parcela.value / cargaSensibleTotalW) * 100)
+                            : 0;
+                        return (
+                          <article
+                            key={parcela.label}
+                            className="rounded-xl border border-border bg-background/60 p-3"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-semibold text-foreground">
+                                {modoSimulador === "simples"
+                                  ? rotulosSimples[parcela.label]
+                                  : parcela.label}
+                              </p>
+                              <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
+                                {percentualTotal}%
+                              </span>
+                            </div>
+                            <p className="mt-1 font-mono text-lg font-bold tabular-nums text-primary">
+                              {parcela.value.toFixed(0)} W
+                            </p>
+                            <p className="mt-1 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                              {parcela.formula}
+                            </p>
+                          </article>
+                        );
+                      })}
                     </div>
                   ) : (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <NumberControl
-                        label="Transmitância da parede (U)"
-                        value={uParede}
-                        min={0.15}
-                        max={6}
-                        step={0.05}
-                        unit="W/(m²·K)"
-                        onChange={setUParede}
-                      />
-                      <NumberControl
-                        label="Área total das janelas"
-                        value={areaVidroInformadaM2}
-                        min={0}
-                        max={Number((areaFachadaM2 * 0.8).toFixed(1))}
-                        step={0.1}
-                        unit="m²"
-                        onChange={setAreaVidroInformadaM2}
-                      />
-                      {!simulacaoValida && (
-                        <p className="sm:col-span-2 rounded-lg border border-red-500/30 bg-red-500/5 p-2 text-xs text-red-700">
-                          A área das janelas deve ser de até 80% da fachada (
-                          {(areaFachadaM2 * 0.8).toFixed(1)} m² para as dimensões atuais).
-                        </p>
-                      )}
-                      <div className="sm:col-span-2">
-                        <p className="mb-2 text-xs text-muted-foreground">
-                          Presets normativos de vidro (preenchem U, Fator Solar e Tv)
-                        </p>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                          {(Object.keys(VIDROS) as TipoVidroKey[]).map((tipo) => {
-                            const vidro = VIDROS[tipo];
-                            return (
-                              <button
-                                key={tipo}
-                                type="button"
-                                onClick={() => selecionarTipoVidro(tipo)}
-                                className="rounded-lg border border-border px-3 py-2 text-left text-xs font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5"
-                              >
-                                <span className="block">{vidro.nome}</span>
-                                <span className="mt-1 block font-mono text-[10px] font-normal text-muted-foreground">
-                                  U {vidro.u} W/m²K · FS {vidro.fs} · Tv {vidro.tv}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <NumberControl
-                        label="Transmitância do vidro (U)"
-                        value={uVidro}
-                        min={0.5}
-                        max={7}
-                        step={0.1}
-                        unit="W/(m²·K)"
-                        onChange={setUVidro}
-                      />
-                      <NumberControl
-                        label="Fator solar do vidro (FS / g)"
-                        value={fatorSolarVidro}
-                        min={0.05}
-                        max={0.95}
-                        step={0.01}
-                        unit="adim."
-                        onChange={setFatorSolarVidro}
-                      />
-                      <NumberControl
-                        label="Bloqueio solar por brise/beiral"
-                        value={reducaoSolarBrise}
-                        min={0}
-                        max={95}
-                        step={5}
-                        unit="fração"
-                        onChange={setReducaoSolarBrise}
-                      />
-                      <label className="block space-y-1.5">
-                        <span className="block text-xs text-muted-foreground">
-                          Posição das janelas
-                        </span>
-                        <select
-                          value={posicaoJanelas}
-                          onChange={(event) =>
-                            setPosicaoJanelas(event.currentTarget.value as PosicaoJanelaKey)
-                          }
-                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                        >
-                          <option value="centro">Centralizadas</option>
-                          <option value="altas">Altas (junto ao teto)</option>
-                          <option value="baixas">Baixas (peitoril baixo)</option>
-                          <option value="distribuidas">Distribuídas</option>
-                        </select>
-                      </label>
-                    </div>
+                    <p className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-700">
+                      A área das janelas deve respeitar o limite de 80% da área da fachada.
+                    </p>
                   )}
                 </section>
-
-                {modoSimulador === "especialista" && (
-                  <section className="space-y-3 rounded-2xl border border-border bg-background/50 p-4 lg:col-span-2">
-                    <h3 className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-foreground">
-                      03 · Psicrometria simplificada, cargas internas e eficiência do HVAC
-                    </h3>
-                    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                      <NumberControl
-                        label="Renovação de ar"
-                        value={renovacoesArHora}
-                        min={0}
-                        max={15}
-                        step={0.1}
-                        unit="ACH (trocas/h)"
-                        onChange={setRenovacoesArHora}
-                      />
-                      <NumberControl
-                        label="Ocupantes (75 W/p)"
-                        value={ocupantes}
-                        min={0}
-                        max={100}
-                        step={1}
-                        unit="pessoas"
-                        onChange={setOcupantes}
-                      />
-                      <NumberControl
-                        label="Luz e equipamentos"
-                        value={ganhosInternosWm2}
-                        min={0}
-                        max={120}
-                        step={1}
-                        unit="W/m²"
-                        onChange={setGanhosInternosWm2}
-                      />
-                      <NumberControl
-                        label="Setpoint interno"
-                        value={setpointC}
-                        min={18}
-                        max={28}
-                        step={0.5}
-                        unit="°C"
-                        onChange={setSetpointC}
-                      />
-                      <NumberControl
-                        label="Operação diária"
-                        value={horasOperacaoDia}
-                        min={0}
-                        max={24}
-                        step={1}
-                        unit="h/dia"
-                        onChange={setHorasOperacaoDia}
-                      />
-                      <NumberControl
-                        label="Eficiência (COP)"
-                        value={cop}
-                        min={1.5}
-                        max={6.5}
-                        step={0.1}
-                        unit="W/W"
-                        onChange={setCop}
-                      />
-                      <NumberControl
-                        label="Fator de carga"
-                        value={fatorCarga}
-                        min={0.1}
-                        max={1}
-                        step={0.05}
-                        unit="fração"
-                        onChange={setFatorCarga}
-                      />
-                    </div>
-                  </section>
-                )}
-              </div>
+              )}
             </div>
           </div>
-
-          <section className="mt-5 rounded-3xl border border-border bg-card p-4 sm:p-6">
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <p className="text-mono text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                  Memória física de cálculo · Regime estacionário
-                </p>
-                <h3 className="mt-1 text-display text-xl font-bold text-foreground">
-                  Decomposição das parcelas térmicas no cômodo ({dadosComodo.nome})
-                </h3>
-              </div>
-              <p className="font-mono text-xs text-muted-foreground">
-                {`A_piso: ${areaPisoM2.toFixed(1)} m² · A_fachada: ${areaFachadaM2.toFixed(1)} m² · A_opaca: ${(areaFachadaM2 - areaVidroM2).toFixed(1)} m² · A_vidro: ${areaVidroM2.toFixed(1)} m² · ${horarioConsiderado} · T_ext = ${temperaturaModelo.toFixed(1).replace(".", ",")} °C`}
-              </p>
-            </div>
-            {simulacao ? (
-              <>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {[
-                    {
-                      label: "Condução na parede",
-                      value: cargaConducaoParedeW,
-                      formula: `U_par (${uParede}) × A_opaca (${simulacao.areaOpacaM2.toFixed(1)} m²) × ΔT (${Math.max(0, temperaturaModelo - setpointC).toFixed(1)} K)`,
-                    },
-                    {
-                      label: "Sol absorvido pela parede",
-                      value: ganhoSolarParedeW,
-                      formula: `U_par (${uParede}) × A_opaca (${simulacao.areaOpacaM2.toFixed(1)} m²) × [α (${dadosCor.alpha}) × I (${irradianciaModelo}) / 25] × (1 - 0,5 × ${reducaoSolarBrise}%)`,
-                    },
-                    {
-                      label: "Condução no vidro",
-                      value: cargaVidroConducaoW,
-                      formula: `U_vid (${uVidro}) × A_vid (${areaVidroM2.toFixed(1)} m²) × ΔT (${Math.max(0, temperaturaModelo - setpointC).toFixed(1)} K)`,
-                    },
-                    {
-                      label: "Sol pelo vidro",
-                      value: ganhoSolarVidroW,
-                      formula: `A_vid (${areaVidroM2.toFixed(1)} m²) × I (${irradianciaModelo}) × FS (${fatorSolarVidro}) × (1 - ${reducaoSolarBrise}%)`,
-                    },
-                    {
-                      label: "Renovação de ar",
-                      value: cargaRenovacaoArW,
-                      formula: `0,333 × ACH (${renovacoesArHora}) × Vol (${simulacao.volumeM3.toFixed(1)} m³) × ΔT (${Math.max(0, temperaturaModelo - setpointC).toFixed(1)} K)`,
-                    },
-                    {
-                      label: "Cargas internas",
-                      value: cargaInternaW,
-                      formula: `${ocupantes} p × 75 W + ${areaPisoM2.toFixed(1)} m² × ${ganhosInternosWm2} W/m²`,
-                    },
-                  ].map((parcela) => {
-                    const percentualTotal =
-                      cargaSensibleTotalW > 0
-                        ? Math.round((parcela.value / cargaSensibleTotalW) * 100)
-                        : 0;
-                    return (
-                      <article
-                        key={parcela.label}
-                        className="rounded-xl border border-border bg-background/60 p-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs font-semibold text-foreground">
-                            {modoSimulador === "simples"
-                              ? rotulosSimples[parcela.label]
-                              : parcela.label}
-                          </p>
-                          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
-                            {percentualTotal}%
-                          </span>
-                        </div>
-                        <p className="mt-1 font-mono text-lg font-bold tabular-nums text-primary">
-                          {parcela.value.toFixed(0)} W
-                        </p>
-                        <p className="mt-1 font-mono text-[10px] leading-relaxed text-muted-foreground">
-                          {parcela.formula}
-                        </p>
-                      </article>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
-                    <p className="text-xs font-semibold text-foreground">
-                      Carga térmica sensível de pico no cômodo
-                    </p>
-                    <p className="mt-1 font-mono text-xl font-bold text-primary">
-                      {cargaSensibleTotalW.toFixed(0)} W ·{" "}
-                      {(cargaSensibleTotalW / 1000).toFixed(2).replace(".", ",")} kW ·{" "}
-                      {Math.round(capacidadeTermicaBtuH).toLocaleString("pt-BR")} BTU/h
-                    </p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      Soma das 6 parcelas estacionárias acima (
-                      {densidadeCargaWm2.toFixed(1).replace(".", ",")} W/m² de piso).
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3">
-                    <p className="text-xs font-semibold text-foreground">
-                      Consumo elétrico estimado (fator de carga {Math.round(fatorCargaModelo * 100)}
-                      %)
-                    </p>
-                    <p className="mt-1 font-mono text-xl font-bold text-sky-600">
-                      {consumoMensalEstimadoKwh.toFixed(1).replace(".", ",")} kWh/mês
-                    </p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      {`Cálculo direto: (${(cargaSensibleTotalW / 1000).toFixed(2)} kW ÷ COP ${cop}) × ${horasOperacaoDia} h/dia × 30 dias × fator de carga ${Math.round(fatorCargaModelo * 100)}%.`}
-                    </p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-700">
-                A memória de cálculo está pausada até que a área das janelas respeite o limite de
-                80% da área da fachada.
-              </p>
-            )}
-            <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs leading-relaxed text-muted-foreground">
-              <strong className="text-foreground">Nota metodológica e escopo físico:</strong> este
-              simulador resolve o balanço térmico sensível em <strong>regime estacionário</strong>{" "}
-              para um cômodo com uma fachada exposta, empregando o conceito de{" "}
-              <strong>Temperatura Sol-Ar (Tₛₐ)</strong> com coeficiente convectivo externo hₑ = 25
-              W/(m²·K) (ABNT NBR 15220-2 / ASHRAE Fundamentals) e calor específico volumétrico do ar
-              ρ·cₚ = 1200 J/(m³·K). Não substitui simulação termoenergética dinâmica horária (como
-              EnergyPlus) nem projeto executivo de climatização (ABNT NBR 16401), pois não
-              contabiliza carga latente (desumidificação), amortecimento por inércia térmica
-              transiente ou trocas pelas paredes internas adjacentes.
-            </p>
-          </section>
-        </>
+        </div>
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -2294,7 +2250,7 @@ function LaboratorioInterativo() {
       ══════════════════════════════════════════════════════════════════ */}
       {trilhaAtiva === "fisica" && (
         <>
-          <div className="mt-10 rounded-3xl border border-border bg-card p-4 sm:p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
+          <div className="mt-6 rounded-3xl border border-border bg-card p-4 sm:p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
             <div className="flex flex-col gap-4 border-b border-border/70 pb-5 print:hidden">
               <div>
                 <span className="text-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
@@ -2827,4 +2783,6 @@ function EducativoPage() {
   );
 }
 
-export const Route = createFileRoute("/educativo")({ component: EducativoPage });
+export const Route = createFileRoute("/educativo")({
+  component: EducativoPage,
+});

@@ -66,13 +66,13 @@ export default function SimuladorLuz({
   const [eficaciaLedLmW, setEficaciaLedLmW] = useState<number>(
     CONSTANTES_LUZ.eficaciaLedPadraoLmW.valor,
   );
-  const [feedbackAplicado, setFeedbackAplicado] = useState(false);
+  const [feedbackAplicado, setFeedbackAplicado] = useState<string | null>(null);
 
   const vidroAtual = VIDROS[tipoVidro];
   const seletividadeTvFs = vidroAtual.tv / vidroAtual.fs;
   const areaPisoM2 = comprimentoM * larguraM;
 
-  // Parte A: Luz Natural (BRE)
+  // Parte A: Luz Natural (BRE) com θ limitado a 90°
   const fldPercent = fatorLuzDiaMedio({
     comprimentoM,
     larguraM,
@@ -96,6 +96,18 @@ export default function SimuladorLuz({
     areaPisoM2,
     eficaciaLmW: eficaciaLedLmW,
   });
+
+  const parcelaEquipamentosRefWm2 =
+    CONSTANTES_LUZ.parcelaEquipamentosPadraoPorComodoWm2.valor[tipoComodo];
+  const ganhoPadraoTotalComodoWm2 = TIPOS_COMODO[tipoComodo].ganhosInternosPadraoWm2;
+  const parcelaLuzPadraoEstimadaWm2 = Math.max(
+    0,
+    ganhoPadraoTotalComodoWm2 - parcelaEquipamentosRefWm2,
+  );
+  const novoTotalSubstituindoParcelaLuzWm2 = Number(
+    (parcelaEquipamentosRefWm2 + artificial.densidadePotenciaWm2).toFixed(1),
+  );
+  const apenasLuzWm2 = Number(artificial.densidadePotenciaWm2.toFixed(1));
 
   // Parte C: Ofuscamento qualitativo
   const ofuscamento = avaliarOfuscamentoQualitativo({
@@ -129,6 +141,12 @@ export default function SimuladorLuz({
     })
     .join(" ");
 
+  function aplicarNoTermico(valorWm2: number, descricao: string) {
+    onAplicarGanhoInternoNoTermico(valorWm2);
+    setFeedbackAplicado(descricao);
+    window.setTimeout(() => setFeedbackAplicado(null), 3000);
+  }
+
   return (
     <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4 sm:p-5 space-y-5">
       {/* Seleção de vidro com Tv e razão Tv/FS */}
@@ -139,7 +157,7 @@ export default function SimuladorLuz({
           </p>
           <span className="font-mono text-[10px] text-muted-foreground">
             {TIPOS_COMODO[tipoComodo].nome} · A_vidro ={" "}
-            {areaVidroM2.toFixed(1).replace(".", ",")} m² · Prof. ={" "}
+            {areaVidroM2.toFixed(1).replace(".", ",")} m² ({Math.round(percentualVidro)}% da fachada) · Prof. ={" "}
             {profundidadeComodoM.toFixed(1).replace(".", ",")} m
           </span>
         </div>
@@ -177,7 +195,7 @@ export default function SimuladorLuz({
           A razão <strong>Tv/FS</strong> ({seletividadeTvFs.toFixed(2).replace(".", ",")}{" "}
           no vidro atual) mostra o equilíbrio entre luz visível transmitida (Tv) e ganho de
           calor solar (FS): vidros de controle solar podem reduzir a luz natural junto com
-          o calor.
+          o calor. A escolha acima atualiza simultaneamente U, FS e Tv no simulador térmico.
         </p>
       </div>
 
@@ -186,23 +204,23 @@ export default function SimuladorLuz({
         <label className="block space-y-1">
           <span className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Ângulo de céu visível (θ)</span>
-            <span className="font-mono text-[10px]">graus</span>
+            <span className="font-mono text-[10px]">5° a 90°</span>
           </span>
           <input
             type="number"
-            min={15}
-            max={180}
+            min={5}
+            max={90}
             step={5}
             value={anguloCeuGraus}
             onChange={(e) => {
               if (e.currentTarget.value !== "" && e.currentTarget.validity.valid) {
-                setAnguloCeuGraus(e.currentTarget.valueAsNumber);
+                setAnguloCeuGraus(Math.min(90, Math.max(5, e.currentTarget.valueAsNumber)));
               }
             }}
             className="w-full rounded-lg border border-border bg-background px-3 py-1.5 font-mono text-sm text-foreground"
           />
           <span className="block text-[9px] text-muted-foreground">
-            Padrão 90° sem obstrução ({CONSTANTES_LUZ.anguloCeuPadraoGraus.status})
+            Máx. físico 90° para janela vertical ({CONSTANTES_LUZ.anguloCeuPadraoGraus.status})
           </span>
         </label>
 
@@ -313,26 +331,25 @@ export default function SimuladorLuz({
         </div>
       </div>
 
-      {/* Diagrama SVG: Corte do Cômodo com Janela, Curva de Luz e Plano de Trabalho */}
+      {/* Diagrama SVG: Corte do Cômodo com Janela, Curva de Luz Ilustrativa e Plano de Trabalho */}
       <div className="overflow-hidden rounded-2xl border border-border bg-[#09100D] p-3">
         <svg
           viewBox="0 0 600 210"
           className="w-full h-auto"
           role="img"
-          aria-label="Corte esquemático do cômodo mostrando janela, curva de decaimento da luz natural e plano de trabalho"
+          aria-label="Corte esquemático do cômodo mostrando janela, curva ilustrativa de decaimento da luz natural e plano de trabalho"
         >
           <text
             x={roomX}
             y="18"
-            fontSize="9"
+            fontSize="8.5"
             fill="#00C67A"
             fontFamily="monospace"
             fontWeight="bold"
           >
-            CORTE ESQUEMÁTICO · PERFIL ILUSTRATIVO NORMALIZADO PELA MÉDIA ({Math.round(eMediaInternaLux)} LUX)
+            PERFIL ILUSTRATIVO (FORMA FIXA), NORMALIZADO PELA MÉDIA CALCULADA ({Math.round(eMediaInternaLux)} LUX)
           </text>
 
-          {/* Contorno do cômodo em corte */}
           <rect
             x={roomX}
             y={roomY}
@@ -343,7 +360,6 @@ export default function SimuladorLuz({
             strokeWidth="2"
           />
 
-          {/* Janela na parede esquerda */}
           <line
             x1={roomX}
             y1={
@@ -365,7 +381,6 @@ export default function SimuladorLuz({
             strokeWidth="5"
           />
 
-          {/* Zona de luz útil (2 a 2,5 × H_verga) */}
           <rect
             x={roomX}
             y={roomY}
@@ -393,7 +408,6 @@ export default function SimuladorLuz({
             Luz útil até ~{alcanceUtil.alcanceMaxM.toFixed(1).replace(".", ",")} m (2,5×H_verga)
           </text>
 
-          {/* Plano de trabalho (0,75 m) */}
           <line
             x1={roomX}
             y1={planoTrabalhoY}
@@ -414,7 +428,6 @@ export default function SimuladorLuz({
             Plano de trabalho (0,75 m)
           </text>
 
-          {/* Curva decrescente de luz */}
           <polyline
             fill="none"
             stroke="#38BDF8"
@@ -422,7 +435,6 @@ export default function SimuladorLuz({
             points={curvaPoints}
           />
 
-          {/* Cota de profundidade */}
           <text
             x={roomX}
             y={roomY + roomH + 18}
@@ -445,7 +457,7 @@ export default function SimuladorLuz({
         </svg>
       </div>
 
-      {/* Parte B: Luz Artificial (Método dos Lúmens) e integração com Simulador Térmico */}
+      {/* Parte B: Luz Artificial (Método dos Lúmens) e integração transparente com Simulador Térmico */}
       <div className="rounded-xl border border-border bg-card p-3.5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
@@ -499,41 +511,73 @@ export default function SimuladorLuz({
               Potência = {artificial.potenciaTotalW.toFixed(0)} W
             </span>
             <span className="font-mono text-sm font-bold text-primary">
-              Densidade: {artificial.densidadePotenciaWm2.toFixed(1).replace(".", ",")} W/m²
+              Só iluminação: {apenasLuzWm2.toFixed(1).replace(".", ",")} W/m²
             </span>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
-          <p className="text-[11px] text-muted-foreground">
-            Toda potência elétrica de iluminação dissipa calor no cômodo (atual no simulador
-            térmico: <strong className="font-mono">{ganhosInternosWm2} W/m²</strong> com
-            equipamentos).
+        <div className="space-y-2.5 border-t border-border pt-2.5">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            No simulador térmico, o ganho interno padrão de{" "}
+            <strong>{TIPOS_COMODO[tipoComodo].nome.toLowerCase()}</strong> (
+            <span className="font-mono">{ganhoPadraoTotalComodoWm2} W/m²</span>; atual:{" "}
+            <strong className="font-mono text-foreground">{ganhosInternosWm2} W/m²</strong>)
+            já inclui iluminação (~
+            <span className="font-mono">{parcelaLuzPadraoEstimadaWm2} W/m²</span>) +
+            equipamentos (~
+            <span className="font-mono">{parcelaEquipamentosRefWm2} W/m²</span>,{" "}
+            <span className="font-mono">
+              {CONSTANTES_LUZ.parcelaEquipamentosPadraoPorComodoWm2.status}
+            </span>
+            ). Escolha como deseja enviar este valor ao simulador térmico para não contar a
+            luz duas vezes:
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              const novoValor = Number(
-                Math.max(4, Math.round(artificial.densidadePotenciaWm2 + 6)),
-              );
-              onAplicarGanhoInternoNoTermico(novoValor);
-              setFeedbackAplicado(true);
-              window.setTimeout(() => setFeedbackAplicado(false), 2500);
-            }}
-            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 cursor-pointer"
-          >
-            {feedbackAplicado
-              ? "Valor aplicado ao simulador térmico ✓"
-              : `Levar este valor (${artificial.densidadePotenciaWm2.toFixed(1).replace(".", ",")} W/m² + 6 W/m² equip.) para o simulador térmico`}
-          </button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                aplicarNoTermico(
+                  novoTotalSubstituindoParcelaLuzWm2,
+                  `Aplicado ${novoTotalSubstituindoParcelaLuzWm2.toFixed(1).replace(".", ",")} W/m² (luz + equip.) ✓`,
+                )
+              }
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 cursor-pointer"
+            >
+              Substituir só parcela de luz ({apenasLuzWm2.toFixed(1).replace(".", ",")} +{" "}
+              {parcelaEquipamentosRefWm2} equip. ={" "}
+              {novoTotalSubstituindoParcelaLuzWm2.toFixed(1).replace(".", ",")} W/m²)
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                aplicarNoTermico(
+                  apenasLuzWm2,
+                  `Aplicado ${apenasLuzWm2.toFixed(1).replace(".", ",")} W/m² (apenas iluminação) ✓`,
+                )
+              }
+              className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:border-primary/40 cursor-pointer"
+            >
+              Usar apenas iluminação ({apenasLuzWm2.toFixed(1).replace(".", ",")} W/m², sem
+              equipamentos)
+            </button>
+
+            {feedbackAplicado && (
+              <span className="font-mono text-xs font-bold text-emerald-600">
+                {feedbackAplicado}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        <strong className="text-foreground">Parte C · Sobre ofuscamento:</strong>{" "}
-        {ofuscamento.resumo} Indicação meramente conceitual; a avaliação real de
-        ofuscamento e distribuição exige projeto luminotécnico. Esquema conceitual; não
-        substitui medição ou projeto.
+        <strong className="text-foreground">Parte C · Sobre ofuscamento e curva de luz:</strong>{" "}
+        {ofuscamento.resumo} A curva no corte acima tem formato ilustrativo fixo (apenas
+        escalonado pela média calculada) e o indicador de ofuscamento é conceitual; a
+        avaliação real exige projeto luminotécnico. Esquema conceitual; não substitui
+        medição ou projeto.
       </p>
     </div>
   );

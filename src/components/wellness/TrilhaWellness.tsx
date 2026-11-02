@@ -49,16 +49,36 @@ export interface TrilhaWellnessProps {
 export default function TrilhaWellness(props: TrilhaWellnessProps) {
   const [fenomenoWellness, setFenomenoWellness] = useState<"co2" | "voc" | "luz">("co2");
   const [fonteVoc, setFonteVoc] = useState<FonteVocKey>("tinta");
-  const [intensidadeVoc, setIntensidadeVoc] = useState<1 | 2 | 3>(2);
+  const [intensidadeVoc, setIntensidadeVoc] = useState<1 | 2 | 3>(3);
 
-  // Curvas para o mini-gráfico do Fenômeno 2 (VOCs para 3 níveis de ventilação)
+  // Curvas para o mini-gráfico do Fenômeno 2 (VOCs partindo de 0, normalizadas pelo pico 100 em ACH 0,5)
   const horasVoc = 12;
-  const passosVoc = 36;
+  const passosVoc = 48;
   const niveisAchVoc = [
     { rotulo: "Ventilação baixa (0,5 ACH)", ach: 0.5, cor: "#EF4444" },
     { rotulo: "Ventilação média (2,0 ACH)", ach: 2.0, cor: "#FBBF24" },
     { rotulo: "Ventilação alta (5,0 ACH)", ach: 5.0, cor: "#00C67A" },
   ];
+
+  const seriesCalculadasVoc = niveisAchVoc.map((serieInfo) => {
+    const pontos = Array.from({ length: passosVoc + 1 }, (_, i) => {
+      const t = (horasVoc * i) / passosVoc;
+      const val = vocRelativoNoTempo(t, {
+        fonte: fonteVoc,
+        intensidade: intensidadeVoc,
+        ach: serieInfo.ach,
+      });
+      return { t, val };
+    });
+    return { ...serieInfo, pontos };
+  });
+
+  const maxIndiceVoc = Math.max(
+    100,
+    Math.ceil(
+      Math.max(...seriesCalculadasVoc.flatMap((s) => s.pontos.map((p) => p.val))) / 20,
+    ) * 20,
+  );
 
   const chartX = 46;
   const chartY = 24;
@@ -66,26 +86,33 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
   const chartH = 150;
   const mapVocX = (t: number) => chartX + (t / horasVoc) * chartW;
   const mapVocY = (idx: number) =>
-    chartY + chartH - (Math.max(0, Math.min(100, idx)) / 100) * chartH;
+    chartY + chartH - (Math.max(0, idx) / maxIndiceVoc) * chartH;
 
   return (
     <div className="mt-10 rounded-3xl border border-border bg-card p-4 sm:p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
       <div className="flex flex-col gap-4 border-b border-border/70 pb-5 print:hidden">
         <div>
           <span className="text-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-            Wellness e Qualidade Ambiental Interna
+            Wellness, Saúde Ocupacional e Qualidade Ambiental
           </span>
           <h3 className="mt-1 text-display text-xl sm:text-2xl font-extrabold text-foreground">
-            Como renovação de ar, materiais e luz moldam o conforto do ambiente?
+            Como o ar que respiramos e a luz que recebemos afetam corpo, foco e descanso?
           </h3>
+          <p className="mt-1.5 max-w-3xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
+            No conceito de <strong>Wellness aplicado à arquitetura</strong>, o ambiente
+            construído não é apenas um abrigo térmico: a renovação de ar, a química dos
+            materiais e o espectro da iluminação interagem diariamente com a atenção
+            cognitiva, o conforto respiratório e o <strong>ciclo circadiano</strong> dos
+            ocupantes.
+          </p>
         </div>
 
         {/* Seletor de 3 botões no mesmo formato da trilha "fisica" */}
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           {[
-            { id: "co2" as const, label: "1. Ar parado e CO₂" },
-            { id: "voc" as const, label: "2. VOCs e diluição" },
-            { id: "luz" as const, label: "3. Luz, ofuscamento e calor" },
+            { id: "co2" as const, label: "1. CO₂, foco e sono" },
+            { id: "voc" as const, label: "2. VOCs e saúde do ar" },
+            { id: "luz" as const, label: "3. Luz e ciclo circadiano" },
           ].map((item) => {
             const ativo = fenomenoWellness === item.id;
             return (
@@ -108,7 +135,7 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          FENÔMENO 1: AR PARADO ACUMULA CO₂
+          FENÔMENO 1: AR PARADO ACUMULA CO₂ (IMPACTO COGNITIVO E SONO)
       ══════════════════════════════════════════════════════════════ */}
       <div
         className={
@@ -119,44 +146,77 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
       >
         <div className="mx-auto w-full max-w-5xl space-y-3.5">
           <p className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-sky-600 print:block">
-            Fenômeno 1 de 3 · Renovação de ar e balanço de CO₂
+            Fenômeno 1 de 3 · Renovação de ar, cognição e qualidade do descanso
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <h4 className="min-w-0 flex-1 max-w-3xl text-display text-lg sm:text-xl font-extrabold text-foreground">
-              Por que um quarto fechado acumula CO₂ ao longo da noite — e qual o custo energético de ventilar?
+              Por que um ambiente sem renovação de ar pode dar sensação de cansaço, queda de foco e sono pesado?
             </h4>
             <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-mono text-[9px] font-bold uppercase tracking-wider text-sky-500">
-              Balanço de Massa · Mistura Perfeita
+              Balanço de Massa · Cognição & Vigília
             </div>
           </div>
           <p className="max-w-3xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
-            Em ambientes ocupados, a respiração adiciona CO₂ continuamente enquanto a
-            renovação de ar (ACH) dilui essa concentração com ar externo. Quando o ambiente
-            permanece muito fechado, a concentração tende a subir até atingir um patamar de
-            equilíbrio que depende do volume do cômodo, do número de pessoas e da taxa de
-            troca de ar. Aumentar a ventilação reduz o CO₂ acumulado, mas também pode elevar
-            a carga térmica caso o ar externo esteja quente.
+            Em ambientes ocupados, a respiração humana consome oxigênio e adiciona CO₂ e
+            outros bioefluentes continuamente, enquanto a renovação de ar (ACH) dilui essa
+            concentração com ar externo. Quando um dormitório ou escritório permanece muito
+            fechado, o acúmulo de CO₂ funciona como um termômetro de que o ar parou de
+            circular. Embora a resposta varie entre indivíduos, ambientes com baixa
+            renovação de ar e CO₂ elevado <strong>podem</strong> favorecer a sensação de
+            ar abafado, sonolência diurna, lentidão na tomada de decisão e percepção de
+            descanso menos restaurador ao acordar.
           </p>
+
+          {/* Cards de impacto no Wellness: O que piora vs O que ajuda */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-3">
               <span className="text-mono text-[8px] font-bold uppercase tracking-wider text-red-500">
-                O que piora o acúmulo
+                O que piora (implicações da não renovação)
               </span>
               <p className="mt-1 text-xs text-foreground">
-                Baixa taxa de renovação de ar (frestas mínimas), volume reduzido e ocupação
-                prolongada podem elevar rapidamente o CO₂. Esquema conceitual; não substitui
-                medição ou projeto.
+                Quartos ou salas de estudo totalmente vedados por muitas horas acumulam CO₂
+                e bioefluentes, o que pode contribuir para dor de cabeça leve, fadiga mental,
+                queda de concentração e sensação de peso ao despertar.
               </p>
             </div>
             <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
               <span className="text-mono text-[8px] font-bold uppercase tracking-wider text-primary">
-                O que ajuda a diluir
+                O que ajuda a proteger o bem-estar
               </span>
               <p className="mt-1 text-xs text-foreground">
-                Aberturas graduais, ventilação cruzada ou renovação mecânica controlada
-                renovam o ar interno; o dimensionamento real depende da rotina e do clima.
+                Manter frestas operáveis, ventilação cruzada ou renovação mecânica filtrada
+                dilui o CO₂ continuamente. O desafio de projeto é equilibrar ar fresco com o
+                consumo de climatização. Esquema conceitual; não substitui medição ou projeto.
               </p>
             </div>
+          </div>
+
+          {/* Síntese Wellness para o ocupante */}
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              [
+                "Atenção e trabalho cognitivo",
+                "Em escritórios e estúdios, a falta de renovação de ar ao longo de horas pode acentuar a sensação de fadiga mental e reduzir a disposição para tarefas complexas.",
+              ],
+              [
+                "Qualidade do sono no dormitório",
+                "Duas pessoas dormindo por 8 h com porta e janela fechadas podem elevar o CO₂ para mais de 2.000 ppm no modelo didático, associando-se à sensação de quarto abafado pela manhã.",
+              ],
+              [
+                "CO₂ como marcador indireto",
+                "O CO₂ em si é um indicador da taxa de troca de ar por pessoa: quando ele sobe, odores, umidade respiratória e outros poluentes internos também tendem a se acumular.",
+              ],
+            ].map(([titulo, texto]) => (
+              <div
+                key={titulo}
+                className="rounded-xl border border-border bg-background/50 p-3"
+              >
+                <p className="text-xs font-bold text-foreground">{titulo}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {texto}
+                </p>
+              </div>
+            ))}
           </div>
 
           <Suspense
@@ -185,7 +245,7 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          FENÔMENO 2: VOCs, DE ONDE VÊM E COMO DILUEM
+          FENÔMENO 2: VOCs, DE ONDE VÊM E COMO DILUEM (SAÚDE RESPIRATÓRIA)
       ══════════════════════════════════════════════════════════════ */}
       <div
         className={
@@ -196,44 +256,46 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
       >
         <div className="mx-auto w-full max-w-5xl space-y-3.5">
           <p className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-amber-600 print:block">
-            Fenômeno 2 de 3 · Fontes de VOCs e diluição relativa
+            Fenômeno 2 de 3 · Química dos materiais, VOCs e conforto respiratório
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <h4 className="min-w-0 flex-1 max-w-3xl text-display text-lg sm:text-xl font-extrabold text-foreground">
-              De onde vêm os compostos orgânicos voláteis (VOCs) e por que ventilar não substitui escolher bons materiais?
+              Como tintas, móveis novos e produtos químicos afetam o ar interno e o conforto das vias aéreas?
             </h4>
             <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-mono text-[9px] font-bold uppercase tracking-wider text-amber-500">
-              Índice Relativo (0–100) · Decaimento 1ª Ordem
+              Índice Relativo (Pico Ref. = 100) · Saúde do Ar
             </div>
           </div>
           <p className="max-w-3xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
-            Tintas, vernizes, adesivos de mobiliário e produtos de limpeza podem liberar
-            compostos orgânicos voláteis (VOCs) em taxas que variam bastante conforme a
-            formulação do produto e a idade do material. A ventilação dilui a concentração
-            presente no ar, mas não elimina a fonte emissora — por isso, especificar
-            materiais de baixa emissão na origem é fundamental. O gráfico abaixo utiliza um{" "}
-            <strong>índice relativo adimensional (base 100)</strong> apenas para comparar o
-            efeito da ventilação sobre diferentes perfis de emissão, sem estimar valores em
-            µg/m³.
+            Aquele "cheiro de reforma" ou de móvel recém-instalado frequentemente indica a
+            liberação de compostos orgânicos voláteis (VOCs) por solventes, resinas,
+            adesivos e agentes de limpeza. Do ponto de vista de <strong>wellness</strong>, a
+            exposição a esses compostos em locais pouco ventilados <strong>pode</strong>{" "}
+            causar irritação nos olhos, nariz e garganta, desconforto olfativo, náusea leve
+            ou dor de cabeça em pessoas mais sensíveis. A ventilação dilui o que já foi
+            liberado no ar, mas não interrompe a emissão do material — por isso, a escolha
+            de insumos de baixa emissão é a primeira barreira de proteção à saúde.
           </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-3">
               <span className="text-mono text-[8px] font-bold uppercase tracking-wider text-red-500">
-                O que piora a exposição
+                O que piora a exposição ocupacional
               </span>
               <p className="mt-1 text-xs text-foreground">
-                Aplicar acabamentos ou instalar painéis com alta emissão em ambientes sem
-                circulação de ar pode prolongar a permanência dos compostos no recinto.
+                Ocupar imediatamente ambientes recém-pintados ou com marcenaria nova mantendo
+                janelas fechadas faz a concentração subir a picos elevados e prolonga o
+                contato respiratório com os compostos.
               </p>
             </div>
             <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
               <span className="text-mono text-[8px] font-bold uppercase tracking-wider text-primary">
-                O que ajuda no controle
+                O que ajuda (controle na fonte + diluição)
               </span>
               <p className="mt-1 text-xs text-foreground">
-                Priorizar materiais com baixa emissão comprovada e intensificar a ventilação
-                durante e após reformas ou limpezas. Esquema conceitual; não substitui
-                medição ou projeto.
+                Especificar tintas à base d’água e painéis com baixa emissão de formaldeído/VOCs,
+                além de manter ventilação intensa de cura ("flush-out") antes do uso contínuo.
+                Esquema conceitual; não substitui medição ou projeto.
               </p>
             </div>
           </div>
@@ -297,10 +359,10 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
               </div>
 
               <div className="rounded-xl border border-border bg-card p-3 text-[11px] leading-relaxed text-muted-foreground">
-                <strong className="text-foreground">Leitura do esquema:</strong> o índice
-                100 representa a concentração relativa inicial no cenário de referência com
-                ventilação baixa (0,5 ACH) e intensidade 3. Não representa limite normativo
-                nem concentração em µg/m³.
+                <strong className="text-foreground">Leitura do esquema:</strong> todas as
+                curvas partem de 0 em t = 0 h. O índice 100 representa o pico atingido pela
+                fonte de referência em ventilação baixa (0,5 ACH, nível 3). Não representa
+                limite normativo nem concentração em µg/m³.
               </div>
             </div>
           </div>
@@ -322,10 +384,9 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
               fontFamily="monospace"
               fontWeight="bold"
             >
-              ÍNDICE RELATIVO (0–100) × TEMPO · {FONTES_VOC[fonteVoc].nome.toUpperCase()}
+              ÍNDICE RELATIVO (PICO REF. = 100) × TEMPO · {FONTES_VOC[fonteVoc].nome.toUpperCase()}
             </text>
 
-            {/* Eixos */}
             <line
               x1={chartX}
               y1={chartY}
@@ -380,16 +441,10 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
               </text>
             ))}
 
-            {niveisAchVoc.map((serieInfo) => {
-              const pts = Array.from({ length: passosVoc + 1 }, (_, i) => {
-                const t = (horasVoc * i) / passosVoc;
-                const val = vocRelativoNoTempo(t, {
-                  fonte: fonteVoc,
-                  intensidade: intensidadeVoc,
-                  ach: serieInfo.ach,
-                });
-                return `${mapVocX(t).toFixed(1)},${mapVocY(val).toFixed(1)}`;
-              }).join(" ");
+            {seriesCalculadasVoc.map((serieInfo) => {
+              const pts = serieInfo.pontos
+                .map((p) => `${mapVocX(p.t).toFixed(1)},${mapVocY(p.val).toFixed(1)}`)
+                .join(" ");
 
               return (
                 <polyline
@@ -402,7 +457,6 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
               );
             })}
 
-            {/* Legenda das 3 curvas */}
             {niveisAchVoc.map((s, idx) => (
               <g
                 key={s.rotulo}
@@ -420,10 +474,10 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
         {/* Rodapé com link para Certificações / Selo WELL */}
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/60 px-4 py-3">
           <p className="text-xs text-muted-foreground">
-            Certificações focadas na saúde do ocupante, como o selo{" "}
-            <strong className="text-foreground">WELL Building Standard</strong>, abordam
-            controle de fontes de VOCs e taxas de renovação de ar. Esquema conceitual; não
-            substitui medição ou projeto.
+            Certificações focadas na saúde e bem-estar do ocupante, como o selo{" "}
+            <strong className="text-foreground">WELL Building Standard</strong> (conceitos
+            Air e Materials), estabelecem critérios para controle de fontes de VOCs e taxas
+            de ventilação. Esquema conceitual; não substitui medição ou projeto.
           </p>
           <a
             href={`/certificacoes#${seloAnchorId("well")}`}
@@ -439,7 +493,7 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          FENÔMENO 3: LUZ NATURAL, ENCANDECIMENTO E CALOR
+          FENÔMENO 3: LUZ NATURAL, CICLO CIRCADIANO, OFUSCAMENTO E CALOR
       ══════════════════════════════════════════════════════════════ */}
       <div
         className={
@@ -450,46 +504,80 @@ export default function TrilhaWellness(props: TrilhaWellnessProps) {
       >
         <div className="mx-auto w-full max-w-5xl space-y-3.5">
           <p className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700 print:block">
-            Fenômeno 3 de 3 · Luz natural, ofuscamento e carga térmica da iluminação
+            Fenômeno 3 de 3 · Iluminação, ciclo circadiano, conforto visual e calor
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <h4 className="min-w-0 flex-1 max-w-3xl text-display text-lg sm:text-xl font-extrabold text-foreground">
-              Como aproveitar a luz natural até o fundo do cômodo sem aumentar o ofuscamento nem o calor interno?
+              Por que a má iluminação e a falta de luz natural afetam o ciclo circadiano, a fadiga visual e o conforto térmico?
             </h4>
             <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-mono text-[9px] font-bold uppercase tracking-wider text-primary">
-              FLD (BRE) · Método dos Lúmens · Tv/FS
+              Ciclo Circadiano · FLD (BRE) · Ofuscamento
             </div>
           </div>
           <p className="max-w-3xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
-            A disponibilidade de luz natural depende da área de vidro, da transmitância
-            visível (Tv), do ângulo de céu visível (θ) e da refletância das superfícies
-            internas (R). Enquanto a altura da verga da janela ajuda a determinar até que
-            profundidade a luz útil alcança, janelas muito amplas ou mal sombreadas em
-            orientações Leste/Oeste podem causar ofuscamento. Quando a luz natural não é
-            suficiente, a iluminação artificial complementa a tarefa — mas toda potência
-            elétrica das lâmpadas também se converte em ganho térmico dentro do cômodo.
+            A luz não serve apenas para enxergar tarefas: células fotorreceptoras na retina
+            respondem à intensidade e ao espectro da luz para sincronizar o{" "}
+            <strong>ciclo circadiano</strong> — o relógio biológico que regula o ritmo entre
+            estado de alerta diurno, humor e produção noturna de melatonina. Ambientes com
+            pouca luz natural durante o dia <strong>podem</strong> reduzir o estímulo de
+            vigília pela manhã, enquanto a má iluminação (seja por penumbra no fundo do
+            cômodo, seja por ofuscamento direto na janela ou excesso de luz fria e intensa à
+            noite) pode gerar fadiga ocular, dor de cabeça e dificultar o desacelerar
+            noturno. Ao mesmo tempo, acender lâmpadas para compensar um ambiente escuro
+            adiciona carga térmica ao espaço.
           </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-3">
               <span className="text-mono text-[8px] font-bold uppercase tracking-wider text-red-500">
-                O que piora o conforto visual e térmico
+                O que piora (má iluminação e desalinhamento circadiano)
               </span>
               <p className="mt-1 text-xs text-foreground">
-                Vidros escuros com baixa seletividade podem escurecer o cômodo e exigir
-                lâmpadas acesas durante o dia, enquanto fachadas sem brise podem gerar
-                contraste excessivo e ofuscamento.
+                Passar o dia sem acesso à luz natural (ou atrás de vidros muito escuros),
+                trabalhar sob forte contraste/ofuscamento nas telas e manter luz branca fria
+                e intensa à noite pode causar cansaço visual e atrasar a sinalização
+                biológica de descanso.
               </p>
             </div>
             <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
               <span className="text-mono text-[8px] font-bold uppercase tracking-wider text-primary">
-                O que ajuda no equilíbrio
+                O que ajuda (ritmo de luz, proteção solar e eficiência)
               </span>
               <p className="mt-1 text-xs text-foreground">
-                Combinar proteção solar externa, cores internas claras, altura de verga
-                adequada e iluminação artificial eficiente (LED). Esquema conceitual; não
+                Favorecer luz natural bem distribuída durante o dia (com brises e cores
+                internas claras para evitar ofuscamento) e transitar para iluminação
+                artificial mais suave, quente e indireta à noite. Esquema conceitual; não
                 substitui medição ou projeto.
               </p>
             </div>
+          </div>
+
+          {/* Cards de conexão entre Ciclo Circadiano, Fadiga Visual e Termodinâmica */}
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              [
+                "Manhã e dia · Estímulo circadiano",
+                "A luz natural diurna oferece intensidade e espectro que ajudam a sinalizar vigília e foco ao organismo. A profundidade que essa luz alcança depende da altura da janela e das refletâncias internas.",
+              ],
+              [
+                "Noite · Desaceleração e luz quente",
+                "No período noturno, luzes artificiais muito intensas ou de espectro frio podem inibir a preparação para o sono; iluminação indireta e de tonalidade mais quente tende a apoiar o relaxamento.",
+              ],
+              [
+                "Conforto visual vs. calor interno",
+                "Mais vidro nem sempre significa melhor luz: sem proteção solar, o sol direto causa ofuscamento; e se o vidro for escuro demais, obriga o uso de luz artificial, que vira calor no cômodo.",
+              ],
+            ].map(([titulo, texto]) => (
+              <div
+                key={titulo}
+                className="rounded-xl border border-border bg-background/50 p-3"
+              >
+                <p className="text-xs font-bold text-foreground">{titulo}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {texto}
+                </p>
+              </div>
+            ))}
           </div>
 
           <Suspense
