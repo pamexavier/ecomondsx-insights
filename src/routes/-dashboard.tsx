@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { EcomondsLogo } from "@/components/EcomondsLogo";
 import HeroCarousel from "@/components/HeroCarousel";
@@ -564,54 +564,80 @@ export default function Home() {
       </header>
 
       <main className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-32">
-        <div className="mt-8 animate-fade-up">
-          <HeroCarousel />
-        </div>
-
-        {/* ── 1. HERO SECTION & APRESENTAÇÃO (NO TOPO) ── */}
-        <section className="pt-6 sm:pt-8 md:pt-12 pb-12 sm:pb-16">
-          <div className="animate-fade-up inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono uppercase tracking-wider mb-4">
-            <span>NBR 15220-3:2024</span>
+        <section className="pt-10 sm:pt-14 md:pt-20 pb-10 sm:pb-14">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono uppercase tracking-wider mb-4">
+            <span>EcomindsX · Vector-X</span>
             <span>•</span>
-            <span>Série Histórica INMET</span>
-            <span>•</span>
-            <span>Trajetória Solar Exata</span>
+            <span>Engenharia ambiental aplicada</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.12] max-w-4xl">
-            Entenda como a trajetória do sol e o clima impactam seu imóvel, <span className="text-primary">no endereço exato.</span>
+            Transformamos dados do lugar em{" "}
+            <span className="text-primary">decisões melhores para imóveis e projetos.</span>
           </h1>
 
           <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-3xl">
-            Seja para <strong>comprar um imóvel pronto, escolher um terreno ou iniciar um projeto</strong>: descubra em segundos como a posição do sol (azimute), o regime de chuvas e ventos (INMET) e a Zona Bioclimática definem o conforto térmico, a conta de luz e água e a vida útil dos materiais.
+            Somos a EcomindsX. No Vector-X, conectamos clima, sol, território e bem-estar para
+            ajudar você a entender como escolhas de implantação, orientação e materiais afetam o
+            conforto, o consumo de recursos e a qualidade do ambiente.
           </p>
 
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl">
             <div className="flex items-start gap-3 p-4 rounded-xl bg-card border border-border">
               <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0 mt-0.5 font-mono text-xs">1</div>
               <div>
-                <p className="text-xs font-mono uppercase text-primary font-semibold">Para quem vai comprar um imóvel ou lote</p>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Evite descobrir só depois da mudança que os quartos viram uma estufa à tarde (fachada oeste) ou sofrem com mofo e frio por falta de sol (fachada sul).</p>
+                <p className="text-xs font-mono uppercase text-primary font-semibold">Está escolhendo um imóvel ou terreno?</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Entenda a exposição ao sol e ao clima antes de decidir — e quais aspectos do entorno merecem atenção.</p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-4 rounded-xl bg-card border border-border">
               <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0 mt-0.5 font-mono text-xs">2</div>
               <div>
-                <p className="text-xs font-mono uppercase text-primary font-semibold">Para quem vai construir ou projetar</p>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Dimensione aberturas, brises, reservatórios e especifique materiais (inércia térmica e transmitância) guiados pelo microclima real do lote.</p>
+                <p className="text-xs font-mono uppercase text-primary font-semibold">Está projetando ou intervindo?</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Use a leitura do local para orientar aberturas, sombreamento, ventilação e escolha de materiais.</p>
               </div>
             </div>
           </div>
+
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2"
+            >
+              Explorar diagnóstico por endereço <span aria-hidden="true">→</span>
+            </button>
+            <a
+              href="#sec-pilares"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            >
+              Entender como as escolhas influenciam <span aria-hidden="true">↓</span>
+            </a>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+            <span>NBR 15220-3:2024</span>
+            <span>Série histórica INMET</span>
+            <span>Trajetória solar</span>
+          </div>
         </section>
 
-        {/* ── 2. SEÇÃO DOS 3 PILARES + SIMULADOR DE AZIMUTE (5 FACHADAS) ── */}
+        <div className="mb-14 sm:mb-16">
+          <HeroCarousel />
+        </div>
+
+        {/* ── Impactos das escolhas de projeto ── */}
         <section id="sec-pilares" className="mb-16 pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
             <div>
-              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Por que a trajetória solar é decisiva?</span>
+              <span className="text-xs font-mono uppercase tracking-wider text-primary">Do contexto à decisão</span>
               <h2 className="text-xl sm:text-2xl font-bold text-foreground mt-1">
-                O que a posição do sol e o microclima impactam na prática
+                Uma escolha de projeto influencia mais do que a aparência
               </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                A orientação da fachada e as condições do local afetam em conjunto o conforto, a
+                energia, a água e o desempenho dos materiais. Explore um exemplo de cada aspecto.
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 bg-card p-1.5 rounded-xl border border-border">
               <span className="text-xs text-muted-foreground px-2 font-medium">Simular fachada:</span>
@@ -724,15 +750,16 @@ export default function Home() {
         </section>
 
 
-         {/* ── 4. TABELA / GUIA COMPARATIVO ENTRE ZONAS ── */}
+         {/* ── Como o contexto climático muda as recomendações ── */}
         <section className="mb-16 pt-8 border-t border-border">
           <div className="mb-6">
-            <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Entenda a Diferença Entre Zonas</span>
+            <span className="text-xs font-mono uppercase tracking-wider text-primary">O contexto muda a estratégia</span>
             <h2 className="text-xl sm:text-2xl font-bold text-foreground mt-1">
-              Por que o mesmo imóvel funciona em uma região e falha em outra?
+              A mesma solução não funciona da mesma forma em todo lugar
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Veja como a Zona Bioclimática muda completamente a escolha de materiais, o consumo de energia e a gestão de água:
+              Compare situações típicas e entenda por que orientação, materiais e sombreamento
+              precisam responder ao clima local.
             </p>
           </div>
 
@@ -782,7 +809,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── 3. MAPA DE ZONAS BIOCLIMÁTICAS + ZOOM + 27 SIGLAS ── */}
+        {/* ── Explore a referência climática do Brasil ── */}
         <section id="diagnostico" className="mb-16 pt-8 border-t border-border">
           <div className="relative overflow-hidden border border-primary/20 bg-card p-6 sm:p-10 rounded-2xl shadow-sm">
             <div
@@ -793,13 +820,14 @@ export default function Home() {
             <div className="relative z-10 mb-6">
               <div className="text-mono text-[10px] uppercase tracking-[0.15em] text-primary mb-3 flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                Zonas Bioclimáticas Brasileiras · NBR 15220-3:2024
+                Da referência nacional ao seu endereço · NBR 15220-3:2024
               </div>
               <h2 className="text-display text-2xl sm:text-3xl font-extrabold leading-tight mb-2">
-                Zoneamento térmico e solar <span className="text-primary">para o seu endereço.</span>
+                O clima da região é o começo da análise.
               </h2>
               <p className="text-muted-foreground text-sm sm:text-base max-w-2xl leading-relaxed">
-                Selecione uma das 12 zonas ou clique na sigla de um estado para ver a zona da capital e os parâmetros da norma. A zona de cada município pode variar dentro do mesmo estado.
+                Explore as zonas bioclimáticas e os dados de referência. Eles ajudam a contextualizar
+                uma análise, mas não substituem a leitura do endereço, do lote e de seu entorno.
               </p>
             </div>
 

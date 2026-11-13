@@ -411,7 +411,7 @@ const PILLARS: Pillar[] = [
 ];
 
 export default function HeroCarousel() {
-  const [active, setActive] = useState<number | null>(null);
+  const [active, setActive] = useState<number | null>(0);
   const current = active === null ? null : PILLARS[active];
 
   return (
@@ -421,13 +421,14 @@ export default function HeroCarousel() {
     >
       <div className="mx-auto max-w-3xl px-4 py-6 text-center sm:px-8 sm:py-9">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#2A6F4E]">
-          Engenharia ambiental & bem-estar
+          Como atuamos
         </p>
-        <h1 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl">
-          Ambientes melhores começam com boas escolhas
-        </h1>
+        <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl">
+          Engenharia para ambientes melhores
+        </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
-          Escolha um tema para conhecer nossas soluções e conteúdos.
+          Conheça nossas frentes de trabalho e veja como cada uma contribui para decisões mais
+          informadas.
         </p>
 
         <div
