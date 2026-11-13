@@ -1,13 +1,13 @@
-// src/components/CapaLaudo.tsx
+// src/routes/CapaLaudo.tsx
 //
-// Página 1 do laudo redesenhada como prancha técnica: cabeçalho com régua,
-// quadro de clima em tabela, dois painéis de recursos (solar e água) com as
-// premissas visíveis, e carimbo de prancha no rodapé.
-// Usa só os tokens que o projeto já tem (brand, ink, line, surface-soft...).
+// Página 1 do laudo (capa executiva): cabeçalho de marca, bloco de identificação,
+// score em anel, quadro de zona bioclimática, telemetria climática e os dois
+// painéis de recursos (solar e água) com premissas e alertas visíveis.
 // Mantém "pdf-page" e a proporção A4 para o gerarPDFPaginado continuar igual.
 
-import { Droplets, MapPin, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Compass, Droplets, MapPin, Sun, Thermometer, Zap } from "lucide-react";
 import { formatarMoeda, formatarNumero } from "@/utils/calculosBioclimaticos";
+import { FOLHA_A4, LaudoFooter } from "@/components/laudo/LaudoChrome";
 
 type EconomiaAgua = {
   m3Ano: number;
@@ -54,15 +54,46 @@ export type CapaLaudoProps = {
   economiaAgua: EconomiaAgua;
   economiaSolar: EconomiaSolar;
   potencialFotovoltaico: PotencialFV;
+  // ── Opcionais (novo visual): se não vierem, o bloco correspondente se adapta ──
+  finalidade?: string;
+  tipologia?: string;
+  coordenadas?: string;
+  azimute?: number | null;
+  percentualIluminacao?: number | null;
+  entornoResumo?: string;
+  intervaloNbr15575?: string | number | null;
+  caracteristicaZona?: string | null;
+  amplitudeTermica?: string | null;
+  estacaoInmet?: string | null;
+  distanciaEstacaoKm?: number | string | null;
+  codigo?: string;
+  totalPaginas?: number;
 };
 
-function BarraScore({ nota }: { nota: number }) {
-  const cheios = Math.max(0, Math.min(10, Math.round(nota)));
+function AnelScore({ nota }: { nota: number }) {
+  const r = 38;
+  const circ = 2 * Math.PI * r;
+  const frac = Math.max(0, Math.min(1, nota / 10));
   return (
-    <div className="mt-2 grid grid-cols-10 gap-0.5" aria-hidden="true">
-      {Array.from({ length: 10 }, (_, i) => (
-        <span key={i} className={`h-1.5 ${i < cheios ? "bg-brand-strong" : "bg-line"}`} />
-      ))}
+    <div className="relative flex size-24 shrink-0 items-center justify-center" aria-hidden="true">
+      <svg className="size-24 -rotate-90" viewBox="0 0 92 92">
+        <circle cx="46" cy="46" r={r} fill="none" stroke="#E6EFEA" strokeWidth="7" />
+        <circle
+          cx="46"
+          cy="46"
+          r={r}
+          fill="none"
+          stroke="#2A6B53"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={circ - frac * circ}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-black leading-none tabular-nums text-ink-deep">{formatarNumero(nota, 1)}</span>
+        <span className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-ink-soft">/ 10</span>
+      </div>
     </div>
   );
 }
@@ -72,58 +103,71 @@ function PainelRecurso({
   titulo,
   valor,
   unidade,
+  chip,
   economia,
   detalhe,
   premissas,
   alerta,
   vazio,
-  corBarra,
-  corTexto,
+  tom,
 }: {
   icone: React.ReactNode;
   titulo: string;
   valor?: string;
   unidade?: string;
+  chip?: string;
   economia?: string;
   detalhe?: string;
   premissas?: string[];
   alerta?: string | null;
   vazio?: string;
-  corBarra: string;
-  corTexto: string;
+  tom: "solar" | "agua";
 }) {
+  const estilo =
+    tom === "solar"
+      ? { caixa: "border-amber-200 bg-amber-50/50", icone: "bg-amber-100 text-amber-800", texto: "text-amber-800", chip: "bg-amber-100 text-amber-900", div: "border-amber-100" }
+      : { caixa: "border-sky-200 bg-sky-50/50", icone: "bg-sky-100 text-sky-800", texto: "text-sky-800", chip: "bg-sky-100 text-sky-900", div: "border-sky-100" };
+
   return (
-    <section className={`flex flex-col border border-line border-t-4 ${corBarra} bg-white`}>
-      <header className="flex items-center gap-2 border-b border-line px-3 py-2">
-        <span className={corTexto}>{icone}</span>
-        <h3 className="text-sm font-semibold text-ink">{titulo}</h3>
+    <section className={`flex flex-col rounded-2xl border p-3.5 ${estilo.caixa}`}>
+      <header className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className={`flex size-7 items-center justify-center rounded-lg ${estilo.icone}`}>{icone}</span>
+          <h3 className={`text-[10px] font-extrabold uppercase tracking-wider ${estilo.texto}`}>{titulo}</h3>
+        </div>
+        {chip && (
+          <span className={`rounded-md px-2 py-0.5 text-[10px] font-black tabular-nums ${estilo.chip}`}>{chip}</span>
+        )}
       </header>
 
       {vazio ? (
-        <p className="p-3 text-xs leading-relaxed text-ink-soft">{vazio}</p>
+        <p className="mt-3 text-[11px] leading-relaxed text-ink-soft">{vazio}</p>
       ) : (
-        <div className="flex flex-1 flex-col p-3">
-          <p className="tabular-nums leading-none">
-            <span className={`text-3xl font-bold ${corTexto}`}>{valor}</span>{" "}
-            <span className="text-xs font-medium text-ink-soft">{unidade}</span>
+        <div className="flex flex-1 flex-col">
+          <p className="mt-3 leading-none tabular-nums">
+            <span className={`text-3xl font-black ${estilo.texto}`}>{valor}</span>{" "}
+            <span className="text-[11px] font-medium text-ink-soft">{unidade}</span>
           </p>
           {detalhe && <p className="mt-1 text-[11px] text-ink-soft">{detalhe}</p>}
 
-          <p className="mt-3 text-[11px] text-ink-soft">Economia estimada</p>
-          <p className="tabular-nums text-lg font-semibold text-ink">
-            {economia}
-            <span className="text-xs font-normal text-ink-soft"> por ano</span>
-          </p>
+          <div className={`mt-3 border-t pt-2.5 ${estilo.div}`}>
+            <p className="text-[10px] font-bold uppercase text-ink-soft">Economia estimada</p>
+            <p className="text-lg font-black tabular-nums text-ink-deep">
+              {economia}
+              <span className="text-[11px] font-normal text-ink-soft"> por ano</span>
+            </p>
+          </div>
 
           {alerta && (
-            <p className="mt-3 border-l-2 border-warn-ink bg-warn-soft px-2 py-1.5 text-[10px] leading-snug text-warn-ink">
-              {alerta}
+            <p className="mt-2.5 flex gap-1.5 rounded-lg border-l-2 border-warn-ink bg-warn-soft px-2 py-1.5 text-[10px] leading-snug text-warn-ink">
+              <AlertTriangle className="mt-px size-3 shrink-0" aria-hidden="true" />
+              <span>{alerta}</span>
             </p>
           )}
 
-          <ul className="mt-3 divide-y divide-line border-t border-line text-[10px] leading-snug text-ink-soft">
+          <ul className={`mt-2.5 divide-y text-[10px] leading-snug text-ink-soft ${estilo.div}`}>
             {(premissas ?? []).map((p) => (
-              <li key={p} className="py-1">
+              <li key={p} className={`py-1 ${estilo.div}`}>
                 {p}
               </li>
             ))}
@@ -138,17 +182,19 @@ export function CapaLaudo(props: CapaLaudoProps) {
   const {
     nomeProjeto, endereco, fachada, zona, subzona, nota, resumoScore, fonteSolar,
     clima, economiaAgua, economiaSolar, potencialFotovoltaico,
+    finalidade, tipologia, coordenadas, azimute, percentualIluminacao, entornoResumo,
+    intervaloNbr15575, caracteristicaZona, amplitudeTermica, estacaoInmet, distanciaEstacaoKm,
+    codigo, totalPaginas = 5,
   } = props;
 
   const notaNum = Number(nota);
-  const temNota = Number.isFinite(notaNum);
-  const hoje = new Date().toLocaleDateString("pt-BR");
+  const temNota = nota !== null && nota !== undefined && nota !== "" && Number.isFinite(notaNum);
 
   const celulasClima = [
-    { rotulo: "Temperatura média", valor: `${formatarNumero(clima.tempMedia, 1)} °C` },
-    { rotulo: "Mínima e máxima", valor: `${formatarNumero(clima.tempMin, 0)} a ${formatarNumero(clima.tempMax, 0)} °C` },
-    { rotulo: "Umidade média", valor: `${formatarNumero(clima.umidade, 0)} %` },
-    { rotulo: "Radiação global", valor: `${formatarNumero(clima.radiacao, 0)} W/m²` },
+    { rotulo: "Temp. média anual", valor: `${formatarNumero(clima.tempMedia, 1)} °C`, sub: "Bulbo seco", Icone: Thermometer },
+    { rotulo: "Mínima e máxima", valor: `${formatarNumero(clima.tempMin, 0)}° a ${formatarNumero(clima.tempMax, 0)} °C`, sub: amplitudeTermica || "Faixa anual", Icone: Activity },
+    { rotulo: "Umidade média", valor: `${formatarNumero(clima.umidade, 0)} %`, sub: "Média anual", Icone: Droplets },
+    { rotulo: "Radiação global", valor: `${formatarNumero(clima.radiacao, 0)} W/m²`, sub: "Média horária", Icone: Sun },
   ];
 
   const escopoPredio = potencialFotovoltaico?.escopo === "edificio_inteiro";
@@ -157,63 +203,163 @@ export function CapaLaudo(props: CapaLaudoProps) {
       .filter(Boolean)
       .join(" ") || null;
 
+  const azTxt = typeof azimute === "number" && Number.isFinite(azimute) ? ` (${Math.round(azimute)}°)` : "";
+
   return (
-    <div className="pdf-page relative flex aspect-[210/297] w-full flex-col overflow-hidden rounded-md border border-line bg-white p-10 text-ink shadow-sm">
-      {/* Cabeçalho */}
-      <header className="flex items-start justify-between gap-6 border-b-2 border-ink pb-4">
-        <div className="min-w-0">
-          <p className="text-xs text-ink-soft">Laudo de viabilidade bioclimática</p>
-          <h1 className="mt-1 break-words text-3xl font-bold leading-tight tracking-tight">{nomeProjeto}</h1>
-          <p className="mt-2 flex items-start gap-1.5 text-sm text-ink-soft">
-            <MapPin className="mt-0.5 size-3.5 shrink-0 text-brand-strong" aria-hidden="true" />
-            {endereco}
-          </p>
+    <div className={FOLHA_A4}>
+      <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-ink-deep via-brand-deep to-brand" />
+
+      {/* Masthead */}
+      <header className="mt-1 flex shrink-0 items-start justify-between gap-4 border-b border-line pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-ink-deep shadow-sm">
+            <Compass className="size-5 text-brand" aria-hidden="true" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-base font-black tracking-tight text-ink-deep">
+                VECTOR<span className="text-brand-deep">-X</span>
+              </span>
+              <span className="rounded border border-brand/30 bg-surface-soft px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-brand-deep">
+                Engenharia bioclimática
+              </span>
+            </div>
+            <p className="mt-0.5 text-[11px] text-ink-soft">Laudo técnico de viabilidade bioclimática, insolação e sombreamento</p>
+          </div>
         </div>
-        <div className="w-40 shrink-0">
-          <p className="text-xs text-ink-soft">Score bioclimático</p>
-          <p className="tabular-nums leading-none">
-            <span className="text-5xl font-bold text-brand-strong">{temNota ? formatarNumero(notaNum, 1) : "–"}</span>
-            <span className="text-lg text-ink-soft">/10</span>
+        <div className="text-right">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-surface-soft px-3 py-1 text-[10px] font-bold text-brand-deep">
+            <span className="size-1.5 rounded-full bg-brand-deep" />
+            {fonteSolar}
+          </span>
+          <p className="mt-1.5 font-mono text-[10px] tabular-nums text-ink-soft">
+            {codigo ? `DOC: ${codigo} · ` : ""}PÁG. 01 / {String(totalPaginas).padStart(2, "0")}
           </p>
-          {temNota && <BarraScore nota={notaNum} />}
         </div>
       </header>
 
-      <p className="mt-5 border-l-4 border-brand pl-4 text-sm leading-relaxed">
-        {resumoScore || "Análise concluída com sucesso."}
-      </p>
+      {/* Identificação */}
+      <section className="mt-5 shrink-0 rounded-2xl border border-line bg-surface-soft/60 p-5">
+        {(finalidade || tipologia) && (
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-deep">{finalidade}</span>
+            <span className="text-[10px] font-semibold text-ink-soft">{tipologia}</span>
+          </div>
+        )}
+        <h1 className="break-words text-[26px] font-black leading-tight tracking-tight text-ink-deep">{nomeProjeto}</h1>
+        <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-ink">
+          <MapPin className="mt-0.5 size-3.5 shrink-0 text-brand-deep" aria-hidden="true" />
+          <span>
+            {endereco}
+            {coordenadas && <span className="ml-3 font-mono text-[11px] tabular-nums text-ink-soft">Coord: {coordenadas}</span>}
+          </span>
+        </p>
 
-      {/* Clima */}
-      <section className="mt-6">
-        <h2 className="text-sm font-semibold">
-          Clima local, zona bioclimática {zona}
-          {subzona}
+        <div className="mt-4 grid grid-cols-3 gap-4 border-t border-line pt-3.5">
+          <div>
+            <p className="text-[9.5px] font-bold uppercase tracking-wider text-ink-soft">Fachada analisada</p>
+            <p className="mt-0.5 text-sm font-black tabular-nums text-ink-deep">
+              {fachada}
+              {azTxt}
+            </p>
+          </div>
+          <div>
+            <p className="text-[9.5px] font-bold uppercase tracking-wider text-ink-soft">Sol direto na fachada</p>
+            <p className="mt-0.5 text-sm font-black tabular-nums text-brand-deep">
+              {percentualIluminacao != null ? `${percentualIluminacao}% dos horários` : "–"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[9.5px] font-bold uppercase tracking-wider text-ink-soft">Interferência do entorno</p>
+            <p className="mt-0.5 text-sm font-bold text-ink-deep">{entornoResumo || "Sem medição do entorno"}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Score + zona */}
+      <section className="mt-4 grid shrink-0 grid-cols-12 gap-4">
+        <div className="col-span-7 flex items-center gap-5 rounded-2xl border border-line bg-white p-5">
+          {temNota ? (
+            <AnelScore nota={notaNum} />
+          ) : (
+            <div className="flex size-24 shrink-0 items-center justify-center rounded-full border-[7px] border-line text-2xl font-black text-ink-soft">–</div>
+          )}
+          <div className="min-w-0">
+            <span className="inline-block rounded-md bg-surface-soft px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-brand-deep">
+              Score bioclimático
+            </span>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-ink">{resumoScore || "Análise concluída com sucesso."}</p>
+          </div>
+        </div>
+
+        <div className="col-span-5 flex flex-col justify-between rounded-2xl bg-ink-deep p-5 text-white">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-brand">ABNT NBR 15220-3:2024</span>
+              {intervaloNbr15575 != null && intervaloNbr15575 !== "" && (
+                <span className="rounded bg-white/10 px-2 py-0.5 text-[9px] font-semibold text-white/90">
+                  NBR 15575 · Intervalo {intervaloNbr15575}
+                </span>
+              )}
+            </div>
+            <div className="mt-2 flex items-baseline gap-2.5">
+              <span className="text-4xl font-black tracking-tight tabular-nums">
+                ZB {zona ?? "–"}
+                {subzona}
+              </span>
+              <span className="text-xs font-semibold text-brand">Zona oficial</span>
+            </div>
+            {caracteristicaZona && <p className="mt-1.5 text-[11px] leading-snug text-white/80">{caracteristicaZona}</p>}
+          </div>
+          {estacaoInmet && (
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/15 pt-2.5 text-[10px] text-white/75">
+              <span className="truncate">Estação INMET: {estacaoInmet}</span>
+              {distanciaEstacaoKm != null && distanciaEstacaoKm !== "" && (
+                <span className="shrink-0 font-mono font-bold tabular-nums text-brand">{formatarNumero(distanciaEstacaoKm, 1)} km</span>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Telemetria */}
+      <section className="mt-4 shrink-0">
+        <h2 className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.15em] text-ink-soft">
+          Telemetria climática de referência · série histórica local
         </h2>
-        <dl className="mt-2 grid grid-cols-4 divide-x divide-line border-y border-line">
-          {celulasClima.map((c) => (
-            <div key={c.rotulo} className="px-3 py-2.5 first:pl-0">
-              <dt className="text-[11px] text-ink-soft">{c.rotulo}</dt>
-              <dd className="mt-0.5 tabular-nums text-lg font-semibold">{c.valor}</dd>
+        <div className="grid grid-cols-4 gap-3">
+          {celulasClima.map(({ rotulo, valor, sub, Icone }) => (
+            <div key={rotulo} className="rounded-xl border border-line bg-white p-3">
+              <div className="flex items-center justify-between text-brand-deep">
+                <span className="text-[9.5px] font-bold uppercase tracking-wider text-ink-soft">{rotulo}</span>
+                <Icone className="size-3.5" aria-hidden="true" />
+              </div>
+              <p className="mt-1 text-base font-black tabular-nums text-ink-deep">{valor}</p>
+              <p className="mt-0.5 truncate text-[10px] text-ink-soft">{sub}</p>
             </div>
           ))}
-        </dl>
+        </div>
       </section>
 
       {/* Recursos */}
-      <section className="mt-6">
-        <h2 className="text-sm font-semibold">Recursos do imóvel</h2>
-        <div className="mt-2 grid grid-cols-2 gap-4">
+      <section className="mt-4 min-h-0 flex-1">
+        <h2 className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.15em] text-ink-soft">
+          Aproveitamento de recursos naturais do imóvel · pré-dimensionamento
+        </h2>
+        <div className="grid grid-cols-2 gap-4">
           {potencialFotovoltaico && economiaSolar ? (
             <PainelRecurso
+              tom="solar"
               icone={<Zap className="size-4" aria-hidden="true" />}
               titulo="Energia solar fotovoltaica"
               valor={formatarNumero(potencialFotovoltaico.geracaoAnualMaximaKwh, 0)}
               unidade="kWh/ano"
-              detalhe={`${formatarNumero(potencialFotovoltaico.maxPaineis, 0)} painéis${
+              chip={
                 potencialFotovoltaico.potenciaInstaladaKwp
-                  ? ` · ${formatarNumero(potencialFotovoltaico.potenciaInstaladaKwp, 1)} kWp`
-                  : ""
-              }`}
+                  ? `${formatarNumero(potencialFotovoltaico.potenciaInstaladaKwp, 1)} kWp`
+                  : undefined
+              }
+              detalhe={`${formatarNumero(potencialFotovoltaico.maxPaineis, 0)} painéis`}
               economia={formatarMoeda(economiaSolar.economiaAnualEstimada)}
               premissas={[
                 `Área de painéis ${formatarNumero(potencialFotovoltaico.areaDisponivelM2, 0)} m²`,
@@ -224,25 +370,24 @@ export function CapaLaudo(props: CapaLaudoProps) {
                 economiaSolar.textoImpacto,
               ]}
               alerta={alertaSolar}
-              corBarra="border-t-amber-600"
-              corTexto="text-amber-700"
             />
           ) : (
             <PainelRecurso
+              tom="solar"
               icone={<Zap className="size-4" aria-hidden="true" />}
               titulo="Energia solar fotovoltaica"
               vazio="Sem dados do Google Solar para a geometria deste telhado. A estimativa não foi calculada."
-              corBarra="border-t-amber-600"
-              corTexto="text-amber-700"
             />
           )}
 
           {economiaAgua ? (
             <PainelRecurso
+              tom="agua"
               icone={<Droplets className="size-4" aria-hidden="true" />}
               titulo="Captação de água da chuva"
               valor={formatarNumero(economiaAgua.m3Ano, 0)}
               unidade="m³/ano aproveitáveis"
+              chip={`${formatarNumero(economiaAgua.m3Ano / 12, 1)} m³/mês`}
               detalhe={
                 economiaAgua.limitadoPelaDemanda
                   ? `O telhado capta ${formatarNumero(economiaAgua.volumeCaptavelM3Ano, 0)} m³/ano; o resto transborda`
@@ -251,16 +396,13 @@ export function CapaLaudo(props: CapaLaudoProps) {
               economia={formatarMoeda(economiaAgua.economiaAnualEstimada)}
               premissas={[...economiaAgua.premissas, economiaAgua.textoImpacto]}
               alerta={economiaAgua.alertaChuva}
-              corBarra="border-t-sky-600"
-              corTexto="text-sky-700"
             />
           ) : (
             <PainelRecurso
+              tom="agua"
               icone={<Droplets className="size-4" aria-hidden="true" />}
               titulo="Captação de água da chuva"
               vazio="Dados de chuva insuficientes para projetar a captação."
-              corBarra="border-t-sky-600"
-              corTexto="text-sky-700"
             />
           )}
         </div>
@@ -269,28 +411,9 @@ export function CapaLaudo(props: CapaLaudoProps) {
         </p>
       </section>
 
-      {/* Carimbo de prancha */}
-      <footer className="mt-auto grid grid-cols-[1fr_auto_auto_auto] divide-x divide-line border border-ink text-[10px]">
-        <div className="px-3 py-1.5">
-          <p className="text-ink-soft">Projeto</p>
-          <p className="truncate font-semibold">{nomeProjeto}</p>
-        </div>
-        <div className="px-3 py-1.5">
-          <p className="text-ink-soft">Fachada</p>
-          <p className="font-semibold">{fachada}</p>
-        </div>
-        <div className="px-3 py-1.5">
-          <p className="text-ink-soft">Fonte solar</p>
-          <p className="font-semibold">{fonteSolar}</p>
-        </div>
-        <div className="px-3 py-1.5">
-          <p className="text-ink-soft">Emissão</p>
-          <p className="tabular-nums font-semibold">{hoje}</p>
-        </div>
-      </footer>
+      <LaudoFooter nota="Sumário executivo de desempenho ambiental · ABNT NBR 15220-3:2024 e NBR 15575:2024" />
     </div>
   );
 }
 
 export default CapaLaudo;
-

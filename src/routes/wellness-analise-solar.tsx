@@ -17,7 +17,7 @@ import {
   MapPin, CloudRain, Thermometer, Wind,
   ShieldCheck, Cpu, FileText, Download, Target, Compass, Sun,
   Layers, Satellite, Ruler, Building2, ArrowLeft,
-  Sparkles, X, Zap, Droplets
+  Sparkles, X, Zap, Droplets, AlertTriangle, CheckCircle2, Video
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
@@ -35,6 +35,9 @@ import { gerarPDFPaginado } from "@/utils/geradorPDF";
 import SimuladorSombreamento3D from "@/components/SimuladorSombreamento3D";
 import CapaLaudo from "./CapaLaudo";
 import { ResumoEntorno } from "./ResumoEntorno";
+import { FOLHA_A4, LaudoFooter, LaudoHeader, COR_ESTACAO, ROTULO_ESTACAO as ROTULO_ESTACAO_LAUDO } from "@/components/laudo/LaudoChrome";
+import { PaginaZoneamento } from "@/components/laudo/PaginaZoneamento";
+import { PaginaLeituraAplicada } from "@/components/laudo/PaginaLeituraAplicada";
 
 export const Route = createFileRoute("/wellness-analise-solar")({
   beforeLoad: () => {
@@ -986,7 +989,12 @@ function PaginaCartaSolar({
   fonteSombreamentoResumo,
   leituraSolar,
   obstrucaoPrincipal,
+  nomeProjeto,
+  pagina,
+  totalPaginas,
+  codigo,
 }: any) {
+  const [pontoHover, setPontoHover] = useState<any>(null);
   const azNominal = azimuteNominal(fachadaAtual);
   const azUsadoBruto = sombreamentoReal?.azimuteFachadaUsado ?? sombreamentoReal?.azimute_fachada_usado;
   const azReal: number = typeof azUsadoBruto === "number" ? azUsadoBruto : azNominal;
@@ -995,176 +1003,264 @@ function PaginaCartaSolar({
   const divergeDoInformado = diffAngular(azReal, azNominal) >= 5;
   const perfilHorizonte: any[] = sombreamentoReal?.perfil ?? [];
   const resumoSolar = resumoSolarGerado(calculoSolarAtual, rotuloFachada, percentualReal);
+  const medido = fonteSombreamentoResumo === "perfil_real_dsm";
+  const ini = nomeOrientacao(azReal - 90);
+  const fim = nomeOrientacao(azReal + 90);
+
+  const cx = 190, cy = 152, raio = 112;
+  const estacoes = ["Verao", "Outono", "Inverno", "Primavera"];
+  const ordemDesenho = ["Verao", "Inverno", "Primavera", "Outono"];
+  const pathMascara = gerarPathMascara(perfilHorizonte, azReal, cx, cy, raio);
+  const pa = anguloParaXY(cx, cy, raio, azReal - 90);
+  const pb = anguloParaXY(cx, cy, raio, azReal + 90);
+  const pNormal = anguloParaXY(cx, cy, raio * 0.82, azReal);
 
   return (
-    <>
-      <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
-        <h3 className="text-xs font-black uppercase tracking-[0.15em] text-ink mb-3 flex items-center gap-2">
-          <Sun className="size-4 text-brand-strong" /> Incidência Direta e Sombreamento · Fachada voltada para {rotuloFachada}
-        </h3>
-        {divergeDoInformado && (
-          <p className="text-[10px] text-ink-soft -mt-1 mb-3">
-            Você informou {fachadaAtual}; o contorno do prédio indica {Math.round(azReal)}°, e a análise usa essa orientação.
-          </p>
-        )}
-        <div className="bg-surface-soft border border-line rounded-xl p-4">
-          <p className="text-xs text-ink-soft leading-relaxed mb-3 font-medium">{resumoSolar}</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-ink-soft mb-2">Carta solar e interpretação da fachada</p>
-          {calculoSolarAtual?.Verao ? (() => {
-            const cx = 190, cy = 150, raio = 108;
-            const estacoes = ["Verao", "Outono", "Inverno", "Primavera"];
-            const ordemDesenho = ["Verao", "Inverno", "Primavera", "Outono"];
-            const pathMascara = gerarPathMascara(perfilHorizonte, azReal, cx, cy, raio);
-            const ini = nomeOrientacao(azReal - 90).nome;
-            const fim = nomeOrientacao(azReal + 90).nome;
-            const pa = anguloParaXY(cx, cy, raio, azReal - 90);
-            const pb = anguloParaXY(cx, cy, raio, azReal + 90);
-            const pRotulo = anguloParaXY(cx, cy, raio * 0.86, azReal);
+    <div className="pdf-page relative flex aspect-[210/297] w-full flex-col overflow-hidden rounded-lg border border-line bg-white p-8 text-ink shadow-[0_14px_40px_rgba(24,34,31,0.08)]">
+      <LaudoHeader
+        secao="02 · Geometria solar e máscara de sombra"
+        nomeProjeto={nomeProjeto}
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        codigo={codigo}
+      />
 
-            return (
-              <div className="grid grid-cols-[1.15fr_0.85fr] gap-4 items-center">
-                <div className="bg-white border border-line rounded-xl p-2">
-                  <svg viewBox="0 0 380 320" className="w-full h-auto max-h-[245px]">
-                    <circle cx={cx} cy={cy} r={raio} fill="#EEF5EF" stroke="#E5E7EB" />
-                    <circle cx={cx} cy={cy} r={raio * 0.66} fill="none" stroke="#E5E7EB" strokeDasharray="4 4" />
-                    <circle cx={cx} cy={cy} r={raio * 0.33} fill="none" stroke="#E5E7EB" strokeDasharray="4 4" />
-                    <line x1={cx} y1={cy - raio} x2={cx} y2={cy + raio} stroke="#E5E7EB" />
-                    <line x1={cx - raio} y1={cy} x2={cx + raio} y2={cy} stroke="#E5E7EB" />
-                    <text x={cx} y={cy - raio - 10} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">N</text>
-                    <text x={cx} y={cy + raio + 17} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">S</text>
-                    <text x={cx + raio + 14} y={cy + 4} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">L</text>
-                    <text x={cx - raio - 14} y={cy + 4} textAnchor="middle" className="fill-ink-soft text-[11px] font-black">O</text>
-
-                    <path d={gerarPathSetorFachadaAz(azReal, cx, cy, raio)} fill="#4C9A74" fillOpacity="0.14" stroke="#3A7D5E" strokeWidth="1.5" />
-                    <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="#3A7D5E" strokeWidth="2.5" />
-                    <text x={pRotulo.x} y={pRotulo.y} textAnchor="middle" className="fill-brand-strong text-[9px] font-black">
-                      {orient.sigla} · {Math.round(azReal)}°
-                    </text>
-
-                    {pathMascara && (
-                      <path d={pathMascara} fill="#F43F5E" fillOpacity="0.22" stroke="#F43F5E" strokeOpacity="0.55" strokeWidth="1" />
-                    )}
-
-                    {ordemDesenho.map((estacao) => {
-                      const horarios = calculoSolarAtual[estacao];
-                      if (!horarios) return null;
-                      const cor = CORES_ESTACAO[estacao];
-                      const equinocioSobreposto = estacao === "Outono";
-                      const pontos = Object.entries(horarios).map(([hora, d]: [string, any]) => {
-                        const r = elevacaoParaRaio(Number(d.elevacao) || 0, raio);
-                        return { hora, estado: estadoDoPonto(d.status), ...anguloParaXY(cx, cy, r, Number(d.azimute) || 0) };
-                      });
-                      const rp = equinocioSobreposto ? 2.2 : 3.8;
-                      return (
-                        <g key={estacao}>
-                          <polyline
-                            points={pontos.map((p) => `${p.x},${p.y}`).join(" ")}
-                            fill="none"
-                            stroke={cor}
-                            strokeWidth={equinocioSobreposto ? 1.5 : 2.5}
-                            strokeDasharray={equinocioSobreposto ? "5 4" : undefined}
-                          />
-                          {pontos.map((p) =>
-                            p.estado === "bloqueado" ? (
-                              <circle key={p.hora} cx={p.x} cy={p.y} r={rp} fill="#FFFFFF" stroke={cor} strokeWidth="1.6" />
-                            ) : (
-                              <circle key={p.hora} cx={p.x} cy={p.y} r={rp} fill={cor} fillOpacity={p.estado === "sol" ? 1 : 0.3} />
-                            ),
-                          )}
-                        </g>
-                      );
-                    })}
-
-                    {calculoSolarAtual.Inverno &&
-                      Object.entries(calculoSolarAtual.Inverno).map(([hora, d]: [string, any]) => {
-                        const h = parseFloat(hora.replace("h", ""));
-                        if (!Number.isInteger(h) || h % 2 !== 0) return null;
-                        const r = elevacaoParaRaio(Number(d.elevacao) || 0, raio) + 10;
-                        const p = anguloParaXY(cx, cy, r, Number(d.azimute) || 0);
-                        return (
-                          <text key={hora} x={p.x} y={p.y + 3} textAnchor="middle" className="fill-ink-soft text-[8px] font-bold">
-                            {h}h
-                          </text>
-                        );
-                      })}
-                  </svg>
-
-                  <div className="flex flex-wrap justify-center gap-3 text-[9px] font-bold uppercase tracking-wider text-ink-soft">
-                    {estacoes.map((estacao) => (
-                      <span key={estacao} className="flex items-center gap-1">
-                        <i className="size-2 rounded-full" style={{ backgroundColor: CORES_ESTACAO[estacao] }} />
-                        {ROTULO_ESTACAO[estacao]}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-3 mt-1.5 text-[8px] font-semibold text-ink-soft">
-                    <span className="flex items-center gap-1"><i className="size-2 rounded-full bg-ink-soft" />Sol na fachada</span>
-                    <span className="flex items-center gap-1"><i className="size-2 rounded-full border-2 border-ink-soft bg-white" />Bloqueado pelo entorno</span>
-                    <span className="flex items-center gap-1"><i className="size-2 rounded-full bg-ink-soft/30" />Sem sol na fachada</span>
-                    {pathMascara && <span className="flex items-center gap-1"><i className="size-2 rounded-sm bg-rose-300" />Céu bloqueado</span>}
-                  </div>
-                  <p className="text-center text-[8px] text-ink-soft/70 mt-1">Outono e primavera têm trajetória quase idêntica: o outono aparece tracejado, por cima.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="bg-white rounded-xl border border-line p-3">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-ink-soft">O que isso significa</p>
-                    <p className="text-xs font-semibold text-ink mt-1">
-                      A faixa verde é o que a parede enxerga: do {ini} ao {fim} ({Math.round(norm360(azReal - 90))}° a {Math.round(norm360(azReal + 90))}°), com a fachada voltada para {orient.nome}.{" "}
-                      {pathMascara ? "A área rosa é o céu bloqueado pelo entorno. " : ""}
-                      Os trajetos mostram por onde o sol passa em cada estação; pontos mais afastados do centro indicam sol mais baixo e sombras mais longas.
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-xl border border-line p-3">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-ink-soft">
-                      {fonteSombreamentoResumo === "perfil_real_dsm" ? "Resultado medido" : "Resultado estimado"}
-                    </p>
-                    <p className="text-xs text-ink-soft mt-1">
-                      {percentualReal != null
-                        ? `${percentualReal}% de iluminação direta ${fonteSombreamentoResumo === "perfil_real_dsm" ? "real, com correção por satélite" : "estimada pela trajetória solar, sem considerar vizinhos ou árvores"}.`
-                        : "Trajetória solar calculada para a fachada."}
-                    </p>
-                    {leituraSolar.pontosComDado > 0 && (
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-700 mt-1">Horizonte do campo de visão da fachada (DSM)</p>
-                    )}
-                  </div>
-                  {obstrucaoPrincipal && (
-                    <div className="bg-rose-50 rounded-xl border border-rose-200 p-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-rose-700">Obstrução solar encontrada ({obstrucaoPrincipal.direcao})</p>
-                      <p className="text-xs text-rose-900 mt-1">
-                        Obstrução a {formatarNumero(obstrucaoPrincipal.distanciaMetros, 0)}m, com {formatarNumero(obstrucaoPrincipal.alturaMetros, 1)}m de altura, bloqueando o sol abaixo de {formatarNumero(obstrucaoPrincipal.anguloObstrucaoGraus, 1)}°.{" "}
-                        {obstrucaoPrincipal.mascara === 0
-                          ? "No modelo, esse ponto não tem telhado: possivelmente vegetação."
-                          : obstrucaoPrincipal.mascara === 1
-                          ? "No modelo, esse ponto é classificado como telhado: provável edificação vizinha."
-                          : "Pode ser edificação vizinha ou vegetação."}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })() : <p className="text-sm text-ink-soft">Dados solares indisponíveis.</p>}
-
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            {["Verao", "Outono", "Inverno", "Primavera"].map((estacao) => {
-              const ensolaradas = horasComSol(calculoSolarAtual?.[estacao]).length;
-              return (
-                <div key={estacao} className="bg-surface-soft rounded-lg p-2">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-ink-soft">{ROTULO_ESTACAO[estacao]}</p>
-                  <p className="text-base font-black text-ink mt-0.5">
-                    {ensolaradas} <span className="text-[10px] font-semibold text-ink-soft">horários com sol</span>
-                  </p>
-                </div>
-              );
-            })}
+      {/* Síntese */}
+      <div className="mb-3.5 shrink-0 rounded-2xl border border-line bg-surface-soft/60 p-4">
+        <div className="grid grid-cols-12 items-center gap-4">
+          <div className="col-span-8">
+            <span className="text-[9.5px] font-extrabold uppercase tracking-[0.15em] text-brand-deep">
+              Diagnóstico geométrico da fachada · {rotuloFachada}
+            </span>
+            <h2 className="mt-0.5 text-lg font-black text-ink-deep">Projeção estereográfica anual e obstrução celeste</h2>
+            <p className="mt-1 text-[11px] font-medium leading-relaxed text-ink">{resumoSolar}</p>
+            {divergeDoInformado && (
+              <p className="mt-1 text-[10px] text-ink-soft">
+                Você informou {fachadaAtual}; o contorno do prédio indica {Math.round(azReal)}°, e a análise usa essa orientação.
+              </p>
+            )}
+          </div>
+          <div className="col-span-4 grid grid-cols-2 gap-2 border-l border-line pl-4">
+            <div className="rounded-xl border border-line bg-white p-2.5 text-center">
+              <p className="text-[9px] font-bold uppercase text-ink-soft">{medido ? "Sol medido" : "Sol estimado"}</p>
+              <p className="mt-0.5 text-2xl font-black tabular-nums text-brand-deep">{percentualReal != null ? `${percentualReal}%` : "–"}</p>
+              <p className="text-[9px] text-ink-soft">dos horários</p>
+            </div>
+            <div className="rounded-xl border border-line bg-white p-2.5 text-center">
+              <p className="text-[9px] font-bold uppercase text-ink-soft">Azimute real</p>
+              <p className="mt-0.5 text-2xl font-black tabular-nums text-ink-deep">{Math.round(azReal)}°</p>
+              <p className="text-[9px] text-ink-soft">Normal {orient.sigla}</p>
+            </div>
           </div>
         </div>
-        <div className="mt-auto shrink-0 pt-2 text-right text-[8px] font-bold uppercase tracking-widest text-ink-soft/70">
-          Gerado via Vector-X Intelligence API · {new Date().toLocaleDateString("pt-BR")}
-        </div>
       </div>
-    </>
+
+      {/* Carta + cartões */}
+      {calculoSolarAtual?.Verao ? (
+        <div className="grid min-h-0 flex-1 grid-cols-12 items-stretch gap-4">
+          <div className="col-span-7 flex flex-col justify-between rounded-2xl border border-line bg-white p-3.5">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-ink-deep">Carta solar estereográfica</span>
+              <span className="truncate text-right text-[9.5px] font-medium text-ink-soft">
+                {pontoHover
+                  ? `${ROTULO_ESTACAO[pontoHover.estacao]} · ${pontoHover.hora}: az ${pontoHover.az}° | elev ${pontoHover.el}°`
+                  : "Passe o cursor sobre os pontos"}
+              </span>
+            </div>
+
+            <svg viewBox="0 0 380 308" className="mx-auto h-auto max-h-[265px] w-full select-none">
+              <circle cx={cx} cy={cy} r={raio} fill="#EEF5EF" stroke="#CBD5E1" strokeWidth="1.2" />
+              {[30, 60].map((elev) => {
+                const r = elevacaoParaRaio(elev, raio);
+                return (
+                  <g key={elev}>
+                    <circle cx={cx} cy={cy} r={r} fill="none" stroke="#CBD5E1" strokeDasharray="3 3" strokeWidth="0.9" />
+                    <text x={cx + 4} y={cy - r + 9} className="fill-slate-500 font-mono text-[8px]">{elev}°</text>
+                  </g>
+                );
+              })}
+              <line x1={cx} y1={cy - raio} x2={cx} y2={cy + raio} stroke="#CBD5E1" strokeWidth="0.9" />
+              <line x1={cx - raio} y1={cy} x2={cx + raio} y2={cy} stroke="#CBD5E1" strokeWidth="0.9" />
+              {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
+                const p1 = anguloParaXY(cx, cy, raio - 4, deg);
+                const p2 = anguloParaXY(cx, cy, raio, deg);
+                return <line key={deg} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#94A3B8" strokeWidth="1" />;
+              })}
+              <text x={cx} y={cy - raio - 9} textAnchor="middle" className="fill-ink-deep text-[11px] font-black">N (0°)</text>
+              <text x={cx} y={cy + raio + 17} textAnchor="middle" className="fill-ink-deep text-[11px] font-black">S (180°)</text>
+              <text x={cx + raio + 17} y={cy + 4} textAnchor="middle" className="fill-ink-deep text-[11px] font-black">L (90°)</text>
+              <text x={cx - raio - 19} y={cy + 4} textAnchor="middle" className="fill-ink-deep text-[11px] font-black">O (270°)</text>
+
+              <path d={gerarPathSetorFachadaAz(azReal, cx, cy, raio)} fill="#2A6B53" fillOpacity="0.14" stroke="#2A6B53" strokeWidth="1.5" />
+              <line x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="#1F543F" strokeWidth="2.4" />
+              <line x1={cx} y1={cy} x2={pNormal.x} y2={pNormal.y} stroke="#1F543F" strokeWidth="1.2" strokeDasharray="2 2" />
+              <rect x={pNormal.x - 26} y={pNormal.y - 8} width="52" height="15" rx="4" fill="#1F543F" />
+              <text x={pNormal.x} y={pNormal.y + 2.5} textAnchor="middle" className="fill-white text-[8.5px] font-bold">
+                {orient.sigla} · {Math.round(azReal)}°
+              </text>
+
+              {pathMascara && <path d={pathMascara} fill="#E11D48" fillOpacity="0.24" stroke="#BE123C" strokeOpacity="0.7" strokeWidth="1.2" />}
+
+              {ordemDesenho.map((estacao) => {
+                const horarios = calculoSolarAtual[estacao];
+                if (!horarios) return null;
+                const cor = CORES_ESTACAO[estacao];
+                const equinocioSobreposto = estacao === "Outono";
+                const pontos = Object.entries(horarios).map(([hora, d]: [string, any]) => {
+                  const r = elevacaoParaRaio(Number(d.elevacao) || 0, raio);
+                  return {
+                    hora,
+                    estacao,
+                    az: d.azimute,
+                    el: d.elevacao,
+                    estado: estadoDoPonto(d.status),
+                    ...anguloParaXY(cx, cy, r, Number(d.azimute) || 0),
+                  };
+                });
+                const rp = equinocioSobreposto ? 2.8 : 4.2;
+                return (
+                  <g key={estacao}>
+                    <polyline
+                      points={pontos.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")}
+                      fill="none"
+                      stroke={cor}
+                      strokeWidth={equinocioSobreposto ? 1.6 : 2.4}
+                      strokeDasharray={equinocioSobreposto ? "5 4" : undefined}
+                    />
+                    {pontos.map((p) => (
+                      <g key={p.hora} className="cursor-pointer" onMouseEnter={() => setPontoHover(p)} onMouseLeave={() => setPontoHover(null)}>
+                        {p.estado === "bloqueado" ? (
+                          <circle cx={p.x} cy={p.y} r={rp + 0.6} fill="#FFFFFF" stroke="#BE123C" strokeWidth="2" />
+                        ) : (
+                          <circle cx={p.x} cy={p.y} r={rp} fill={cor} fillOpacity={p.estado === "sol" ? 1 : 0.25} stroke={p.estado === "sol" ? "#FFFFFF" : "none"} strokeWidth="0.8" />
+                        )}
+                      </g>
+                    ))}
+                  </g>
+                );
+              })}
+
+              {calculoSolarAtual.Inverno &&
+                Object.entries(calculoSolarAtual.Inverno).map(([hora, d]: [string, any]) => {
+                  const h = parseFloat(hora.replace("h", ""));
+                  if (!Number.isInteger(h) || h % 2 !== 0) return null;
+                  const r = elevacaoParaRaio(Number(d.elevacao) || 0, raio) + 11;
+                  const p = anguloParaXY(cx, cy, r, Number(d.azimute) || 0);
+                  return (
+                    <text key={hora} x={p.x} y={p.y + 3} textAnchor="middle" className="fill-slate-700 text-[8.5px] font-extrabold">
+                      {h}h
+                    </text>
+                  );
+                })}
+            </svg>
+
+            <div className="space-y-1.5 border-t border-line pt-2">
+              <div className="flex flex-wrap items-center justify-center gap-4 text-[9.5px] font-bold text-ink-deep">
+                {estacoes.map((estacao) => (
+                  <span key={estacao} className="flex items-center gap-1.5">
+                    <i className="inline-block size-2.5 rounded-full" style={{ backgroundColor: CORES_ESTACAO[estacao] }} />
+                    {ROTULO_ESTACAO[estacao]}
+                  </span>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-4 text-[9px] font-medium text-ink-soft">
+                <span className="flex items-center gap-1"><i className="inline-block size-2 rounded-full bg-ink-deep" />Sol na fachada</span>
+                <span className="flex items-center gap-1"><i className="inline-block size-2 rounded-full border-2 border-rose-700 bg-white" />Bloqueado pelo entorno</span>
+                <span className="flex items-center gap-1"><i className="inline-block size-2 rounded-full bg-slate-400/40" />Sem sol na fachada</span>
+                {pathMascara && <span className="flex items-center gap-1"><i className="inline-block size-2.5 rounded-sm border border-rose-700 bg-rose-400/35" />Céu bloqueado</span>}
+              </div>
+              <p className="text-center text-[9px] text-ink-soft/80">Outono e primavera têm trajetória quase idêntica: o outono aparece tracejado, por cima.</p>
+            </div>
+          </div>
+
+          <div className="col-span-5 flex flex-col gap-3">
+            <div className="rounded-2xl border border-line bg-white p-3.5">
+              <p className="text-[9.5px] font-extrabold uppercase tracking-wider text-brand-deep">1 · Campo de visão da fachada</p>
+              <p className="mt-1 text-[11px] font-semibold leading-snug text-ink">
+                A faixa verde é o que a parede enxerga: do {ini.nome} ao {fim.nome} ({Math.round(norm360(azReal - 90))}° a {Math.round(norm360(azReal + 90))}°).
+              </p>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-ink-soft">
+                {pathMascara ? "A área rosa é o céu bloqueado pelo entorno. " : ""}
+                Pontos mais afastados do centro indicam sol mais baixo, com sombras longas e penetração profunda no ambiente.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-line bg-white p-3.5">
+              <p className="text-[9.5px] font-extrabold uppercase tracking-wider text-brand-deep">2 · {medido ? "Resultado medido" : "Resultado estimado"}</p>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-ink-soft">
+                {percentualReal != null
+                  ? `${percentualReal}% de iluminação direta ${medido ? "real, com correção por satélite" : "estimada pela trajetória solar, sem considerar vizinhos ou árvores"}.`
+                  : "Trajetória solar calculada para a fachada."}
+              </p>
+              {leituraSolar.pontosComDado > 0 && (
+                <p className="mt-1 text-[9.5px] font-bold uppercase tracking-wider text-emerald-700">Horizonte do campo de visão da fachada (DSM)</p>
+              )}
+            </div>
+
+            {obstrucaoPrincipal ? (
+              <div className="mt-auto rounded-2xl border border-rose-200 bg-rose-50 p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-wider text-rose-700">
+                    <AlertTriangle className="size-3.5" aria-hidden="true" />
+                    3 · Obstrução dominante ({obstrucaoPrincipal.direcao})
+                  </span>
+                  <span className="rounded bg-rose-100 px-1.5 py-0.5 font-mono text-[9px] font-bold text-rose-800">Az {obstrucaoPrincipal.azimute}°</span>
+                </div>
+                <p className="mt-1.5 text-[11px] font-bold leading-snug text-rose-900">
+                  Obstrução a {formatarNumero(obstrucaoPrincipal.distanciaMetros, 0)} m, com {formatarNumero(obstrucaoPrincipal.alturaMetros, 1)} m de altura, bloqueando o sol abaixo de {formatarNumero(obstrucaoPrincipal.anguloObstrucaoGraus, 1)}°.
+                </p>
+                <p className="mt-1 text-[10px] leading-snug text-rose-800">
+                  {obstrucaoPrincipal.mascara === 0
+                    ? "No modelo, esse ponto não tem telhado: possivelmente vegetação."
+                    : obstrucaoPrincipal.mascara === 1
+                    ? "No modelo, esse ponto é classificado como telhado: provável edificação vizinha."
+                    : "Pode ser edificação vizinha ou vegetação."}
+                </p>
+              </div>
+            ) : leituraSolar.pontosComDado > 0 ? (
+              <div className="mt-auto rounded-2xl border border-brand/30 bg-surface-soft p-3.5">
+                <span className="flex items-center gap-1.5 text-[9.5px] font-extrabold uppercase tracking-wider text-brand-deep">
+                  <CheckCircle2 className="size-3.5" aria-hidden="true" /> 3 · Horizonte sem obstrução relevante
+                </span>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-brand-deep">
+                  Nenhum obstáculo do entorno cruza a trajetória solar nos horários em que o sol incide sobre a fachada.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-ink-soft">Dados solares indisponíveis.</p>
+      )}
+
+      {/* Resumo sazonal */}
+      <div className="mt-3.5 grid shrink-0 grid-cols-4 gap-3">
+        {leituraSolar.porEstacao.map((item: any) => (
+          <div key={item.estacao} className="rounded-xl border border-line bg-surface-soft/60 p-3">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[9.5px] font-extrabold uppercase tracking-wider text-ink-deep">
+                <i className="inline-block size-2 rounded-full" style={{ backgroundColor: CORES_ESTACAO[item.estacao] }} />
+                {ROTULO_ESTACAO[item.estacao]}
+              </span>
+              <span className="font-mono text-[10px] font-bold tabular-nums text-brand-deep">{item.percentualSol ?? 0}%</span>
+            </div>
+            <p className="mt-1 text-base font-black tabular-nums text-ink-deep">
+              {item.solDireto}
+              <span className="text-[10px] font-semibold text-ink-soft"> de {item.total} amostras com sol</span>
+            </p>
+            <p className="mt-0.5 text-[9.5px] text-ink-soft">
+              {leituraSolar.pontosComDado > 0
+                ? item.obstruidos > 0
+                  ? `${item.obstruidos} bloqueada(s) pelo entorno`
+                  : "Sem bloqueios do entorno"
+                : "Entorno não medido"}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <LaudoFooter nota="Geometria solar estereográfica e máscara de sombreamento DSM" />
+    </div>
   );
 }
 
@@ -1351,6 +1447,12 @@ export default function VectorZoneamento() {
     () => resumirExposicaoSolar(calculoSolarAtual, perfilHorizonteReal),
     [calculoSolarAtual, perfilHorizonteReal],
   );
+
+  // A página 5 (entorno) só existe quando há perfil DSM válido, então a paginação é dinâmica.
+  const totalPaginas = leituraSolar.pontosComDado > 0 ? 5 : 4;
+  const codigoDoc = obraId ? `VX-${obraId.replace(/-/g, "").slice(0, 8).toUpperCase()}` : undefined;
+  const irParaFolha = (id: string) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   // CORREÇÃO: lê as duas grafias (snake_case e camelCase) do azimute da fachada.
   // Antes só lia snake_case e caía no azimute nominal (Sul = 180°) em vez de 162°.
@@ -1915,382 +2017,261 @@ export default function VectorZoneamento() {
 
         {dadosBioclimaticos && !loading && (
           <div className="max-w-[850px] mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-20">
-            <div className="flex items-center justify-between bg-surface border border-line rounded-2xl p-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-2 w-2 rounded-full bg-brand animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-brand-strong">Laudo Técnico Executivo Pronto</span>
+            <div className="space-y-3 rounded-2xl border border-line bg-surface p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-2 w-2 animate-pulse rounded-full bg-brand" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-strong">Laudo Técnico Executivo Pronto</span>
+                </div>
+                <Button onClick={exportarPDF} className="h-9 rounded-full bg-brand-strong text-xs font-bold uppercase tracking-wider text-white hover:bg-brand">
+                  <Download className="mr-2 size-3" /> Baixar Laudo Profissional
+                </Button>
               </div>
-              <Button onClick={exportarPDF} className="bg-brand-strong hover:bg-brand text-white rounded-full h-9 text-xs font-bold uppercase tracking-wider">
-                <Download className="size-3 mr-2" /> Baixar Laudo Profissional
-              </Button>
+
+              <nav aria-label="Navegar pelo laudo" className="flex flex-wrap gap-1.5 border-t border-line pt-3">
+                {[
+                  { id: "folha-a4-1", rotulo: "Capa" },
+                  { id: "folha-a4-2", rotulo: "Zoneamento" },
+                  { id: "folha-a4-3", rotulo: "Carta solar" },
+                  { id: "folha-a4-4", rotulo: "Matriz horária" },
+                  ...(leituraSolar.pontosComDado > 0 ? [{ id: "folha-a4-5", rotulo: "Entorno" }] : []),
+                ].map((item, i) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => irParaFolha(item.id)}
+                    className="rounded-lg border border-line bg-surface-soft px-3 py-1 text-[11px] font-semibold text-ink-soft transition-colors hover:border-brand/40 hover:text-brand-strong"
+                  >
+                    <span className="mr-1 font-mono font-bold text-brand-strong">0{i + 1}.</span>
+                    {item.rotulo}
+                  </button>
+                ))}
+                {calculoSolarAtual?.Verao && (
+                  <button
+                    type="button"
+                    onClick={() => irParaFolha("secao-simulador-3d")}
+                    className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-800 transition-colors hover:bg-amber-100"
+                  >
+                    <Video className="size-3.5" aria-hidden="true" /> Simulador 3D
+                  </button>
+                )}
+              </nav>
             </div>
 
-            <div ref={relatorioRef} className="bg-surface-soft flex flex-col gap-8 p-4 rounded-xl">
-              
-              <CapaLaudo
-                nomeProjeto={form.nomeProjeto || "Projeto Bioclimático"}
-                endereco={
-                  dadosBioclimaticos.endereco ||
-                  `${form.logradouro}${form.numero ? ", " + form.numero : ""}${form.bairro ? " - " + form.bairro : ""}, ${form.cidade} - ${form.uf}`
-                }
-                fachada={fachadaAtual}
-                zona={dadosBioclimaticos.zona}
-                subzona={dadosBioclimaticos.subzona}
-                nota={dadosBioclimaticos.score_bioclimatico?.nota}
-                resumoScore={dadosBioclimaticos.score_bioclimatico?.resumo}
-                fonteSolar={fonteSombreamentoResumo === "perfil_real_dsm" ? "Trajetória + DSM" : "Trajetória calculada"}
-                clima={{
-                  tempMedia: dadosBioclimaticos.temp_media,
-                  tempMin: dadosBioclimaticos.temp_bulbo_seco_min,
-                  tempMax: dadosBioclimaticos.temp_bulbo_seco_max,
-                  umidade: dadosBioclimaticos.umidade_media,
-                  radiacao: dadosBioclimaticos.radiacao_media,
-                }}
-                economiaAgua={economiaAgua}
-                economiaSolar={economiaSolar}
-                potencialFotovoltaico={potencialFotovoltaico}
-              />
-
-              {/* PÁGINA 2: DIAGNÓSTICO DETALHADO DA ZONA BIOCLIMÁTICA */}
-              <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
-                <div className="flex items-start justify-between border-b-2 border-ink pb-3 mb-3.5 gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-black uppercase tracking-[0.18em] text-brand-strong">
-                        Enquadramento Normativo · ABNT NBR 15220-3:2024
-                      </span>
-                      {dadosBioclimaticos.intervalo_nbr15575 && (
-                        <span className="rounded bg-surface-soft border border-line px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-ink-soft">
-                          NBR 15575 · Intervalo {dadosBioclimaticos.intervalo_nbr15575}
-                        </span>
-                      )}
-                    </div>
-                    <h2 className="text-2xl font-black text-ink mt-1">
-                      Zona Bioclimática {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona} · {dadosBioclimaticos.caracteristica || "Classificação Oficial"}
-                    </h2>
-                    <p className="text-[11px] text-ink-soft mt-0.5">
-                      Local analisado: <strong className="text-ink">{dadosBioclimaticos.municipio || form.cidade}/{dadosBioclimaticos.uf || form.uf}</strong>
-                      {dadosBioclimaticos.cidade_representativa && (
-                        <> · Cidade-referência da subzona: <strong className="text-ink">{dadosBioclimaticos.cidade_representativa}/{dadosBioclimaticos.estado_representativo || dadosBioclimaticos.uf}</strong></>
-                      )}
-                    </p>
-                  </div>
-
-                  <div className="shrink-0 text-right">
-                    <span className="inline-block rounded-full bg-brand-soft border border-brand/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-brand-strong">
-                      {dadosBioclimaticos.amplitude_termica || `Subzona ${dadosBioclimaticos.zona}${dadosBioclimaticos.subzona}`}
-                    </span>
-                    {dadosBioclimaticos.nome_estacao && (
-                      <p className="text-[8px] text-ink-soft mt-1">
-                        Estação INMET: {dadosBioclimaticos.nome_estacao} ({formatarNumero(dadosBioclimaticos.distancia_km, 1)} km)
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-surface-soft border border-line rounded-xl p-3.5 mb-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-brand-strong flex items-center gap-1.5">
-                      <Thermometer className="size-3.5" /> Comportamento Climático da Subzona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}
-                    </p>
-                  </div>
-                  <p className="text-[10.5px] text-ink leading-relaxed font-medium">
-                    {dadosBioclimaticos.resumo_climatico ||
-                      `O município de ${dadosBioclimaticos.municipio || form.cidade} insere-se na Zona Bioclimática ${dadosBioclimaticos.zona}${dadosBioclimaticos.subzona} (${dadosBioclimaticos.caracteristica}), demandando soluções arquitetónicas adaptadas às condições higrotérmicas locais.`}
-                  </p>
-                  {dadosBioclimaticos.criterio_classificacao && (
-                    <p className="text-[9.5px] text-ink-soft mt-1.5 pt-1.5 border-t border-line/80 leading-snug">
-                      <strong className="text-ink uppercase tracking-wider text-[8.5px]">Critério da Norma: </strong>
-                      {dadosBioclimaticos.criterio_classificacao}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-4 gap-2 mb-3">
-                  <div className="rounded-lg border border-line bg-white p-2.5">
-                    <p className="text-[8px] font-black uppercase tracking-wider text-ink-soft">Limiar TBSm (Norma)</p>
-                    <p className="text-xs font-black text-ink mt-0.5">
-                      {dadosBioclimaticos.temp_bulbo_seco_min != null && dadosBioclimaticos.temp_bulbo_seco_max != null
-                        ? `${formatarNumero(dadosBioclimaticos.temp_bulbo_seco_min, 1)}°C a ${formatarNumero(dadosBioclimaticos.temp_bulbo_seco_max, 1)}°C`
-                        : dadosBioclimaticos.temp_bulbo_seco_max != null
-                        ? `≤ ${formatarNumero(dadosBioclimaticos.temp_bulbo_seco_max, 1)}°C`
-                        : dadosBioclimaticos.temp_bulbo_seco_min != null
-                        ? `> ${formatarNumero(dadosBioclimaticos.temp_bulbo_seco_min, 1)}°C`
-                        : "Conforme subzona"}
-                    </p>
-                    <p className="text-[8px] text-ink-soft mt-0.5">Média anual de bulbo seco</p>
-                  </div>
-
-                  <div className="rounded-lg border border-line bg-white p-2.5">
-                    <p className="text-[8px] font-black uppercase tracking-wider text-ink-soft">Extremos de Projeto</p>
-                    <p className="text-xs font-black text-ink mt-0.5">
-                      {dadosBioclimaticos.temp_projeto_inverno_c != null && dadosBioclimaticos.temp_projeto_verao_c != null
-                        ? `${formatarNumero(dadosBioclimaticos.temp_projeto_inverno_c, 1)}°C / ${formatarNumero(dadosBioclimaticos.temp_projeto_verao_c, 1)}°C`
-                        : `${formatarNumero(dadosBioclimaticos.temp_media, 1)}°C (média)`}
-                    </p>
-                    <p className="text-[8px] text-ink-soft mt-0.5">Ref. Inverno / Verão na zona</p>
-                  </div>
-
-                  <div className="rounded-lg border border-line bg-white p-2.5">
-                    <p className="text-[8px] font-black uppercase tracking-wider text-ink-soft">Humidade e Limiar</p>
-                    <p className="text-xs font-black text-ink mt-0.5">
-                      {dadosBioclimaticos.umidade_media != null ? `${formatarNumero(dadosBioclimaticos.umidade_media, 1)}% real` : "N/D"}
-                    </p>
-                    <p className="text-[8px] text-ink-soft mt-0.5">
-                      {dadosBioclimaticos.umidade_relativa_limiar != null
-                        ? `Limiar subzona: ${dadosBioclimaticos.umidade_relativa_condicao === "maior" ? ">" : "≤"} ${formatarNumero(dadosBioclimaticos.umidade_relativa_limiar, 1)}%`
-                        : "Subzona definida por inverno (R/M)"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg border border-line bg-white p-2.5">
-                    <p className="text-[8px] font-black uppercase tracking-wider text-ink-soft">Radiação e Chuva Local</p>
-                    <p className="text-xs font-black text-ink mt-0.5">
-                      {dadosBioclimaticos.radiacao_media != null ? `${formatarNumero(dadosBioclimaticos.radiacao_media, 0)} W/m²` : "N/D"}
-                    </p>
-                    <p className="text-[8px] text-ink-soft mt-0.5">
-                      {chuvaMilimetros != null ? `Precipitação: ${formatarNumero(chuvaMilimetros, 0)} mm/ano` : "Média horária insolada"}
-                    </p>
-                  </div>
-                </div>
-
-                {(dadosBioclimaticos.desafio_inverno || dadosBioclimaticos.desafio_verao) && (
-                  <div className="grid grid-cols-2 gap-2.5 mb-3.5">
-                    <div className="rounded-xl bg-sky-50/70 border border-sky-100 p-3">
-                      <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-sky-800">
-                        Solicitação de Inverno na Zona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}
-                      </p>
-                      <p className="text-[9.5px] leading-snug text-ink-soft mt-1">
-                        {dadosBioclimaticos.desafio_inverno || "Requer avaliação de estanqueidade e retenção térmica conforme orientação solar."}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-amber-50/70 border border-amber-100 p-3">
-                      <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-amber-800">
-                        Solicitação de Verão na Zona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}
-                      </p>
-                      <p className="text-[9.5px] leading-snug text-ink-soft mt-1">
-                        {dadosBioclimaticos.desafio_verao || "Requer controlo de ganho solar direto nas aberturas e ventilação seletiva."}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex-1 min-h-0 flex flex-col">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.14em] text-ink flex items-center gap-1.5">
-                      <ShieldCheck className="size-3.5 text-brand-strong" /> Diretrizes Construtivas Recomendadas para a Zona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}
-                    </h3>
-                    <span className="text-[8px] font-bold uppercase tracking-wider text-ink-soft">
-                      NBR 15220-3:2024 + Guia de Resiliência
-                    </span>
-                  </div>
-
-                  {(() => {
-                    const confortoDetalhado: Array<{ diretriz: string; detalhamento?: string }> =
-                      Array.isArray(dadosBioclimaticos.diretrizes_conforto_detalhadas) && dadosBioclimaticos.diretrizes_conforto_detalhadas.length > 0
-                        ? dadosBioclimaticos.diretrizes_conforto_detalhadas
-                        : (Array.isArray(dadosBioclimaticos.estrategias_conforto) ? dadosBioclimaticos.estrategias_conforto : []).map((d: string) => ({
-                            diretriz: d,
-                            detalhamento: "Estratégia passiva de desempenho térmico catalogada para esta zona bioclimática.",
-                          }));
-
-                    const resilienciaDetalhada: Array<{ diretriz: string; detalhamento?: string }> =
-                      Array.isArray(dadosBioclimaticos.diretrizes_resiliencia_detalhadas) && dadosBioclimaticos.diretrizes_resiliencia_detalhadas.length > 0
-                        ? dadosBioclimaticos.diretrizes_resiliencia_detalhadas
-                        : (Array.isArray(dadosBioclimaticos.estrategias_resiliencia) ? dadosBioclimaticos.estrategias_resiliencia : []).map((d: string) => ({
-                            diretriz: d,
-                            detalhamento: "Medida de adaptação e resiliência física recomendada para eventos climáticos da região.",
-                          }));
-
-                    return (
-                      <div className="grid grid-cols-2 gap-3 flex-1 min-h-0">
-                        <div className="rounded-xl border border-line bg-surface-soft/60 p-3 flex flex-col">
-                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-brand-strong mb-2">
-                            Estratégias de Conforto Térmico ({confortoDetalhado.length})
-                          </p>
-                          <div className="space-y-2">
-                            {confortoDetalhado.slice(0, 4).map((item, idx) => (
-                              <div key={idx} className="rounded-lg bg-white border border-line/80 p-2">
-                                <p className="text-[9.5px] font-bold text-ink leading-tight">{item.diretriz}</p>
-                                {item.detalhamento && (
-                                  <p className="text-[8.5px] text-ink-soft leading-snug mt-0.5">{item.detalhamento}</p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="rounded-xl border border-line bg-surface-soft/60 p-3 flex flex-col">
-                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-ink mb-2">
-                            Resiliência e Adaptação Climática ({resilienciaDetalhada.length})
-                          </p>
-                          <div className="space-y-2">
-                            {resilienciaDetalhada.slice(0, 4).map((item, idx) => (
-                              <div key={idx} className="rounded-lg bg-white border border-line/80 p-2">
-                                <p className="text-[9.5px] font-bold text-ink leading-tight">{item.diretriz}</p>
-                                {item.detalhamento && (
-                                  <p className="text-[8.5px] text-ink-soft leading-snug mt-0.5">{item.detalhamento}</p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                <div className="mt-3 shrink-0 flex justify-between border-t border-line pt-2 text-[7px] font-bold uppercase tracking-widest text-ink-soft/70">
-                  <span>Diagnóstico de Zoneamento Bioclimático · Base ABNT NBR 15220-3:2024 e INMET</span>
-                  <span>Vector-X · {new Date().toLocaleDateString("pt-BR")}</span>
-                </div>
+            <div ref={relatorioRef} className="flex flex-col gap-8 rounded-xl bg-surface-soft p-4">
+              <div id="folha-a4-1" className="scroll-mt-24">
+                <CapaLaudo
+                  nomeProjeto={form.nomeProjeto || "Projeto Bioclimático"}
+                  endereco={
+                    dadosBioclimaticos.endereco ||
+                    `${form.logradouro}${form.numero ? ", " + form.numero : ""}${form.bairro ? " - " + form.bairro : ""}, ${form.cidade} - ${form.uf}`
+                  }
+                  fachada={fachadaAtual}
+                  zona={dadosBioclimaticos.zona}
+                  subzona={dadosBioclimaticos.subzona}
+                  nota={dadosBioclimaticos.score_bioclimatico?.nota}
+                  resumoScore={dadosBioclimaticos.score_bioclimatico?.resumo}
+                  fonteSolar={fonteSombreamentoResumo === "perfil_real_dsm" ? "Trajetória + DSM" : "Trajetória calculada"}
+                  clima={{
+                    tempMedia: dadosBioclimaticos.temp_media,
+                    tempMin: dadosBioclimaticos.temp_bulbo_seco_min,
+                    tempMax: dadosBioclimaticos.temp_bulbo_seco_max,
+                    umidade: dadosBioclimaticos.umidade_media,
+                    radiacao: dadosBioclimaticos.radiacao_media,
+                  }}
+                  economiaAgua={economiaAgua}
+                  economiaSolar={economiaSolar}
+                  potencialFotovoltaico={potencialFotovoltaico}
+                  finalidade={form.finalidadeAnalise === "imovel_existente" ? "Avaliação técnica de imóvel existente" : "Projeto, obra nova ou reforma"}
+                  tipologia={[form.tipoImovel, form.andar ? `${form.andar}º pavimento` : ""].filter(Boolean).join(" · ") || undefined}
+                  coordenadas={
+                    typeof form.lat === "number" && typeof form.lng === "number"
+                      ? `${form.lat.toFixed(6).replace(".", ",")}°, ${form.lng.toFixed(6).replace(".", ",")}°`
+                      : undefined
+                  }
+                  azimute={azimuteFachadaAtual}
+                  percentualIluminacao={percentualReal ?? null}
+                  entornoResumo={
+                    obstrucaoPrincipal
+                      ? `Obstrução a ${formatarNumero(obstrucaoPrincipal.distanciaMetros, 0)} m (${formatarNumero(obstrucaoPrincipal.anguloObstrucaoGraus, 1)}°)`
+                      : leituraSolar.pontosComDado > 0
+                      ? "Sem obstrução relevante"
+                      : undefined
+                  }
+                  intervaloNbr15575={dadosBioclimaticos.intervalo_nbr15575}
+                  caracteristicaZona={dadosBioclimaticos.caracteristica}
+                  amplitudeTermica={dadosBioclimaticos.amplitude_termica}
+                  estacaoInmet={dadosBioclimaticos.nome_estacao}
+                  distanciaEstacaoKm={dadosBioclimaticos.distancia_km}
+                  codigo={codigoDoc}
+                  totalPaginas={totalPaginas}
+                />
               </div>
 
-              {/* PÁGINA 3: CARTA SOLAR E SOMBREAMENTO */}
-              <PaginaCartaSolar
-                fachadaAtual={fachadaAtual}
-                sombreamentoReal={sombreamentoReal}
-                calculoSolarAtual={calculoSolarAtual}
-                percentualReal={percentualReal}
-                fonteSombreamentoResumo={fonteSombreamentoResumo}
-                leituraSolar={leituraSolar}
-                obstrucaoPrincipal={obstrucaoPrincipal}
-              />
-
-              {/* PÁGINA 4: LEITURA APLICADA */}
-              <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
-                <div className="flex items-start justify-between border-b-2 border-ink pb-3 mb-4 gap-4">
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-brand-strong">Leitura aplicada · Vector-X</p>
-                    <h2 className="text-2xl font-black text-ink mt-1">O que a orientação significa</h2>
-                    <p className="text-xs text-ink-soft mt-1">Fachada {fachadaAtual} · {form.cidade}/{form.uf} · Zona {dadosBioclimaticos.zona}{dadosBioclimaticos.subzona}</p>
-                  </div>
-                  <div className="shrink-0 text-right"><p className="text-[9px] uppercase tracking-widest font-bold text-ink-soft">Fonte solar</p><p className="text-sm font-black text-ink mt-1">{fonteSombreamentoResumo === "perfil_real_dsm" ? "Trajetória + DSM" : "Trajetória calculada"}</p></div>
-                </div>
-
-                <section className="mb-4">
-                  {(() => {
-                    const comDados = leituraSolar.porEstacao.filter((item) => item.percentualSol != null);
-                    const maiorExposicao = [...comDados].sort((a, b) => (b.percentualSol ?? 0) - (a.percentualSol ?? 0))[0];
-                    const menorExposicao = [...comDados].sort((a, b) => (a.percentualSol ?? 0) - (b.percentualSol ?? 0))[0];
-                    return comDados.length > 0 && (
-                      <div className="grid grid-cols-2 gap-2 mb-3">
-                        <div className="rounded-lg bg-brand-soft/60 border border-line p-3"><p className="text-[8px] font-black uppercase tracking-[0.14em] text-brand-strong">Maior exposição observada</p><p className="text-base font-black text-ink mt-0.5">{maiorExposicao.estacao} · {maiorExposicao.percentualSol}%</p><p className="text-[9px] text-ink-soft mt-0.5">{maiorExposicao.solDireto} de {maiorExposicao.total} amostras com sol direto</p></div>
-                        <div className="rounded-lg bg-surface-soft border border-line p-3"><p className="text-[8px] font-black uppercase tracking-[0.14em] text-ink-soft">Menor exposição observada</p><p className="text-base font-black text-ink mt-0.5">{menorExposicao.estacao} · {menorExposicao.percentualSol}%</p><p className="text-[9px] text-ink-soft mt-0.5">Menor incidência direta entre as estações avaliadas</p></div>
-                      </div>
-                    );
-                  })()}
-                  <div className="flex items-end justify-between mb-2">
-                    <div><h3 className="text-xs font-black uppercase tracking-[0.14em] text-ink">Exposição direta ao longo do ano</h3><p className="text-[10px] text-ink-soft mt-1">Cada proporção compara amostras classificadas com o total de horários fornecidos para a estação.</p></div>
-                    <span className="text-[9px] uppercase tracking-wider text-ink-soft/70">Amostras, não horas acumuladas</span>
-                  </div>
-                  <div className="space-y-2">
-                    {leituraSolar.porEstacao.map((item) => (
-                      <div key={item.estacao} className="grid grid-cols-[68px_1fr_88px] items-center gap-2 rounded-lg border border-line px-2.5 py-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-ink-soft">{item.estacao}</span>
-                        <div>
-                          <div className="h-2.5 rounded-full bg-surface-soft overflow-hidden"><div className="h-full rounded-full bg-brand-strong" style={{ width: `${item.percentualSol ?? 0}%` }} /></div>
-                          {(() => {
-                            const { comSol, bloqueados } = horariosDaEstacao(calculoSolarAtual?.[item.estacao]);
-                            return (
-                              <p className="text-[8px] leading-tight text-ink-soft mt-0.5">
-                                {comSol.length > 0 ? `Sol direto às ${comSol.join(", ")}` : "Sem sol direto nesta estação"}
-                                {bloqueados.length > 0 && ` · Bloqueado pelo entorno às ${bloqueados.join(", ")}`}
-                              </p>
-                            );
-                          })()}
-                        </div>
-                        <div className="text-right"><strong className="text-sm text-ink">{item.solDireto}/{item.total}</strong><p className="text-[9px] text-ink-soft">{item.percentualSol ?? 0}%{leituraSolar.pontosComDado > 0 ? ` · ${item.obstruidos} bloqueios` : ''}</p></div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                {leituraSolar.pontosComDado === 0 && (
-                  <p className="text-[9px] leading-snug text-amber-800 bg-amber-50 border border-amber-100 rounded-md p-2 mb-3">
-                    Sem cobertura de elevação da Google para este endereço: as sombras do entorno (vizinhos e árvores) não foram medidas. O percentual de sol é uma estimativa pela trajetória solar e pelo telhado.
-                  </p>
-                )}
-
-                <section className="grid grid-cols-2 gap-2 mb-3">
-                  <div className="rounded-lg bg-sky-50 border border-sky-100 p-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-sky-800">Luz natural e bem-estar</p>
-                    <p className="text-[10px] leading-snug text-ink-soft mt-1.5">Os períodos com incidência direta podem favorecer luz natural e contato com o ciclo do dia. Sol direto também pode causar ofuscamento; a carta indica quando investigar proteção ajustável. A iluminância interna não é calculada: faltam dimensões/orientação das aberturas, vidro e obstruções internas.</p>
-                  </div>
-                  <div className="rounded-lg bg-amber-50 border border-amber-100 p-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-amber-800">Conforto térmico e energia</p>
-                    <p className="text-[10px] leading-snug text-ink-soft mt-1.5">Radiação na fachada representa ganho de calor: pode ser útil em períodos frios e aumentar carga de resfriamento em períodos quentes. A orientação ajuda a localizar horários críticos para brises, vegetação ou sombreamento externo; não substitui simulação térmica e não converte fachada em kWh de economia.</p>
-                  </div>
-                </section>
-
-                <section className="mt-auto rounded-lg bg-ink text-surface p-3">
-                  <p className="text-[8px] font-black uppercase tracking-[0.14em] text-brand-soft">Implicação para o partido arquitetônico</p>
-                  <p className="text-[10px] leading-snug text-surface/80 mt-1.5">Use a faixa horária observada para posicionar usos sensíveis ao calor/ofuscamento e dimensionar proteção solar externa. Preserve entrada de luz difusa e ventilação; não bloqueie toda a fachada com base apenas no percentual. Confirme a solução com geometria das aberturas, entorno construído atualizado e simulação térmica do edifício.</p>
-                </section>
-
-                <div className="mt-3 shrink-0 flex justify-between border-t border-line pt-2 text-[7px] font-bold uppercase tracking-widest text-ink-soft/70"><span>Interpretação baseada nos horários classificados e no horizonte DSM recebido</span><span>Vector-X · {new Date().toLocaleDateString('pt-BR')}</span></div>
+              <div id="folha-a4-2" className="scroll-mt-24">
+                <PaginaZoneamento
+                  dados={dadosBioclimaticos}
+                  cidade={form.cidade}
+                  uf={form.uf}
+                  chuvaMm={chuvaMilimetros ?? null}
+                  nomeProjeto={form.nomeProjeto || "Projeto Bioclimático"}
+                  pagina={2}
+                  totalPaginas={totalPaginas}
+                  codigo={codigoDoc}
+                />
               </div>
-              
-              {/* PÁGINA 5: O ENTORNO QUE INTERFERE */}
+
+              <div id="folha-a4-3" className="scroll-mt-24">
+                <PaginaCartaSolar
+                  fachadaAtual={fachadaAtual}
+                  sombreamentoReal={sombreamentoReal}
+                  calculoSolarAtual={calculoSolarAtual}
+                  percentualReal={percentualReal}
+                  fonteSombreamentoResumo={fonteSombreamentoResumo}
+                  leituraSolar={leituraSolar}
+                  obstrucaoPrincipal={obstrucaoPrincipal}
+                  nomeProjeto={form.nomeProjeto || "Projeto Bioclimático"}
+                  pagina={3}
+                  totalPaginas={totalPaginas}
+                  codigo={codigoDoc}
+                />
+              </div>
+
+              <div id="folha-a4-4" className="scroll-mt-24">
+                <PaginaLeituraAplicada
+                  fachadaAtual={fachadaAtual}
+                  cidade={form.cidade}
+                  uf={form.uf}
+                  zona={dadosBioclimaticos.zona}
+                  subzona={dadosBioclimaticos.subzona}
+                  fonteSombreamentoResumo={fonteSombreamentoResumo}
+                  leituraSolar={leituraSolar}
+                  calculoSolarAtual={calculoSolarAtual}
+                  nomeProjeto={form.nomeProjeto || "Projeto Bioclimático"}
+                  pagina={4}
+                  totalPaginas={totalPaginas}
+                  codigo={codigoDoc}
+                />
+              </div>
+
+              {/* PÁGINA 5: O ENTORNO QUE INTERFERE (só com perfil DSM válido) */}
               {leituraSolar.pontosComDado > 0 && (
-                <div className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-line overflow-hidden relative text-ink p-8 flex flex-col">
-                  <div className="border-b-2 border-ink pb-3 mb-5">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-brand-strong">Entorno · Vector-X</p>
-                    <h2 className="text-2xl font-black text-ink mt-1">O que interfere no sol desta fachada</h2>
-                    <p className="text-xs text-ink-soft mt-1">
-                      Fachada {fachadaAtual} · Perfil DSM: {leituraSolar.pontosComDado}/{leituraSolar.pontosTotais} direções com dado válido
-                    </p>
-                  </div>
-                  
-                  <ResumoEntorno
-                    setores={setoresEntorno}
-                    direcaoPrincipal={direcaoPrincipal}
-                    azimuteFachada={azimuteFachadaAtual}
-                  />
-                
-                  <div className="mt-5 flex-1 min-h-0">
-                    <MapaEntorno
-                      mapa={sombreamentoReal?.mapa}
-                      perfil={perfilHorizonteReal}
-                      azimuteFachada={azimuteFachadaAtual}
-                      calculoSolar={calculoSolarAtual}
+                <div id="folha-a4-5" className="scroll-mt-24">
+                  <div className={FOLHA_A4}>
+                    <LaudoHeader
+                      secao="04 · Entorno e obstruções (DSM)"
+                      nomeProjeto={form.nomeProjeto || "Projeto Bioclimático"}
+                      pagina={5}
+                      totalPaginas={totalPaginas}
+                      codigo={codigoDoc}
                     />
+
+                    <div className="mb-3.5 flex shrink-0 items-start justify-between gap-4">
+                      <div>
+                        <span className="text-[9.5px] font-extrabold uppercase tracking-[0.15em] text-brand-deep">
+                          Varredura azimutal por satélite · raio de 60 m
+                        </span>
+                        <h2 className="mt-0.5 text-xl font-black text-ink-deep">O que interfere no sol desta fachada</h2>
+                        <p className="mt-0.5 text-[11px] text-ink-soft">Fachada {fachadaAtual}</p>
+                      </div>
+                      <div className="shrink-0 rounded-xl border border-line bg-surface-soft/60 px-3 py-2 text-right">
+                        <p className="text-[9px] font-bold uppercase text-ink-soft">Cobertura do perfil DSM</p>
+                        <p className="text-sm font-black tabular-nums text-brand-deep">
+                          {leituraSolar.pontosComDado}/{leituraSolar.pontosTotais} direções
+                        </p>
+                      </div>
+                    </div>
+
+                    <ResumoEntorno
+                      setores={setoresEntorno}
+                      direcaoPrincipal={direcaoPrincipal}
+                      azimuteFachada={azimuteFachadaAtual}
+                    />
+
+                    <div className="mt-4 min-h-0 flex-1">
+                      <MapaEntorno
+                        mapa={sombreamentoReal?.mapa}
+                        perfil={perfilHorizonteReal}
+                        azimuteFachada={azimuteFachadaAtual}
+                        calculoSolar={calculoSolarAtual}
+                      />
+                    </div>
+
+                    <p className="mt-3 shrink-0 text-[9.5px] leading-snug text-ink-soft">
+                      Só entram na leitura os obstáculos na frente da fachada que cruzam a trajetória solar local.
+                      Obstáculos mais baixos que o sol naquela direção não geram alerta de bloqueio.
+                      {sombreamentoReal?.aviso_imagery_antiga && (
+                        <>
+                          <br />
+                          <span className="font-semibold text-amber-700">Nota sobre o satélite:</span> {sombreamentoReal.aviso_imagery_antiga}
+                        </>
+                      )}
+                    </p>
+
+                    <LaudoFooter nota="Topografia urbana e perfil de obstruções DSM · Vector-X" />
                   </div>
-                  
-                  <p className="mt-3 text-[9px] leading-snug text-ink-soft">
-                  Só entram na leitura os obstáculos na frente da fachada que cruzam a trajetória solar local.
-                  Obstáculos mais baixos que o sol naquela direção não geram alerta de bloqueio.
-                  {sombreamentoReal?.aviso_imagery_antiga && (<><br /><span className="font-semibold text-amber-700">Nota sobre o satélite:</span> {sombreamentoReal.aviso_imagery_antiga}</>)}
-                   </p>
-                  
-                  <div className="mt-auto shrink-0 pt-2 text-right text-[8px] font-bold uppercase tracking-widest text-ink-soft/70">Vector-X · {new Date().toLocaleDateString('pt-BR')}</div>
                 </div>
               )}
-
             </div>
 
             {calculoSolarAtual?.Verao && (
-              <section className="rounded-3xl border border-line bg-surface p-4 md:p-6 shadow-sm">
-                <div className="flex items-center justify-between gap-4 mb-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-strong">Exploração espacial</p>
-                    <h3 className="text-xl font-black text-ink">Simulação 3D da fachada e trajetória solar</h3>
-                    <p className="text-xs text-ink-soft mt-1">Arraste para orbitar, use a roda para aproximar e altere estação e horário dentro da cena.</p>
+              <section id="secao-simulador-3d" className="scroll-mt-24 overflow-hidden rounded-3xl border border-line bg-surface shadow-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-line bg-ink-deep px-5 py-4 text-white">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-deep">
+                      <Video className="size-5 text-brand-soft" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand">Exploração espacial · modo apresentação</p>
+                      <h3 className="mt-0.5 text-base font-black sm:text-lg">
+                        Insolação nas janelas e sombras do entorno · Fachada {fachadaAtual}
+                      </h3>
+                      <p className="mt-0.5 text-[11px] text-white/65">Arraste para orbitar, use a roda para aproximar e altere estação e horário dentro da cena.</p>
+                    </div>
                   </div>
-                  <Building2 className="size-6 text-brand shrink-0" />
+                  <Building2 className="hidden size-6 shrink-0 text-brand sm:block" aria-hidden="true" />
                 </div>
-                <SimuladorSombreamento3D
-                  calculoSolar={calculoSolarAtual}
-                  obstrucao={obstrucaoPrincipal}
-                  fachadaAtual={fachadaAtual}
-                  telhado={sombreamentoReal?.segmento_usado}
-                  mostrarJanelasIlustrativas
-                  perfilHorizonte={perfilHorizonteReal}
-                  observador={sombreamentoReal?.mapa?.observador ?? null}
-                  azimuteFachadaUsado={azimuteFachadaAtual}
-                  avisoImageryAntiga={sombreamentoReal?.aviso_imagery_antiga}
-                  azimutesBloqueantes={azimutesBloqueantes}
-                />
+
+                <div className="p-3 md:p-4">
+                  <SimuladorSombreamento3D
+                    calculoSolar={calculoSolarAtual}
+                    obstrucao={obstrucaoPrincipal}
+                    fachadaAtual={fachadaAtual}
+                    telhado={sombreamentoReal?.segmento_usado}
+                    mostrarJanelasIlustrativas
+                    perfilHorizonte={perfilHorizonteReal}
+                    observador={sombreamentoReal?.mapa?.observador ?? null}
+                    azimuteFachadaUsado={azimuteFachadaAtual}
+                    avisoImageryAntiga={sombreamentoReal?.aviso_imagery_antiga}
+                    azimutesBloqueantes={azimutesBloqueantes}
+                  />
+                </div>
+
+                <div className="border-t border-line bg-surface-soft/50 p-4">
+                  <p className="mb-2.5 text-[10px] font-extrabold uppercase tracking-wider text-ink-soft">
+                    Como esta fachada se comporta em cada estação
+                  </p>
+                  <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+                    {leituraSolar.porEstacao.map((item) => (
+                      <div key={item.estacao} className="rounded-xl border border-line bg-white px-3 py-2.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1.5 font-bold text-ink">
+                            <i className="inline-block size-2 rounded-full" style={{ backgroundColor: COR_ESTACAO[item.estacao] }} />
+                            {ROTULO_ESTACAO_LAUDO[item.estacao]}
+                          </span>
+                          <span className="font-mono font-bold tabular-nums text-brand-strong">{item.percentualSol ?? 0}%</span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line">
+                          <div className="h-full rounded-full" style={{ width: `${item.percentualSol ?? 0}%`, backgroundColor: COR_ESTACAO[item.estacao] }} />
+                        </div>
+                        <p className="mt-1.5 text-[10px] text-ink-soft">
+                          {item.solDireto} de {item.total} amostras com sol
+                          {leituraSolar.pontosComDado > 0 && item.obstruidos > 0 ? ` · ${item.obstruidos} bloqueada(s)` : ""}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </section>
             )}
           </div>

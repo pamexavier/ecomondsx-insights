@@ -4,7 +4,6 @@
 //  - rosa de obstáculos: uma barra por direção, comprimento = ângulo do obstáculo
 //  - tabela só com as direções que importam para a fachada
 //  - uma linha para o que está atrás da fachada e não interfere
-import WellnessDashboard from "./-wellness-dashboard";
 import { formatarNumero } from "@/utils/calculosBioclimaticos";
 
 type Setor = {
@@ -12,6 +11,7 @@ type Setor = {
   pico: any | null;
   afetaFachada: boolean;
   atrasDaFachada: boolean;
+  bloqueio?: { horas: string[] } | null;
 };
 
 const AZIMUTE: Record<string, number> = {
@@ -108,32 +108,54 @@ export function ResumoEntorno({
         <p className="mb-1.5 text-[10px] leading-snug text-ink-soft">
           Cada barra mostra a que altura no céu (em graus) o maior obstáculo da direção bloqueia o sol. Quanto maior a barra, mais alto o obstáculo.
         </p>
-        <table className="w-full border-collapse text-[10px]">
-          <thead>
-            <tr className="border-b-2 border-ink text-left text-ink-soft">
-              <th className="py-1 pr-2 font-medium">Direção</th>
-              <th className="px-2 py-1 text-right font-medium">Ângulo</th>
-              <th className="px-2 py-1 text-right font-medium">Distância</th>
-              <th className="px-2 py-1 text-right font-medium">Altura</th>
-              <th className="py-1 pl-2 font-medium">Tipo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {comDado.map((s) => {
-              const principal = s.direcao === direcaoPrincipal;
-              const altura = s.pico.alturaObstaculoAcimaDoSoloMetros ?? s.pico.alturaObstaculoMetros;
-              return (
-                <tr key={s.direcao} className={`border-b border-line ${principal ? "bg-rose-50 font-semibold text-rose-900" : "text-ink"}`}>
-                  <td className="py-1 pr-2">{s.direcao}{principal && <span className="ml-1 text-[8px] font-bold text-rose-700">principal</span>}</td>
-                  <td className="px-2 py-1 text-right tabular-nums">{formatarNumero(s.pico.anguloObstrucaoGraus, 1)}°</td>
-                  <td className="px-2 py-1 text-right tabular-nums">{s.pico.distanciaObstaculoMetros != null ? `${formatarNumero(s.pico.distanciaObstaculoMetros, 0)} m` : "–"}</td>
-                  <td className="px-2 py-1 text-right tabular-nums">{altura != null ? `${formatarNumero(altura, 1)} m` : "–"}</td>
-                  <td className="py-1 pl-2 text-ink-soft">{tipoObstaculo(s.pico)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="overflow-hidden rounded-2xl border border-line">
+          <table className="w-full border-collapse text-left text-[10px]">
+            <thead>
+              <tr className="bg-ink-deep text-[9.5px] font-extrabold uppercase tracking-wider text-white">
+                <th className="px-3 py-2">Direção</th>
+                <th className="px-2 py-2">Status</th>
+                <th className="px-2 py-2 text-right">Ângulo</th>
+                <th className="px-2 py-2 text-right">Dist.</th>
+                <th className="px-2 py-2 text-right">Altura</th>
+                <th className="px-3 py-2">Tipo · horários bloqueados</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {comDado.map((s) => {
+                const principal = s.direcao === direcaoPrincipal;
+                const altura = s.pico.alturaObstaculoAcimaDoSoloMetros ?? s.pico.alturaObstaculoMetros;
+                const horas = s.bloqueio?.horas ?? [];
+                return (
+                  <tr key={s.direcao} className={principal ? "bg-rose-50 font-semibold text-rose-900" : "bg-white text-ink"}>
+                    <td className="px-3 py-1.5 font-bold tabular-nums">
+                      {s.direcao}
+                      <span className="ml-1 font-mono text-[9px] font-normal text-ink-soft">({AZIMUTE[s.direcao]}°)</span>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {principal ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[9px] font-extrabold uppercase text-rose-700">
+                          <span className="size-1.5 rounded-full bg-rose-600" />
+                          Principal
+                        </span>
+                      ) : s.afetaFachada ? (
+                        <span className="inline-flex rounded-full bg-surface-soft px-2 py-0.5 text-[9px] font-bold text-brand-deep">Atinge a fachada</span>
+                      ) : (
+                        <span className="inline-flex rounded-full bg-canvas px-2 py-0.5 text-[9px] font-semibold text-ink-soft">Sem efeito</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-right font-mono font-bold tabular-nums">{formatarNumero(s.pico.anguloObstrucaoGraus, 1)}°</td>
+                    <td className="px-2 py-1.5 text-right font-mono tabular-nums">{s.pico.distanciaObstaculoMetros != null ? `${formatarNumero(s.pico.distanciaObstaculoMetros, 0)} m` : "–"}</td>
+                    <td className="px-2 py-1.5 text-right font-mono tabular-nums">{altura != null ? `${formatarNumero(altura, 1)} m` : "–"}</td>
+                    <td className="px-3 py-1.5 text-[9.5px]">
+                      <span className="text-ink-soft">{tipoObstaculo(s.pico)}</span>
+                      {horas.length > 0 && <span className="block font-bold text-rose-700">{horas.slice(0, 4).join(" · ")}{horas.length > 4 ? ` +${horas.length - 4}` : ""}</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
         {atras.length > 0 && (
           <p className="mt-2 text-[9px] leading-snug text-ink-soft">
             Atrás da fachada, sem efeito no sol dela: {atras.join(", ")}.

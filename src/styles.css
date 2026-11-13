@@ -58,6 +58,9 @@
   --color-brand: #4C9A74;
   --color-brand-strong: #3A7D5E;
   --color-brand-soft: #DCEFE3;
+  /* Tons profundos usados só nas folhas do laudo (cabeçalho, cartões escuros) */
+  --color-ink-deep: #18221F;
+  --color-brand-deep: #2A6B53;
   --color-sand: #F3E3D0;
   --color-sand-ink: #6B4A25;
   --color-warn-soft: #FBF1DC;
