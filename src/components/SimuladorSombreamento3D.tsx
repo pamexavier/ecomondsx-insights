@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as THREE from "three";
+import { AlertTriangle, Building2, Eye, Sparkles, Sun, UserCheck } from "lucide-react";
 
 /* ────────────────────────────────────────────────────────────────────────────
    Simulador 3D Vector-X
@@ -1202,7 +1203,73 @@ export default function SimuladorSombreamento3D({
   const altBloqueador =
     bloqueador?.alturaObstaculoAcimaDoSoloMetros ?? bloqueador?.alturaObstaculoMetros ?? null;
 
+  // Atalhos de horário (respeitam a faixa de horas que existe na estação)
+  const ATALHOS_HORA = [
+    { rotulo: "07:30", h: 7.5 },
+    { rotulo: "10:00", h: 10 },
+    { rotulo: "12:00", h: 12 },
+    { rotulo: "16:30", h: 16.5 },
+  ];
+  const irParaHora = (h: number) => {
+    if (!horasDisp.length) return;
+    setAnimando(false);
+    setHora(Math.min(horasDisp[horasDisp.length - 1], Math.max(horasDisp[0], h)));
+  };
+
+  // ── Explicação em linguagem simples para cliente/investidor ──
+  const nomeEstacao = ROTULO_ESTACAO[estacao] ?? estacao;
+  const horaTxt = fmtHora(hora);
+  const statusAtual = String(dadoAtual.status ?? "");
+  const traducao = (() => {
+    if (statusAtual === "Pleno Sol") {
+      return {
+        Icone: Sun,
+        classe: "bg-amber-50 border-amber-300 text-amber-900",
+        titulo: `Sol direto nas janelas às ${horaTxt}`,
+        subtitulo: `${nomeEstacao} · luz natural plena na fachada`,
+        texto:
+          estacao === "Inverno"
+            ? "Neste horário de inverno o sol entra direto pelas janelas, ajudando a aquecer e secar o ambiente."
+            : "As janelas recebem sol direto neste horário: ambientes claros e secos. No verão, vale prever cortina ou proteção externa para filtrar o calor.",
+      };
+    }
+    if (obstruido) {
+      const quem = bloqueador ? tipoBloqueador : "obstáculo do entorno";
+      return {
+        Icone: AlertTriangle,
+        classe: "bg-rose-50 border-rose-300 text-rose-900",
+        titulo: `Sombra do entorno às ${horaTxt}`,
+        subtitulo: bloqueador
+          ? `Bloqueado por ${quem} a ${fmt(bloqueador.distanciaObstaculoMetros ?? 0)} m`
+          : `${nomeEstacao} · sol interceptado pelo entorno`,
+        texto: bloqueador
+          ? `Sem esse ${quem}, a fachada receberia sol agora (sol a ${fmt(solAtual?.elevacao ?? 0)}° de altura). O obstáculo cobre ${fmt(bloqueador.anguloObstrucaoGraus ?? 0)}° do céu nessa direção.`
+          : "O sol estaria na direção da fachada, mas o entorno mapeado cobre a trajetória neste horário.",
+      };
+    }
+    if (statusAtual === "Meia Sombra") {
+      return {
+        Icone: Eye,
+        classe: "bg-sky-50 border-sky-300 text-sky-900",
+        titulo: `Sol rasante às ${horaTxt}`,
+        subtitulo: `${nomeEstacao} · raios em ângulo oblíquo na parede`,
+        texto:
+          "O sol bate de lado na fachada: entra claridade sem tanto calor direto no fundo do cômodo.",
+      };
+    }
+    return {
+      Icone: Building2,
+      classe: "bg-slate-50 border-slate-300 text-slate-800",
+      titulo: `Fachada em sombra própria às ${horaTxt}`,
+      subtitulo: `${nomeEstacao} · luz difusa, sem sol direto`,
+      texto:
+        "O sol está do outro lado do edifício (ou abaixo do horizonte). O ambiente recebe luz natural indireta, sem incidência direta nas janelas.",
+    };
+  })();
+  const IconeTraducao = traducao.Icone;
+
   return (
+    <div className="flex w-full flex-col gap-4">
     <div className="relative w-full h-[600px] rounded-3xl overflow-hidden border border-line bg-surface">
       <div ref={mountRef} className="absolute inset-0 cursor-grab active:cursor-grabbing" />
 
@@ -1368,6 +1435,19 @@ export default function SimuladorSombreamento3D({
             >
               Sombras
             </button>
+
+            <div className="flex items-center gap-1" aria-label="Atalhos de horário">
+              {ATALHOS_HORA.map((a) => (
+                <button
+                  key={a.rotulo}
+                  onClick={() => irParaHora(a.h)}
+                  disabled={gravando}
+                  className="px-2.5 py-1.5 rounded-full border border-line bg-surface font-mono text-[11px] font-semibold text-ink-soft hover:bg-brand-soft/50 cursor-pointer disabled:opacity-50"
+                >
+                  {a.rotulo}
+                </button>
+              ))}
+            </div>
           </div>
 
           <button
@@ -1383,6 +1463,36 @@ export default function SimuladorSombreamento3D({
           </button>
         </div>
       </div>
+    </div>
+
+    {/* Explicação para o cliente / investidor */}
+    <div className="rounded-3xl border border-line bg-surface p-4 sm:p-5">
+      <div>
+        <p className="mb-2 flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-brand-strong">
+          <UserCheck className="size-3.5" aria-hidden="true" /> Explicação para o cliente · leitura em 1 olhar
+        </p>
+        <div className={`rounded-2xl border p-4 transition-colors ${traducao.classe}`} aria-live="polite">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-black/5">
+              <IconeTraducao className="size-5" aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black leading-snug sm:text-base">{traducao.titulo}</h3>
+              <p className="mt-0.5 text-xs font-semibold opacity-80">{traducao.subtitulo}</p>
+            </div>
+          </div>
+          <p className="mt-3 border-t border-current/20 pt-2.5 text-xs font-medium leading-relaxed">{traducao.texto}</p>
+        </div>
+        <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-line bg-brand-soft/30 p-3 text-[11px] leading-snug text-ink">
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden="true" />
+          <span>
+            <strong className="block text-ink">Dica de apresentação</strong>
+            Use os atalhos de horário e as estações para mostrar ao cliente como o sol e o entorno mudam ao longo do dia.
+          </span>
+        </div>
+      </div>
+
+    </div>
     </div>
   );
 }
