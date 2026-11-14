@@ -192,7 +192,7 @@ export function CapaLaudo(props: CapaLaudoProps) {
 
   const celulasClima = [
     { rotulo: "Temp. média anual", valor: `${formatarNumero(clima.tempMedia, 1)} °C`, sub: "Bulbo seco", Icone: Thermometer },
-    { rotulo: "Mínima e máxima", valor: `${formatarNumero(clima.tempMin, 0)}° a ${formatarNumero(clima.tempMax, 0)} °C`, sub: amplitudeTermica || "Faixa anual", Icone: Activity },
+    { rotulo: "Mínima e máxima", valor: `${formatarNumero(clima.tempMin, 0)}° a ${formatarNumero(clima.tempMax, 0)} °C`, sub: "Faixa anual", Icone: Activity },
     { rotulo: "Umidade média", valor: `${formatarNumero(clima.umidade, 0)} %`, sub: "Média anual", Icone: Droplets },
     { rotulo: "Radiação global", valor: `${formatarNumero(clima.radiacao, 0)} W/m²`, sub: "Média horária", Icone: Sun },
   ];
@@ -210,7 +210,7 @@ export function CapaLaudo(props: CapaLaudoProps) {
       <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-ink-deep via-brand-deep to-brand" />
 
       {/* Masthead */}
-      <header className="mt-1 flex shrink-0 items-start justify-between gap-4 border-b border-line pb-4">
+      <header className="mt-1 flex shrink-0 items-start justify-between gap-4 border-b border-line pb-3">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-ink-deep shadow-sm">
             <Compass className="size-5 text-brand" aria-hidden="true" />
@@ -239,14 +239,14 @@ export function CapaLaudo(props: CapaLaudoProps) {
       </header>
 
       {/* Identificação */}
-      <section className="mt-5 shrink-0 rounded-2xl border border-line bg-surface-soft/60 p-5">
+      <section className="mt-4 shrink-0 rounded-2xl border border-line bg-surface-soft/60 p-4">
         {(finalidade || tipologia) && (
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-deep">{finalidade}</span>
             <span className="text-[10px] font-semibold text-ink-soft">{tipologia}</span>
           </div>
         )}
-        <h1 className="break-words text-[26px] font-black leading-tight tracking-tight text-ink-deep">{nomeProjeto}</h1>
+        <h1 className="break-words text-2xl font-black leading-tight tracking-tight text-ink-deep">{nomeProjeto}</h1>
         <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-ink">
           <MapPin className="mt-0.5 size-3.5 shrink-0 text-brand-deep" aria-hidden="true" />
           <span>
@@ -255,7 +255,7 @@ export function CapaLaudo(props: CapaLaudoProps) {
           </span>
         </p>
 
-        <div className="mt-4 grid grid-cols-3 gap-4 border-t border-line pt-3.5">
+        <div className="mt-3 grid grid-cols-3 gap-4 border-t border-line pt-3">
           <div>
             <p className="text-[9.5px] font-bold uppercase tracking-wider text-ink-soft">Fachada analisada</p>
             <p className="mt-0.5 text-sm font-black tabular-nums text-ink-deep">
@@ -277,8 +277,8 @@ export function CapaLaudo(props: CapaLaudoProps) {
       </section>
 
       {/* Score + zona */}
-      <section className="mt-4 grid shrink-0 grid-cols-12 gap-4">
-        <div className="col-span-7 flex items-center gap-5 rounded-2xl border border-line bg-white p-5">
+      <section className="mt-3 grid shrink-0 grid-cols-12 gap-4">
+        <div className="col-span-7 flex items-center gap-5 rounded-2xl border border-line bg-white p-4">
           {temNota ? (
             <AnelScore nota={notaNum} />
           ) : (
@@ -292,12 +292,12 @@ export function CapaLaudo(props: CapaLaudoProps) {
           </div>
         </div>
 
-        <div className="col-span-5 flex flex-col justify-between rounded-2xl bg-ink-deep p-5 text-white">
+        <div className="col-span-5 flex flex-col justify-between rounded-2xl bg-ink-deep p-4 text-white">
           <div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-brand">ABNT NBR 15220-3:2024</span>
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <span className="whitespace-nowrap text-[9.5px] font-bold uppercase tracking-[0.16em] text-brand">NBR 15220-3:2024</span>
               {intervaloNbr15575 != null && intervaloNbr15575 !== "" && (
-                <span className="rounded bg-white/10 px-2 py-0.5 text-[9px] font-semibold text-white/90">
+                <span className="whitespace-nowrap rounded bg-white/10 px-2 py-0.5 text-[9px] font-semibold text-white/90">
                   NBR 15575 · Intervalo {intervaloNbr15575}
                 </span>
               )}
@@ -323,13 +323,13 @@ export function CapaLaudo(props: CapaLaudoProps) {
       </section>
 
       {/* Telemetria */}
-      <section className="mt-4 shrink-0">
+      <section className="mt-3 shrink-0">
         <h2 className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.15em] text-ink-soft">
           Telemetria climática de referência · série histórica local
         </h2>
         <div className="grid grid-cols-4 gap-3">
           {celulasClima.map(({ rotulo, valor, sub, Icone }) => (
-            <div key={rotulo} className="rounded-xl border border-line bg-white p-3">
+            <div key={rotulo} className="rounded-xl border border-line bg-white p-2.5">
               <div className="flex items-center justify-between text-brand-deep">
                 <span className="text-[9.5px] font-bold uppercase tracking-wider text-ink-soft">{rotulo}</span>
                 <Icone className="size-3.5" aria-hidden="true" />
@@ -342,7 +342,7 @@ export function CapaLaudo(props: CapaLaudoProps) {
       </section>
 
       {/* Recursos */}
-      <section className="mt-4 min-h-0 flex-1">
+      <section className="mt-3 min-h-0 flex-1">
         <h2 className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.15em] text-ink-soft">
           Aproveitamento de recursos naturais do imóvel · pré-dimensionamento
         </h2>

@@ -133,14 +133,14 @@ export function ResumoEntorno({
                     </td>
                     <td className="px-2 py-1.5">
                       {principal ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[9px] font-extrabold uppercase text-rose-700">
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[9px] font-extrabold uppercase text-rose-700">
                           <span className="size-1.5 rounded-full bg-rose-600" />
                           Principal
                         </span>
                       ) : s.afetaFachada ? (
-                        <span className="inline-flex rounded-full bg-surface-soft px-2 py-0.5 text-[9px] font-bold text-brand-deep">Atinge a fachada</span>
+                        <span className="inline-flex whitespace-nowrap rounded-full bg-surface-soft px-2 py-0.5 text-[9px] font-bold text-brand-deep">Atinge</span>
                       ) : (
-                        <span className="inline-flex rounded-full bg-canvas px-2 py-0.5 text-[9px] font-semibold text-ink-soft">Sem efeito</span>
+                        <span className="inline-flex whitespace-nowrap rounded-full bg-canvas px-2 py-0.5 text-[9px] font-semibold text-ink-soft">Sem efeito</span>
                       )}
                     </td>
                     <td className="px-2 py-1.5 text-right font-mono font-bold tabular-nums">{formatarNumero(s.pico.anguloObstrucaoGraus, 1)}°</td>

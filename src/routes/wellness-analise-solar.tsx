@@ -1068,7 +1068,7 @@ function PaginaCartaSolar({
               </span>
             </div>
 
-            <svg viewBox="0 0 380 308" className="mx-auto h-auto max-h-[265px] w-full select-none">
+            <svg viewBox="0 0 380 308" className="my-auto h-auto max-h-[420px] w-full select-none">
               <circle cx={cx} cy={cy} r={raio} fill="#EEF5EF" stroke="#CBD5E1" strokeWidth="1.2" />
               {[30, 60].map((elev) => {
                 const r = elevacaoParaRaio(elev, raio);
@@ -1195,6 +1195,18 @@ function PaginaCartaSolar({
               {leituraSolar.pontosComDado > 0 && (
                 <p className="mt-1 text-[9.5px] font-bold uppercase tracking-wider text-emerald-700">Horizonte do campo de visão da fachada (DSM)</p>
               )}
+            </div>
+
+            <div className="rounded-2xl border border-line bg-white p-3.5">
+              <p className="text-[9.5px] font-extrabold uppercase tracking-wider text-brand-deep">Como foi medido</p>
+              <p className="mt-1 text-[11px] font-semibold leading-snug text-ink">
+                {medido ? "Geometria solar + elevação de satélite (DSM)" : "Geometria solar, sem medição do entorno"}
+              </p>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-ink-soft">
+                {medido
+                  ? `Cada horário diurno é testado contra o ângulo de incidência na parede e contra o perfil de prédios e vegetação num raio de ${sombreamentoReal?.mapa?.raioMetros ?? 60} m ao redor da fachada.`
+                  : "Cada horário diurno é testado apenas contra o ângulo de incidência na parede; vizinhos e árvores não entram no cálculo."}
+              </p>
             </div>
 
             {obstrucaoPrincipal ? (

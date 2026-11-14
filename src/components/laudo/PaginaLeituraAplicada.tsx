@@ -149,12 +149,12 @@ export function PaginaLeituraAplicada({
           <span className="text-right">SALDO</span>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {ESTACOES.map((est) => {
             const horarios = calculoSolarAtual?.[est] ?? {};
             const resumo = porEstacao.find((i) => i.estacao === est);
             return (
-              <div key={est} className="rounded-xl border border-line bg-canvas p-1.5">
+              <div key={est} className="rounded-xl border border-line bg-canvas p-2">
                 <div className="grid items-center gap-1" style={{ gridTemplateColumns: colunas }}>
                   <div className="flex items-center gap-1.5">
                     <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: COR_ESTACAO[est] }} />
@@ -176,7 +176,7 @@ export function PaginaLeituraAplicada({
                     return (
                       <div
                         key={h}
-                        className={`flex h-6 items-center justify-center rounded font-mono text-[9px] tabular-nums ${CELULA[estado]}`}
+                        className={`flex h-9 items-center justify-center rounded font-mono text-[10px] tabular-nums ${CELULA[estado]}`}
                         title={d ? `${ROTULO_ESTACAO[est]} ${String(h).padStart(2, "0")}h: ${d.status} (az ${d.azimute}°, elev ${d.elevacao}°)` : "Sol abaixo do horizonte"}
                       >
                         {rotulo}
@@ -212,7 +212,7 @@ export function PaginaLeituraAplicada({
           <p className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-800">
             <Eye className="size-3.5" aria-hidden="true" /> Luz natural e bem-estar
           </p>
-          <p className="mt-1.5 text-[10.5px] leading-snug text-ink">
+          <p className="mt-1.5 text-[11px] leading-snug text-ink">
             Os períodos com incidência direta podem favorecer luz natural e contato com o ciclo do dia. Sol direto também pode causar
             ofuscamento; a carta indica quando investigar proteção ajustável. A iluminância interna não é calculada: faltam
             dimensões/orientação das aberturas, vidro e obstruções internas.
@@ -222,7 +222,7 @@ export function PaginaLeituraAplicada({
           <p className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-800">
             <Thermometer className="size-3.5" aria-hidden="true" /> Conforto térmico e energia
           </p>
-          <p className="mt-1.5 text-[10.5px] leading-snug text-ink">
+          <p className="mt-1.5 text-[11px] leading-snug text-ink">
             Radiação na fachada representa ganho de calor: pode ser útil em períodos frios e aumentar carga de resfriamento em
             períodos quentes. A orientação ajuda a localizar horários críticos para brises, vegetação ou sombreamento externo; não
             substitui simulação térmica e não converte fachada em kWh de economia.
@@ -231,7 +231,7 @@ export function PaginaLeituraAplicada({
       </section>
 
       {/* Síntese */}
-      <section className="rounded-2xl bg-ink-deep p-4 text-white">
+      <section className="mt-auto mb-3.5 rounded-2xl bg-ink-deep p-4 text-white">
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-brand">Implicação para o partido arquitetônico</span>
           <span className="font-mono text-[9px] text-white/60">
@@ -239,7 +239,7 @@ export function PaginaLeituraAplicada({
             {subzona}
           </span>
         </div>
-        <p className="text-[10.5px] leading-snug text-white/85">
+        <p className="text-[11px] leading-snug text-white/85">
           Use a faixa horária observada para posicionar usos sensíveis ao calor/ofuscamento e dimensionar proteção solar externa.
           Preserve entrada de luz difusa e ventilação; não bloqueie toda a fachada com base apenas no percentual. Confirme a solução
           com geometria das aberturas, entorno construído atualizado e simulação térmica do edifício.
