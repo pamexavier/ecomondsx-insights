@@ -478,10 +478,10 @@ export default function HeroCarousel() {
             <span>{current.badge}</span>
           </div>
 
-          <h2 className="mt-3 text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl">
+          <h3 className="mt-3 text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl">
             {current.headline}{" "}
             <span className="text-[#2A6F4E]">{current.highlight}</span>
-          </h2>
+          </h3>
 
           <p className="mt-3.5 text-sm sm:text-base leading-relaxed text-slate-600">
             {current.description}
