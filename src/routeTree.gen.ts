@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcervoRouteImport } from './routes/acervo'
+import { Route as AlertasRsRouteImport } from './routes/alertas-rs'
 import { Route as EducativoRouteImport } from './routes/educativo'
 import { Route as InteligenciaRouteImport } from './routes/inteligencia'
 import { Route as NoticiasRouteImport } from './routes/noticias'
@@ -20,6 +21,7 @@ import { Route as ReferenciasRouteImport } from './routes/referencias'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as WellnessRouteImport } from './routes/wellness'
 import { Route as WellnessAnaliseSolarRouteImport } from './routes/wellness-analise-solar'
+import { Route as ApiAlertasRsRouteImport } from './routes/api.alertas-rs'
 import { Route as ApiTendenciasRouteImport } from './routes/api.tendencias'
 
 const IndexRoute = IndexRouteImport.update({
@@ -30,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const AcervoRoute = AcervoRouteImport.update({
   id: '/acervo',
   path: '/acervo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlertasRsRoute = AlertasRsRouteImport.update({
+  id: '/alertas-rs',
+  path: '/alertas-rs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EducativoRoute = EducativoRouteImport.update({
@@ -77,6 +84,11 @@ const WellnessAnaliseSolarRoute = WellnessAnaliseSolarRouteImport.update({
   path: '/wellness-analise-solar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAlertasRsRoute = ApiAlertasRsRouteImport.update({
+  id: '/api/alertas-rs',
+  path: '/api/alertas-rs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTendenciasRoute = ApiTendenciasRouteImport.update({
   id: '/api/tendencias',
   path: '/api/tendencias',
@@ -86,6 +98,7 @@ const ApiTendenciasRoute = ApiTendenciasRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
+  '/alertas-rs': typeof AlertasRsRoute
   '/educativo': typeof EducativoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/noticias': typeof NoticiasRoute
@@ -95,11 +108,13 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/wellness': typeof WellnessRoute
   '/wellness-analise-solar': typeof WellnessAnaliseSolarRoute
+  '/api/alertas-rs': typeof ApiAlertasRsRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
+  '/alertas-rs': typeof AlertasRsRoute
   '/educativo': typeof EducativoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/noticias': typeof NoticiasRoute
@@ -109,12 +124,14 @@ export interface FileRoutesByTo {
   '/sobre': typeof SobreRoute
   '/wellness': typeof WellnessRoute
   '/wellness-analise-solar': typeof WellnessAnaliseSolarRoute
+  '/api/alertas-rs': typeof ApiAlertasRsRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
+  '/alertas-rs': typeof AlertasRsRoute
   '/educativo': typeof EducativoRoute
   '/inteligencia': typeof InteligenciaRoute
   '/noticias': typeof NoticiasRoute
@@ -124,6 +141,7 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/wellness': typeof WellnessRoute
   '/wellness-analise-solar': typeof WellnessAnaliseSolarRoute
+  '/api/alertas-rs': typeof ApiAlertasRsRoute
   '/api/tendencias': typeof ApiTendenciasRoute
 }
 export interface FileRouteTypes {
@@ -131,6 +149,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/acervo'
+    | '/alertas-rs'
     | '/educativo'
     | '/inteligencia'
     | '/noticias'
@@ -140,11 +159,13 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/wellness'
     | '/wellness-analise-solar'
+    | '/api/alertas-rs'
     | '/api/tendencias'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/acervo'
+    | '/alertas-rs'
     | '/educativo'
     | '/inteligencia'
     | '/noticias'
@@ -154,11 +175,13 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/wellness'
     | '/wellness-analise-solar'
+    | '/api/alertas-rs'
     | '/api/tendencias'
   id:
     | '__root__'
     | '/'
     | '/acervo'
+    | '/alertas-rs'
     | '/educativo'
     | '/inteligencia'
     | '/noticias'
@@ -168,12 +191,14 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/wellness'
     | '/wellness-analise-solar'
+    | '/api/alertas-rs'
     | '/api/tendencias'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcervoRoute: typeof AcervoRoute
+  AlertasRsRoute: typeof AlertasRsRoute
   EducativoRoute: typeof EducativoRoute
   InteligenciaRoute: typeof InteligenciaRoute
   NoticiasRoute: typeof NoticiasRoute
@@ -183,6 +208,7 @@ export interface RootRouteChildren {
   SobreRoute: typeof SobreRoute
   WellnessRoute: typeof WellnessRoute
   WellnessAnaliseSolarRoute: typeof WellnessAnaliseSolarRoute
+  ApiAlertasRsRoute: typeof ApiAlertasRsRoute
   ApiTendenciasRoute: typeof ApiTendenciasRoute
 }
 
@@ -200,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/acervo'
       fullPath: '/acervo'
       preLoaderRoute: typeof AcervoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alertas-rs': {
+      id: '/alertas-rs'
+      path: '/alertas-rs'
+      fullPath: '/alertas-rs'
+      preLoaderRoute: typeof AlertasRsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/educativo': {
@@ -265,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WellnessAnaliseSolarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/alertas-rs': {
+      id: '/api/alertas-rs'
+      path: '/api/alertas-rs'
+      fullPath: '/api/alertas-rs'
+      preLoaderRoute: typeof ApiAlertasRsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tendencias': {
       id: '/api/tendencias'
       path: '/api/tendencias'
@@ -278,6 +318,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcervoRoute: AcervoRoute,
+  AlertasRsRoute: AlertasRsRoute,
   EducativoRoute: EducativoRoute,
   InteligenciaRoute: InteligenciaRoute,
   NoticiasRoute: NoticiasRoute,
@@ -287,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   SobreRoute: SobreRoute,
   WellnessRoute: WellnessRoute,
   WellnessAnaliseSolarRoute: WellnessAnaliseSolarRoute,
+  ApiAlertasRsRoute: ApiAlertasRsRoute,
   ApiTendenciasRoute: ApiTendenciasRoute,
 }
 export const routeTree = rootRouteImport

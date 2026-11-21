@@ -726,7 +726,6 @@ export default function Noticias({ abaInicial = "Geral" }: Props) {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
         .font-editorial { font-family: 'Newsreader', Georgia, serif; }
         .font-sans-ui { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
         .font-mono-tech { font-family: 'JetBrains Mono', monospace; }

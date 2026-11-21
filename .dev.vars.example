@@ -1,0 +1,4 @@
+# Copy this file to .dev.vars for local Cloudflare Worker development.
+# Never commit .dev.vars. Use `wrangler secret put` for production secrets.
+SUPABASE_SERVICE_ROLE_KEY=
+TELEGRAM_BOT_TOKEN=

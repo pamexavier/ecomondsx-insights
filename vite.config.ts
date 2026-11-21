@@ -6,6 +6,13 @@
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+const nitro = {
+	preset: "cloudflare-module",
+	serverDir: "server",
+	experimental: { tasks: true },
+	scheduledTasks: { "* * * * *": ["inmet:sync"] },
+};
+
 export default defineConfig({
-	nitro: true,
+	nitro,
 });

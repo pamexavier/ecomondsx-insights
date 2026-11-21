@@ -9,6 +9,9 @@
     "directory": "./dist/client"
   },
   "no_bundle": true,
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
   "rules": [
     {
       "type": "ESModule",

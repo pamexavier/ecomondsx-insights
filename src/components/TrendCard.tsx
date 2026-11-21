@@ -96,7 +96,6 @@ export function TrendCard({ trend, index }: TrendCardProps) {
         {trend.category}
       </div>
 
-      {/* Título — Syne, com mais respiro */}
       <h3 className="text-display flex-1 text-base font-bold leading-snug text-foreground">
         {trend.title}
       </h3>

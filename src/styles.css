@@ -1,36 +1,9 @@
-@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-
-@font-face {
-  font-family: "Syne";
-  font-style: normal;
-  font-weight: 400 800;
-  font-display: swap;
-  src: url("https://fonts.gstatic.com/s/syne/v22/8vIS7w4qzmVxsWxjBZRjr0FKM_04uT6k.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "DM Mono";
-  font-style: normal;
-  font-weight: 300 500;
-  font-display: swap;
-  src: url("https://fonts.gstatic.com/s/dmmono/v14/aFTU7PB1QTsUX8KYvrGyIYSnbKX9Rlk.woff2") format("woff2");
-}
-
-/* NOVO — fonte sans para corpo de texto (títulos de card, descrições,
-   parágrafos do modal). Antes o body inteiro usava DM Mono (monoespaçada),
-   o que deixava qualquer texto corrido com cara de terminal. */
-@font-face {
-  font-family: "Inter";
-  font-style: normal;
-  font-weight: 380 680;
-  font-display: swap;
-  src: url("https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfMZhrib2Bg-4.woff2") format("woff2");
-}
 
 @theme inline {
   --radius-sm: 0.5rem;
@@ -41,12 +14,9 @@
   --radius-3xl: 1.75rem;
   --radius-4xl: 2rem;
 
-  --font-display: "Syne", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "DM Mono", ui-monospace, monospace;
-  /* ALTERADO: era "DM Mono" (igual ao --font-mono). Agora o corpo de
-     texto usa uma sans legível; DM Mono fica reservado para dados,
-     labels e timestamps via .text-mono */
-  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Newsreader", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 
   --color-canvas: #F4F7F3;
   --color-surface: #FFFFFF;
@@ -172,10 +142,26 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    /* ALTERADO: era var(--font-mono). Corpo de texto agora usa a sans. */
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+  }
+
+  svg [font-family="sans-serif"] {
+    font-family: var(--font-sans);
+  }
+
+  svg [font-family="monospace"] {
+    font-family: var(--font-mono);
   }
 
   body {

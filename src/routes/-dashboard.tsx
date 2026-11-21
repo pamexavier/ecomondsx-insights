@@ -514,11 +514,44 @@ export default function Home() {
   
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
-      <div className="pointer-events-none absolute inset-0 bg-grid bg-grid-fade" />
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[700px]"
-        style={{ background: "var(--gradient-radial-glow)" }}
+    <div className="home-theme relative min-h-screen bg-background text-foreground selection:bg-[#255841] selection:text-white">
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            .home-theme {
+              --font-display: 'Newsreader', Georgia, serif;
+              --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+              --font-mono: 'JetBrains Mono', monospace;
+              --background: #F5F6F2;
+              --foreground: #18221F;
+              --card: #FFFFFF;
+              --card-foreground: #18221F;
+              --primary: #255841;
+              --primary-foreground: #FFFFFF;
+              --secondary: #EBF0EC;
+              --secondary-foreground: #18221F;
+              --muted: #EBF0EC;
+              --muted-foreground: #6E7D77;
+              --accent: #DCEFE3;
+              --accent-foreground: #255841;
+              --border: #DCE2DD;
+              --border-strong: #CFDAD1;
+              --input: #DCE2DD;
+              --ring: #3A7D5E;
+              font-family: var(--font-sans);
+            }
+            body:has(.home-theme) > header {
+              --color-line: #DCE2DD;
+              --color-surface: #F5F6F2;
+              --color-ink-soft: #6E7D77;
+              --color-brand-strong: #255841;
+              --color-brand: #3A7D5E;
+              --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+              background-color: rgb(245 246 242 / 95%);
+              font-family: var(--font-sans);
+            }
+          `,
+        }}
       />
 
       {/* ── Header ── */}
@@ -571,7 +604,7 @@ export default function Home() {
             <span>Engenharia ambiental aplicada</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.12] max-w-4xl">
+          <h1 className="text-display text-3xl sm:text-5xl font-medium tracking-tight text-foreground leading-[1.08] max-w-4xl">
             Transformamos dados do lugar em{" "}
             <span className="text-primary">decisões melhores para imóveis e projetos.</span>
           </h1>
@@ -631,7 +664,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
             <div>
               <span className="text-xs font-mono uppercase tracking-wider text-primary">Do contexto à decisão</span>
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground mt-1">
+              <h2 className="text-display text-xl sm:text-2xl font-medium text-foreground mt-1">
                 Uma escolha de projeto influencia mais do que a aparência
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
@@ -698,7 +731,7 @@ export default function Home() {
                   </span>
                   <span className="text-xs font-mono text-muted-foreground">kWh/m² · Carga Térmica</span>
                 </div>
-                <h3 className="text-base font-bold text-foreground">Climatização Passiva e Luz Natural</h3>
+                <h3 className="text-display text-base font-medium text-foreground">Climatização Passiva e Luz Natural</h3>
                 <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                   A trajetória do sol define o <strong>ganho térmico pelas fachadas e cobertura</strong>. Posicionar salas e quartos na orientação certa aproveita a iluminação natural e reduz em até <strong>35% a 50%</strong> o consumo elétrico com ar-condicionado ou calefação.
                 </p>
@@ -717,7 +750,7 @@ export default function Home() {
                   </span>
                   <span className="text-xs font-mono text-muted-foreground">INMET · Evapotranspiração</span>
                 </div>
-                <h3 className="text-base font-bold text-foreground">Evaporação, Irrigação e Pluvial</h3>
+                <h3 className="text-display text-base font-medium text-foreground">Evaporação, Irrigação e Pluvial</h3>
                 <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                   A insolação direta somada à umidade e aos ventos locais (dados horários INMET) governa a <strong>taxa de evaporação da água no lote</strong>. Isso define onde alocar jardins, espelhos d'água e áreas permeáveis para não desperdiçar água na irrigação.
                 </p>
@@ -736,7 +769,7 @@ export default function Home() {
                   </span>
                   <span className="text-xs font-mono text-muted-foreground">Transmitância · Inércia</span>
                 </div>
-                <h3 className="text-base font-bold text-foreground">Especificação Técnica sem Patologias</h3>
+                <h3 className="text-display text-base font-medium text-foreground">Especificação Técnica sem Patologias</h3>
                 <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                   A radiação UV e o choque térmico diário (amplitude térmica) ditam <strong>quais materiais resistem e isolam melhor</strong>. Conhecer o sol de cada parede evita trincas por dilatação, desbotamento precoce, condensação e mofo.
                 </p>
@@ -754,7 +787,7 @@ export default function Home() {
         <section className="mb-16 pt-8 border-t border-border">
           <div className="mb-6">
             <span className="text-xs font-mono uppercase tracking-wider text-primary">O contexto muda a estratégia</span>
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground mt-1">
+            <h2 className="text-display text-xl sm:text-2xl font-medium text-foreground mt-1">
               A mesma solução não funciona da mesma forma em todo lugar
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -1040,7 +1073,7 @@ export default function Home() {
           <div className="text-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
             Quer ir mais fundo?
           </div>
-          <h3 className="text-display text-2xl sm:text-3xl font-extrabold max-w-lg leading-tight">
+          <h3 className="text-display text-2xl sm:text-3xl font-medium max-w-lg leading-tight">
             Novidades, tecnologias e tendências da construção, num só lugar.
           </h3>
           <p className="text-muted-foreground text-xs sm:text-sm max-w-sm leading-relaxed">
@@ -1071,7 +1104,7 @@ export default function Home() {
           <span className="text-[11px] font-mono uppercase text-primary font-semibold">
             Vector-X · Diagnóstico Bioclimático
           </span>
-          <h3 className="text-lg font-bold text-foreground leading-snug mt-0.5">
+          <h3 className="text-display text-lg font-medium text-foreground leading-snug mt-0.5">
             A zona é só o ponto de partida. O seu lote é outra história.
           </h3>
         </div>

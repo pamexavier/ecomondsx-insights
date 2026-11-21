@@ -1,0 +1,1990 @@
+[
+    {
+        "nome":  "Presidente Lucena",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Progresso",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Protásio Alves",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Pouso Novo",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Porto Mauá",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Porto Vera Cruz",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Porto Xavier",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Putinga",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Redentora",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Relvado",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Restinga Sêca",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Quinze de Novembro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Quaraí",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Quatro Irmãos",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Quevedos",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Porto Lucena",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Pinheirinho do Vale",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Pinheiro Machado",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Pinto Bandeira",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Pinhal Grande",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Picada Café",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Pinhal",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Pinhal da Serra",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Pirapó",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ponte Preta",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Portão",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Porto Alegre",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Pontão",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Piratini",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Planalto",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Poço das Antas",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Santa Clara do Sul",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Santa Cruz do Sul",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Santa Maria",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Santa Cecília do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Salvador do Sul",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Sananduva",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Santa Bárbara do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Santa Maria do Herval",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Santa Tereza",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Santa Vitória do Palmar",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Santiago",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Santa Rosa",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Santa Margarida do Sul",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Santana da Boa Vista",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Sant\u0027Ana do Livramento",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Salvador das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Roca Sales",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Rodeio Bonito",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Rolador",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Riozinho",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Rio dos Índios",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Rio Grande",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Rio Pardo",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Rolante",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Sagrada Família",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Saldanha Marinho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Salto do Jacuí",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Rosário do Sul",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Ronda Alta",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Rondinha",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Roque Gonzales",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Nonoai",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Nova Alvorada",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Nova Araçá",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Nicolau Vergueiro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Muitos Capões",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Muliterno",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Não-Me-Toque",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Nova Bassano",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Nova Hartz",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Nova Pádua",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Nova Palma",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Nova Esperança do Sul",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Nova Boa Vista",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Nova Bréscia",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Nova Candelária",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Muçum",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Minas do Leão",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Miraguaí",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Montauri",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Maximiliano de Almeida",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Mato Castelhano",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Mato Leitão",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Mato Queimado",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Monte Alegre dos Campos",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Morro Redondo",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Morro Reuter",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Mostardas",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Morrinhos do Sul",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Monte Belo do Sul",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Montenegro",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Mormaço",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Pareci Novo",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Parobé",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Passa Sete",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Paraíso do Sul",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Panambi",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Pantano Grande",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Paraí",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Passo do Sobrado",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Pedro Osório",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Pejuçara",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Pelotas",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Pedras Altas",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Passo Fundo",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Paulo Bento",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Paverama",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Palmitinho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Nova Santa Rita",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Novo Cabrais",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Novo Hamburgo",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Nova Roma do Sul",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Nova Petrópolis",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Nova Prata",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Nova Ramada",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Novo Machado",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Paim Filho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Palmares do Sul",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Palmeira das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Osório",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Novo Tiradentes",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Novo Xingu",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Novo Barreiro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Três Cachoeiras",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Três Coroas",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Três de Maio",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Três Arroios",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Torres",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Tramandaí",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Travesseiro",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Três Forquilhas",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Tucunduva",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Tunas",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Tupanci do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Triunfo",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Três Palmeiras",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Três Passos",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Trindade do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Toropi",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Tapera",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Tapes",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Taquara",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Tapejara",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Sobradinho",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Soledade",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Tabaí",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Taquari",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Teutônia",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Tio Hugo",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Tiradentes do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Terra de Areia",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Taquaruçu do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Tavares",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Tenente Portela",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Victor Graeff",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Vila Flores",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Vila Lângaro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Vicente Dutra",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Vespasiano Corrêa",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Viadutos",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Viamão",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Vila Maria",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Vitória das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Westfália",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Xangri-lá",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Vista Gaúcha",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Vila Nova do Sul",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Vista Alegre",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Vista Alegre do Prata",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Veranópolis",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Ubiretama",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "União da Serra",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Unistalda",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Turuçu",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Tupanciretã",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Tupandi",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Tuparendi",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Uruguaiana",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Vanini",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Venâncio Aires",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Vera Cruz",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Vale Real",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Vacaria",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Vale Verde",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Vale do Sol",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "São José do Inhacorá",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São José do Norte",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "São José do Ouro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São José do Hortêncio",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "São Jorge",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "São José das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São José do Herval",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São José do Sul",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "São Marcos",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "São Martinho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Martinho da Serra",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "São Luiz Gonzaga",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São José dos Ausentes",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "São Leopoldo",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "São Lourenço do Sul",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "São João do Polêsine",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Santo Antônio do Planalto",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Santo Augusto",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Santo Cristo",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Santo Antônio das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Santo Ângelo",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Santo Antônio do Palma",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Santo Antônio da Patrulha",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Santo Expedito do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Gabriel",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "São Jerônimo",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "São João da Urtiga",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Francisco de Paula",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "São Borja",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "São Domingos do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Francisco de Assis",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Selbach",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Senador Salgado Filho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Sentinela do Sul",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Segredo",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Sarandi",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Seberi",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Sede Nova",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Serafina Corrêa",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Severiano de Almeida",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Silveira Martins",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Sinimbu",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Sete de Setembro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Sério",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Sertão",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Sertão Santana",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Sapucaia do Sul",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "São Pedro das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Pedro do Butiá",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Pedro do Sul",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "São Pedro da Serra",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "São Miguel das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Nicolau",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Paulo das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Sebastião do Caí",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "São Vendelino",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "São Vicente do Sul",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Sapiranga",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "São Valério do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Sepé",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "São Valentim",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "São Valentim do Sul",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Mata",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Capão da Canoa",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Capão do Cipó",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Capão do Leão",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Capão Bonito do Sul",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Canguçu",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Canoas",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Canudos do Vale",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Capivari do Sul",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Carlos Barbosa",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Carlos Gomes",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Casca",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Caraá",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Capela de Santana",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Capitão",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Carazinho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Canela",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Camargo",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Cambará do Sul",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Campestre da Serra",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Camaquã",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Cacique Doble",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Caibaté",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Caiçara",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Campina das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Candelária",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Cândido Godói",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Candiota",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Campos Borges",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Campinas do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Campo Bom",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Campo Novo",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Constantina",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Coqueiro Baixo",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Coqueiros do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Condor",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ciríaco",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Colinas",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Colorado",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Coronel Barros",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Crissiumal",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Cristal",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Cristal do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Coxilha",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Coronel Bicaco",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Coronel Pilar",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Cotiporã",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Cidreira",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Cerrito",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Cerro Branco",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Cerro Grande",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Centenário",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Caseiros",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Catuípe",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Caxias do Sul",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Cerro Grande do Sul",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Chiapetta",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Chuí",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Chuvisca",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Charrua",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Cerro Largo",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Chapada",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Charqueadas",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Arroio do Meio",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Arroio do Sal",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Arroio do Padre",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Aratiba",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Antônio Prado",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Arambaré",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Araricá",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Arroio dos Ratos",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Áurea",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Bagé",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Balneário Pinhal",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Augusto Pestana",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Arroio do Tigre",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Arroio Grande",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Arvorezinha",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Anta Gorda",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Alecrim",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Alegrete",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Alegria",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ajuricaba",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Aceguá",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Água Santa",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Agudo",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Almirante Tamandaré do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Amaral Ferrador",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Ametista do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "André da Rocha",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Alvorada",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Alpestre",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Alto Alegre",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Alto Feliz",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Bom Retiro do Sul",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Boqueirão do Leão",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Bossoroca",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Bom Progresso",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Boa Vista do Sul",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Bom Jesus",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Bom Princípio",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Bozano",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Cacequi",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Cachoeira do Sul",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Cachoeirinha",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Caçapava do Sul",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Braga",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Brochier",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Butiá",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Boa Vista do Incra",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Barra do Guarita",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Barra do Quaraí",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Barra do Ribeiro",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Barracão",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Barão",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Barão de Cotegipe",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Barão do Triunfo",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Barra do Rio Azul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Boa Vista das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Boa Vista do Buricá",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Boa Vista do Cadeado",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Bento Gonçalves",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Barra Funda",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Barros Cassal",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Benjamin Constant do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Inhacorá",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ipê",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Ipiranga do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Independência",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ilópolis",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Imbé",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Imigrante",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Iraí",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Itati",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Itatiba do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ivorá",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Itaqui",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Itaara",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Itacurubi",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Itapuca",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Ijuí",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Harmonia",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Herveiras",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Horizontina",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Guarani das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Guabiju",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Guaíba",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Guaporé",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Hulha Negra",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Ibirapuitã",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ibirubá",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Igrejinha",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Ibiraiaras",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Humaitá",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ibarama",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Ibiaçá",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Machadinho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Maçambará",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Mampituba",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Linha Nova",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Lavras do Sul",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Liberato Salzano",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Lindolfo Collor",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Manoel Viana",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Mariana Pimentel",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Mariano Moro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Marques de Souza",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Marcelino Ramos",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Maquiné",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Maratá",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Marau",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Lajeado do Bugre",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Jaguarão",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Jaguari",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Jaquirana",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Jacutinga",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ivoti",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Jaboticaba",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Jacuizinho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Jari",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Lagoa dos Três Cantos",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Lagoa Vermelha",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Lajeado",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Lagoão",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Jóia",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Júlio de Castilhos",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Lagoa Bonita do Sul",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Entre-Ijuís",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Entre Rios do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Erebango",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Engenho Velho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Eldorado do Sul",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Encantado",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Encruzilhada do Sul",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Erechim",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Esmeralda",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Esperança do Sul",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Espumoso",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Erval Seco",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Ernestina",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Herval",
+        "mesorregiao":  "Sudeste Rio-grandense"
+    },
+    {
+        "nome":  "Erval Grande",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Doutor Ricardo",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Derrubadas",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Dezesseis de Novembro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Dilermando de Aguiar",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "David Canabarro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Cruz Alta",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Cruzaltense",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Cruzeiro do Sul",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Dois Irmãos",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Dom Pedrito",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Dona Francisca",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Doutor Maurício Cardoso",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Dom Pedro de Alcântara",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Dois Irmãos das Missões",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Dois Lajeados",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Dom Feliciano",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Garruchos",
+        "mesorregiao":  "Sudoeste Rio-grandense"
+    },
+    {
+        "nome":  "Gaurama",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "General Câmara",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Garibaldi",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Forquetinha",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Fortaleza dos Valos",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Frederico Westphalen",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Gentil",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Gramado dos Loureiros",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Gramado Xavier",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Gravataí",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Gramado",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Getúlio Vargas",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Giruá",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Glorinha",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Formigueiro",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Estrela Velha",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Eugênio de Castro",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Fagundes Varela",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Estrela",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    },
+    {
+        "nome":  "Estação",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Estância Velha",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Esteio",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Farroupilha",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Flores da Cunha",
+        "mesorregiao":  "Nordeste Rio-grandense"
+    },
+    {
+        "nome":  "Floriano Peixoto",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Fontoura Xavier",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Feliz",
+        "mesorregiao":  "Metropolitana de Porto Alegre"
+    },
+    {
+        "nome":  "Faxinal do Soturno",
+        "mesorregiao":  "Centro Ocidental Rio-grandense"
+    },
+    {
+        "nome":  "Faxinalzinho",
+        "mesorregiao":  "Noroeste Rio-grandense"
+    },
+    {
+        "nome":  "Fazenda Vilanova",
+        "mesorregiao":  "Centro Oriental Rio-grandense"
+    }
+]

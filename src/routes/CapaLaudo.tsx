@@ -1,296 +1,396 @@
-// src/components/CapaLaudo.tsx
-//
-// Página 1 do laudo redesenhada como prancha técnica: cabeçalho com régua,
-// quadro de clima em tabela, dois painéis de recursos (solar e água) com as
-// premissas visíveis, e carimbo de prancha no rodapé.
-// Usa só os tokens que o projeto já tem (brand, ink, line, surface-soft...).
-// Mantém "pdf-page" e a proporção A4 para o gerarPDFPaginado continuar igual.
+import { MapPin, Zap, Droplets, Sun, Home, Layers } from "lucide-react";
+import { formatarNumero, formatarMoeda } from "@/utils/calculosBioclimaticos";
 
-import { Droplets, MapPin, Zap } from "lucide-react";
-import { formatarMoeda, formatarNumero } from "@/utils/calculosBioclimaticos";
+function extrairNumeroObjeto(obj: any, chaves: string[], regexFallback?: RegExp): number | null {
+  if (!obj || typeof obj !== "object") return null;
+  for (const k of chaves) {
+    const val = Number(obj[k]);
+    if (Number.isFinite(val) && val > 0) return val;
+  }
+  if (regexFallback) {
+    for (const [k, v] of Object.entries(obj)) {
+      if (regexFallback.test(k)) {
+        const val = Number(v);
+        if (Number.isFinite(val) && val > 0) return val;
+      }
+    }
+  }
+  return null;
+}
 
-type EconomiaAgua = {
-  m3Ano: number;
-  volumeCaptavelM3Ano: number;
-  limitadoPelaDemanda: boolean;
-  economiaAnualEstimada: number;
-  alertaChuva: string | null;
-  premissas: string[];
-  textoImpacto: string;
-} | null;
-
-type EconomiaSolar = {
-  economiaAnualEstimada: number;
-  premissas: string[];
-  textoImpacto: string;
-} | null;
-
-type PotencialFV = {
-  geracaoAnualMaximaKwh: number;
-  areaDisponivelM2: number;
-  maxPaineis: number;
-  potenciaInstaladaKwp: number | null;
-  rendimentoEspecificoKwhKwp: number | null;
-  escopo: string | null;
-  alerta: string | null;
-} | null;
-
-export type CapaLaudoProps = {
-  nomeProjeto: string;
-  endereco: string;
-  fachada: string;
-  zona?: string;
-  subzona?: string;
-  nota?: number | string | null;
-  resumoScore?: string;
-  fonteSolar: string;
-  clima: {
-    tempMedia?: number | string | null;
-    tempMin?: number | string | null;
-    tempMax?: number | string | null;
-    umidade?: number | string | null;
-    radiacao?: number | string | null;
+function guiaRapidoFachada(fachada?: string) {
+  const f = String(fachada || "Sul").toLowerCase();
+  if (f.includes("norte")) {
+    return {
+      insolacao: "Sol constante no inverno e alto no verão",
+      comodos: "Sala de Estar, Living, Varanda Gourmet e Dormitórios",
+      material: "Brise horizontal fixo + Alvenaria com isolamento leve",
+    };
+  }
+  if (f.includes("leste") || f.includes("nascente")) {
+    return {
+      insolacao: "Sol ameno e saudável no período da manhã",
+      comodos: "Dormitórios, Suíte Master, Copa e Home Office",
+      material: "Veneziana integrada ou brise móvel + Vidro incolor/laminado",
+    };
+  }
+  if (f.includes("oeste") || f.includes("poente")) {
+    return {
+      insolacao: "Sol intenso à tarde com alto ganho térmico",
+      comodos: "Áreas de serviço, Circulação, Banheiros ou Sala com brise",
+      material: "Brise vertical + Parede de alta inércia/EPS + Vidro controle solar",
+    };
+  }
+  return {
+    insolacao: "Luz natural difusa estável; pouco sol direto no inverno",
+    comodos: "Home Office / Estúdio (sem reflexo), Cozinha, Closet e Lavabo",
+    material: "Parede com baixa transmitância (EPS/Bloco celular) + Esquadria estanque",
   };
-  economiaAgua: EconomiaAgua;
-  economiaSolar: EconomiaSolar;
-  potencialFotovoltaico: PotencialFV;
-};
-
-function BarraScore({ nota }: { nota: number }) {
-  const cheios = Math.max(0, Math.min(10, Math.round(nota)));
-  return (
-    <div className="mt-2 grid grid-cols-10 gap-0.5" aria-hidden="true">
-      {Array.from({ length: 10 }, (_, i) => (
-        <span key={i} className={`h-1.5 ${i < cheios ? "bg-brand-strong" : "bg-line"}`} />
-      ))}
-    </div>
-  );
 }
 
-function PainelRecurso({
-  icone,
-  titulo,
-  valor,
-  unidade,
-  economia,
-  detalhe,
-  premissas,
-  alerta,
-  vazio,
-  corBarra,
-  corTexto,
-}: {
-  icone: React.ReactNode;
-  titulo: string;
-  valor?: string;
-  unidade?: string;
-  economia?: string;
-  detalhe?: string;
-  premissas?: string[];
-  alerta?: string | null;
-  vazio?: string;
-  corBarra: string;
-  corTexto: string;
-}) {
-  return (
-    <section className={`flex flex-col border border-line border-t-4 ${corBarra} bg-white`}>
-      <header className="flex items-center gap-2 border-b border-line px-3 py-2">
-        <span className={corTexto}>{icone}</span>
-        <h3 className="text-sm font-semibold text-ink">{titulo}</h3>
-      </header>
+export default function CapaLaudo({
+  nomeProjeto,
+  endereco,
+  fachada,
+  zona,
+  subzona,
+  nota,
+  resumoScore,
+  fonteSolar,
+  clima,
+  economiaAgua,
+  economiaSolar,
+  potencialFotovoltaico,
+}: any) {
+  const valorBruto =
+    typeof nota === "number" ? nota : Number(String(nota ?? "").replace(",", "."));
+  const temNota = Number.isFinite(valorBruto) && valorBruto > 0;
+  const escala10 = temNota && valorBruto <= 10;
+  const percentualRadial = temNota
+    ? Math.max(0, Math.min(100, escala10 ? valorBruto * 10 : valorBruto))
+    : 70;
 
-      {vazio ? (
-        <p className="p-3 text-xs leading-relaxed text-ink-soft">{vazio}</p>
-      ) : (
-        <div className="flex flex-1 flex-col p-3">
-          <p className="tabular-nums leading-none">
-            <span className={`text-3xl font-bold ${corTexto}`}>{valor}</span>{" "}
-            <span className="text-xs font-medium text-ink-soft">{unidade}</span>
-          </p>
-          {detalhe && <p className="mt-1 text-[11px] text-ink-soft">{detalhe}</p>}
+  const r = 32;
+  const circ = 2 * Math.PI * r;
+  const dashOffset = circ - (percentualRadial / 100) * circ;
 
-          <p className="mt-3 text-[11px] text-ink-soft">Economia estimada</p>
-          <p className="tabular-nums text-lg font-semibold text-ink">
-            {economia}
-            <span className="text-xs font-normal text-ink-soft"> por ano</span>
-          </p>
-
-          {alerta && (
-            <p className="mt-3 border-l-2 border-warn-ink bg-warn-soft px-2 py-1.5 text-[10px] leading-snug text-warn-ink">
-              {alerta}
-            </p>
-          )}
-
-          <ul className="mt-3 divide-y divide-line border-t border-line text-[10px] leading-snug text-ink-soft">
-            {(premissas ?? []).map((p) => (
-              <li key={p} className="py-1">
-                {p}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </section>
+  // Extração inteligente (compatível com qualquer nome de chave do calculosBioclimaticos.ts)
+  const kwhAno = extrairNumeroObjeto(
+    potencialFotovoltaico,
+    ["geracaoAnualMaximaKwh", "geracaoAnualKwh", "kwhAno", "energiaAnualKwh"],
+    /kwh|geracao/i,
   );
-}
+  const qtdPaineis = extrairNumeroObjeto(
+    potencialFotovoltaico,
+    [
+      "quantidadeMaximaPaineis",
+      "maximoPaineis",
+      "paineisMaximos",
+      "quantidadePaineis",
+      "paineis",
+      "numPaineis",
+      "maxArrayPanelsCount",
+    ],
+    /paine|panel/i,
+  );
+  const areaSolarM2 = extrairNumeroObjeto(
+    potencialFotovoltaico,
+    ["areaMaximaM2", "areaTelhadoM2", "areaUtilM2", "areaM2", "maxArrayAreaMeters2"],
+    /area/i,
+  );
+  const reaisSolarAno = extrairNumeroObjeto(
+    economiaSolar,
+    ["economiaAnualReais", "economiaAnual", "valorAnual", "economiaReais"],
+    /econom|reais|valor|anual/i,
+  );
 
-export function CapaLaudo(props: CapaLaudoProps) {
-  const {
-    nomeProjeto, endereco, fachada, zona, subzona, nota, resumoScore, fonteSolar,
-    clima, economiaAgua, economiaSolar, potencialFotovoltaico,
-  } = props;
+  const aguaAproveitavelM3 =
+    extrairNumeroObjeto(
+      economiaAgua,
+      [
+        "volumeAproveitavelM3",
+        "m3Aproveitaveis",
+        "aproveitavelM3",
+        "volumeUtilM3",
+        "volumeAnualM3",
+        "m3Ano",
+      ],
+      /aproveit|util|m3/i,
+    ) ??
+    (() => {
+      const litros = extrairNumeroObjeto(
+        economiaAgua,
+        ["volumeAnualLitros", "litrosAproveitaveis", "litrosAno"],
+        /litro/i,
+      );
+      return litros ? litros / 1000 : null;
+    })();
 
-  const notaNum = Number(nota);
-  const temNota = Number.isFinite(notaNum);
-  const hoje = new Date().toLocaleDateString("pt-BR");
+  const aguaCaptadaM3 = extrairNumeroObjeto(
+    economiaAgua,
+    ["volumeCaptadoM3", "m3Captados", "captadoM3", "volumeTotalM3", "totalCaptadoM3"],
+    /captad|total|bruto/i,
+  );
 
-  const celulasClima = [
-    { rotulo: "Temperatura média", valor: `${formatarNumero(clima.tempMedia, 1)} °C` },
-    { rotulo: "Mínima e máxima", valor: `${formatarNumero(clima.tempMin, 0)} a ${formatarNumero(clima.tempMax, 0)} °C` },
-    { rotulo: "Umidade média", valor: `${formatarNumero(clima.umidade, 0)} %` },
-    { rotulo: "Radiação global", valor: `${formatarNumero(clima.radiacao, 0)} W/m²` },
-  ];
+  const reaisAguaAno = extrairNumeroObjeto(
+    economiaAgua,
+    ["economiaAnualReais", "economiaAnual", "valorAnual", "economiaReais"],
+    /econom|reais|valor/i,
+  );
 
-  const escopoPredio = potencialFotovoltaico?.escopo === "edificio_inteiro";
-  const alertaSolar =
-    [potencialFotovoltaico?.alerta, escopoPredio ? "Valor do edifício inteiro, não da sua unidade." : null]
-      .filter(Boolean)
-      .join(" ") || null;
+  const guia = guiaRapidoFachada(fachada);
 
   return (
-    <div className="pdf-page relative flex aspect-[210/297] w-full flex-col overflow-hidden rounded-md border border-line bg-white p-10 text-ink shadow-sm">
-      {/* Cabeçalho */}
-      <header className="flex items-start justify-between gap-6 border-b-2 border-ink pb-4">
-        <div className="min-w-0">
-          <p className="text-xs text-ink-soft">Laudo de viabilidade bioclimática</p>
-          <h1 className="mt-1 break-words text-3xl font-bold leading-tight tracking-tight">{nomeProjeto}</h1>
-          <p className="mt-2 flex items-start gap-1.5 text-sm text-ink-soft">
-            <MapPin className="mt-0.5 size-3.5 shrink-0 text-brand-strong" aria-hidden="true" />
-            {endereco}
-          </p>
-        </div>
-        <div className="w-40 shrink-0">
-          <p className="text-xs text-ink-soft">Score bioclimático</p>
-          <p className="tabular-nums leading-none">
-            <span className="text-5xl font-bold text-brand-strong">{temNota ? formatarNumero(notaNum, 1) : "–"}</span>
-            <span className="text-lg text-ink-soft">/10</span>
-          </p>
-          {temNota && <BarraScore nota={notaNum} />}
-        </div>
-      </header>
-
-      <p className="mt-5 border-l-4 border-brand pl-4 text-sm leading-relaxed">
-        {resumoScore || "Análise concluída com sucesso."}
-      </p>
-
-      {/* Clima */}
-      <section className="mt-6">
-        <h2 className="text-sm font-semibold">
-          Clima local, zona bioclimática {zona}
-          {subzona}
-        </h2>
-        <dl className="mt-2 grid grid-cols-4 divide-x divide-line border-y border-line">
-          {celulasClima.map((c) => (
-            <div key={c.rotulo} className="px-3 py-2.5 first:pl-0">
-              <dt className="text-[11px] text-ink-soft">{c.rotulo}</dt>
-              <dd className="mt-0.5 tabular-nums text-lg font-semibold">{c.valor}</dd>
+    <div
+      id="pdf-page-1"
+      className="pdf-page bg-white w-full aspect-[210/297] rounded-md shadow-sm border border-[#DCE4DF] overflow-hidden relative text-[#18221F] p-8 flex flex-col justify-between"
+    >
+      <div>
+        {/* Cabeçalho */}
+        <header className="flex items-center justify-between border-b border-[#DCE4DF] pb-2.5 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="size-6 rounded-md bg-[#255841] flex items-center justify-center text-white font-black text-[10px]">
+              VX
             </div>
-          ))}
-        </dl>
-      </section>
+            <div>
+              <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-[#3A7D5E] leading-none">
+                VECTOR-X · DIAGNÓSTICO BIOCLIMÁTICO
+              </p>
+              <p className="text-[10px] font-semibold text-[#18221F] mt-0.5">
+                {nomeProjeto || "Laudo de Viabilidade"}
+              </p>
+            </div>
+          </div>
+          <span className="rounded-md bg-[#EBF3EE] border border-[#3A7D5E]/25 px-2.5 py-1 text-[9px] font-mono font-bold text-[#255841]">
+            PÁG. 01 / 05
+          </span>
+        </header>
 
-      {/* Recursos */}
-      <section className="mt-6">
-        <h2 className="text-sm font-semibold">Recursos do imóvel</h2>
-        <div className="mt-2 grid grid-cols-2 gap-4">
-          {potencialFotovoltaico && economiaSolar ? (
-            <PainelRecurso
-              icone={<Zap className="size-4" aria-hidden="true" />}
-              titulo="Energia solar fotovoltaica"
-              valor={formatarNumero(potencialFotovoltaico.geracaoAnualMaximaKwh, 0)}
-              unidade="kWh/ano"
-              detalhe={`${formatarNumero(potencialFotovoltaico.maxPaineis, 0)} painéis${
-                potencialFotovoltaico.potenciaInstaladaKwp
-                  ? ` · ${formatarNumero(potencialFotovoltaico.potenciaInstaladaKwp, 1)} kWp`
-                  : ""
-              }`}
-              economia={formatarMoeda(economiaSolar.economiaAnualEstimada)}
-              premissas={[
-                `Área de painéis ${formatarNumero(potencialFotovoltaico.areaDisponivelM2, 0)} m²`,
-                ...(potencialFotovoltaico.rendimentoEspecificoKwhKwp
-                  ? [`Rendimento ${formatarNumero(potencialFotovoltaico.rendimentoEspecificoKwhKwp, 0)} kWh/kWp·ano (AC)`]
-                  : []),
-                ...economiaSolar.premissas,
-                economiaSolar.textoImpacto,
-              ]}
-              alerta={alertaSolar}
-              corBarra="border-t-amber-600"
-              corTexto="text-amber-700"
-            />
-          ) : (
-            <PainelRecurso
-              icone={<Zap className="size-4" aria-hidden="true" />}
-              titulo="Energia solar fotovoltaica"
-              vazio="Sem dados do Google Solar para a geometria deste telhado. A estimativa não foi calculada."
-              corBarra="border-t-amber-600"
-              corTexto="text-amber-700"
-            />
-          )}
+        {/* Identificação + Score Radial */}
+        <div className="rounded-2xl border border-[#DCE4DF] bg-[#F7FAF8] p-5 mb-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <span className="inline-block rounded-full bg-[#255841] px-2.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white">
+                LAUDO DE VIABILIDADE BIOCLIMÁTICA
+              </span>
+              <h1 className="text-2xl font-black tracking-tight text-[#18221F] mt-1.5">
+                {nomeProjeto || "Imóvel Analisado"}
+              </h1>
+              <p className="text-xs text-[#52605B] mt-1 flex items-center gap-1.5">
+                <MapPin className="size-3.5 text-[#3A7D5E] shrink-0" />
+                <span className="truncate">{endereco}</span>
+              </p>
+            </div>
 
-          {economiaAgua ? (
-            <PainelRecurso
-              icone={<Droplets className="size-4" aria-hidden="true" />}
-              titulo="Captação de água da chuva"
-              valor={formatarNumero(economiaAgua.m3Ano, 0)}
-              unidade="m³/ano aproveitáveis"
-              detalhe={
-                economiaAgua.limitadoPelaDemanda
-                  ? `O telhado capta ${formatarNumero(economiaAgua.volumeCaptavelM3Ano, 0)} m³/ano; o resto transborda`
-                  : "Todo o volume captado é usado"
-              }
-              economia={formatarMoeda(economiaAgua.economiaAnualEstimada)}
-              premissas={[...economiaAgua.premissas, economiaAgua.textoImpacto]}
-              alerta={economiaAgua.alertaChuva}
-              corBarra="border-t-sky-600"
-              corTexto="text-sky-700"
-            />
-          ) : (
-            <PainelRecurso
-              icone={<Droplets className="size-4" aria-hidden="true" />}
-              titulo="Captação de água da chuva"
-              vazio="Dados de chuva insuficientes para projetar a captação."
-              corBarra="border-t-sky-600"
-              corTexto="text-sky-700"
-            />
-          )}
-        </div>
-        <p className="mt-2 text-[10px] leading-snug text-ink-soft">
-          Valores de pré-dimensionamento. Não substituem projeto de instalação fotovoltaica nem de cisterna.
-        </p>
-      </section>
+            <div className="flex items-center gap-3 bg-white border border-[#DCE4DF] rounded-2xl px-4 py-2.5 shrink-0">
+              <div className="relative size-16 flex items-center justify-center">
+                <svg className="size-16 -rotate-90" viewBox="0 0 76 76">
+                  <circle
+                    cx="38"
+                    cy="38"
+                    r={r}
+                    stroke="#E2E8F0"
+                    strokeWidth="6"
+                    fill="none"
+                  />
+                  <circle
+                    cx="38"
+                    cy="38"
+                    r={r}
+                    stroke="#255841"
+                    strokeWidth="6"
+                    strokeDasharray={circ}
+                    strokeDashoffset={dashOffset}
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-lg font-black text-[#18221F] leading-none">
+                    {temNota ? formatarNumero(valorBruto, escala10 ? 1 : 0) : "—"}
+                  </span>
+                  <span className="text-[7px] font-mono text-[#7A8883]">
+                    {escala10 ? "/10" : "/100"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-[8px] font-bold uppercase tracking-wider text-[#7A8883]">
+                  SCORE BIOCLIMÁTICO
+                </p>
+                <p className="text-sm font-black text-[#255841] mt-0.5">
+                  Zona {zona}
+                  {subzona}
+                </p>
+                <p className="text-[9px] text-[#52605B]">Fachada {fachada}</p>
+              </div>
+            </div>
+          </div>
 
-      {/* Carimbo de prancha */}
-      <footer className="mt-auto grid grid-cols-[1fr_auto_auto_auto] divide-x divide-line border border-ink text-[10px]">
-        <div className="px-3 py-1.5">
-          <p className="text-ink-soft">Projeto</p>
-          <p className="truncate font-semibold">{nomeProjeto}</p>
+          <div className="mt-3.5 pt-3 border-t border-[#DCE4DF]">
+            <p className="text-xs text-[#18221F] leading-relaxed font-medium">
+              {resumoScore ||
+                `Imóvel localizado na Zona Bioclimática ${zona}${subzona}, com fachada analisada voltada para ${fachada}.`}
+            </p>
+          </div>
         </div>
-        <div className="px-3 py-1.5">
-          <p className="text-ink-soft">Fachada</p>
-          <p className="font-semibold">{fachada}</p>
+
+        {/* Clima Local (4 Colunas Limpas) */}
+        <div className="mb-4">
+          <p className="text-[9px] font-black uppercase tracking-wider text-[#52605B] mb-2">
+            CLIMA LOCAL · ZONA BIOCLIMÁTICA {zona}
+            {subzona}
+          </p>
+          <div className="grid grid-cols-4 gap-2.5">
+            <div className="rounded-xl border border-[#DCE4DF] bg-white p-3">
+              <p className="text-[8px] font-bold uppercase text-[#7A8883]">
+                Temperatura média
+              </p>
+              <p className="text-base font-black text-[#18221F] mt-0.5">
+                {clima?.tempMedia != null
+                  ? `${formatarNumero(clima.tempMedia, 1)} °C`
+                  : "N/D"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#DCE4DF] bg-white p-3">
+              <p className="text-[8px] font-bold uppercase text-[#7A8883]">
+                Mínima e máxima
+              </p>
+              <p className="text-base font-black text-[#18221F] mt-0.5">
+                {clima?.tempMin != null && clima?.tempMax != null
+                  ? `${formatarNumero(clima.tempMin, 0)} a ${formatarNumero(
+                      clima.tempMax,
+                      0,
+                    )} °C`
+                  : "Conforme ZB"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#DCE4DF] bg-white p-3">
+              <p className="text-[8px] font-bold uppercase text-[#7A8883]">
+                Umidade média
+              </p>
+              <p className="text-base font-black text-[#18221F] mt-0.5">
+                {clima?.umidade != null
+                  ? `${formatarNumero(clima.umidade, 0)} %`
+                  : "N/D"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#DCE4DF] bg-white p-3">
+              <p className="text-[8px] font-bold uppercase text-[#7A8883]">
+                Radiação global
+              </p>
+              <p className="text-base font-black text-[#18221F] mt-0.5">
+                {clima?.radiacao != null
+                  ? `${formatarNumero(clima.radiacao, 0)} W/m²`
+                  : "N/D"}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="px-3 py-1.5">
-          <p className="text-ink-soft">Fonte solar</p>
-          <p className="font-semibold">{fonteSolar}</p>
+
+        {/* Síntese Prática da Fachada (Sol + Cômodos + Materiais) */}
+        <div className="mb-4">
+          <p className="text-[9px] font-black uppercase tracking-wider text-[#52605B] mb-2">
+            LEITURA RÁPIDA DA FACHADA {String(fachada || "").toUpperCase()}
+          </p>
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="rounded-xl border border-[#DCE4DF] bg-[#F7FAF8] p-3">
+              <p className="text-[8.5px] font-black uppercase text-[#255841] flex items-center gap-1">
+                <Sun className="size-3" /> Perfil de Sol
+              </p>
+              <p className="text-[10.5px] font-semibold text-[#18221F] mt-1 leading-snug">
+                {guia.insolacao}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#DCE4DF] bg-[#F7FAF8] p-3">
+              <p className="text-[8.5px] font-black uppercase text-[#255841] flex items-center gap-1">
+                <Home className="size-3" /> Cômodos Ideais
+              </p>
+              <p className="text-[10.5px] font-semibold text-[#18221F] mt-1 leading-snug">
+                {guia.comodos}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#DCE4DF] bg-[#F7FAF8] p-3">
+              <p className="text-[8.5px] font-black uppercase text-[#255841] flex items-center gap-1">
+                <Layers className="size-3" /> Envoltória Sugerida
+              </p>
+              <p className="text-[10.5px] font-semibold text-[#18221F] mt-1 leading-snug">
+                {guia.material}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="px-3 py-1.5">
-          <p className="text-ink-soft">Emissão</p>
-          <p className="tabular-nums font-semibold">{hoje}</p>
+
+        {/* Recursos do Imóvel: Fotovoltaico e Água da Chuva (Compactos, sem espaço vazio) */}
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-wider text-[#52605B] mb-2">
+            POTENCIAL DE RECURSOS DO IMÓVEL (TELHADO)
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border-t-4 border-t-amber-500 border border-[#DCE4DF] bg-[#FBF9F3] p-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[9.5px] font-black uppercase text-amber-900 flex items-center gap-1.5">
+                  <Zap className="size-3.5 text-amber-600" /> Energia Solar
+                  Fotovoltaica
+                </span>
+              </div>
+              <p className="text-2xl font-black text-[#C25E00] tabular-nums">
+                {kwhAno ? formatarNumero(kwhAno, 0) : "—"}{" "}
+                <span className="text-xs font-bold text-[#52605B]">
+                  kWh/ano
+                </span>
+              </p>
+              <p className="text-[10px] text-[#52605B] mt-1">
+                {qtdPaineis ? `${qtdPaineis} painéis solares` : "Geração solar estimada"}
+                {areaSolarM2 ? ` · ${formatarNumero(areaSolarM2, 0)} m² úteis` : ""}
+              </p>
+              {reaisSolarAno && (
+                <p className="text-[10px] font-bold text-[#255841] mt-2 pt-2 border-t border-amber-200/70">
+                  Economia estimada: {formatarMoeda(reaisSolarAno)}/ano
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-xl border-t-4 border-t-sky-600 border border-[#DCE4DF] bg-[#F3F8FA] p-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[9.5px] font-black uppercase text-sky-900 flex items-center gap-1.5">
+                  <Droplets className="size-3.5 text-sky-600" /> Captação de Água
+                  da Chuva
+                </span>
+              </div>
+              <p className="text-2xl font-black text-[#026AA2] tabular-nums">
+                {aguaAproveitavelM3
+                  ? formatarNumero(aguaAproveitavelM3, 0)
+                  : aguaCaptadaM3
+                    ? formatarNumero(aguaCaptadaM3, 0)
+                    : "—"}{" "}
+                <span className="text-xs font-bold text-[#52605B]">
+                  m³/ano aproveitáveis
+                </span>
+              </p>
+              <p className="text-[10px] text-[#52605B] mt-1">
+                {aguaCaptadaM3
+                  ? `O telhado capta ${formatarNumero(aguaCaptadaM3, 0)} m³/ano; o excedente escoa`
+                  : "Aproveitamento pluvial para usos não potáveis"}
+              </p>
+              {reaisAguaAno && (
+                <p className="text-[10px] font-bold text-[#255841] mt-2 pt-2 border-t border-sky-200/70">
+                  Economia estimada: {formatarMoeda(reaisAguaAno)}/ano
+                </p>
+              )}
+            </div>
+          </div>
         </div>
+      </div>
+
+      <footer className="pt-2.5 border-t border-[#DCE4DF] flex items-center justify-between text-[8px] text-[#7A8883]">
+        <span>
+          Vector-X · Fonte solar: {fonteSolar || "Trajetória + DSM"}
+        </span>
+        <span className="font-mono font-semibold">
+          {new Date().toLocaleDateString("pt-BR")}
+        </span>
       </footer>
     </div>
   );
 }
-
-export default CapaLaudo;
-

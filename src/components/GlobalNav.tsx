@@ -3,6 +3,7 @@ import { EcomondsLogo } from "@/components/EcomondsLogo";
 
 const ITEMS = [
   { label: "Notícias", href: "/noticias" },
+  { label: "Alertas RS", href: "/alertas-rs" },
   { label: "Sobre", href: "/sobre" },
   { label: "Educativo", href: "/educativo" },
   { label: "Certificações", href: "/referencias" },
@@ -24,7 +25,12 @@ export function GlobalNav() {
         <nav className="overflow-x-auto no-scrollbar" aria-label="Navegação principal">
           <div className="flex items-center gap-1 px-1 sm:gap-2">
             {ITEMS.map((item) => (
-              <Link key={item.label} to={item.href as any} className="whitespace-nowrap px-2 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:text-brand-strong sm:px-3 sm:text-sm">
+              <Link key={item.label} to={item.href as any} className={`whitespace-nowrap px-2 py-1.5 text-xs font-medium transition-colors hover:text-brand-strong sm:px-3 sm:text-sm ${
+                  item.href === "/alertas-rs"
+                    ? "rounded-full bg-orange-100 text-orange-900 ring-1 ring-orange-200 hover:bg-orange-200"
+                    : "text-ink-soft"
+                }`}
+              >
                 {item.label}
               </Link>
             ))}
