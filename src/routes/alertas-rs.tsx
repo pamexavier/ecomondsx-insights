@@ -1,13 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Bell, ExternalLink, MapPin, RefreshCw, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  Check,
+  Copy,
+  ExternalLink,
+  MapPin,
+  RefreshCw,
+  Search,
+  Volume2,
+} from "lucide-react";
 import {
   chaveArea,
   listarMunicipiosRs,
   mesorregiaoDoMunicipio,
   type AlertaInmet,
 } from "@/lib/inmet-alertas";
-import { CANAIS_TELEGRAM_RS } from "@/lib/alertas-rs-telegram";
+import { CANAIS_TELEGRAM_RS, TOPICOS_NTFY_RS } from "@/lib/alertas-rs-telegram";
 
 interface RespostaAlertas {
   alerts: AlertaInmet[];
@@ -18,6 +28,8 @@ interface RespostaAlertas {
 
 const CHAVE_MUNICIPIO = "ecomindsx-alertas-rs-municipio";
 const municipios = listarMunicipiosRs();
+
+
 
 export const Route = createFileRoute("/alertas-rs")({
   component: AlertasRsPage,
@@ -157,6 +169,7 @@ function AlertasRsPage() {
   const [municipio, setMunicipio] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
   const carregarAlertas = useCallback(async (signal?: AbortSignal) => {
     setAtualizando(true);
@@ -207,12 +220,16 @@ function AlertasRsPage() {
   const canalDaRegiao = regiaoSelecionada
     ? CANAIS_TELEGRAM_RS[regiaoSelecionada as keyof typeof CANAIS_TELEGRAM_RS]
     : null;
+  const topicoNtfy = regiaoSelecionada
+  ? TOPICOS_NTFY_RS[regiaoSelecionada as keyof typeof TOPICOS_NTFY_RS]
+  : null;
 
   function selecionarMunicipio(valor: string) {
     const municipioEncontrado = municipios.find(
       (item) => chaveArea(item.nome) === chaveArea(valor),
     );
     setMunicipio(municipioEncontrado?.nome ?? valor);
+    setCopiado(false);
     if (municipioEncontrado) {
       window.localStorage.setItem(CHAVE_MUNICIPIO, municipioEncontrado.nome);
     } else {
@@ -220,12 +237,27 @@ function AlertasRsPage() {
     }
   }
 
+  async function copiarTopico(texto: string) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), 2500);
+    } catch {
+      setCopiado(false);
+    }
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-4 pb-20 pt-3 sm:px-6 sm:pt-12">
       <header className="border-b-2 border-ink pb-4 sm:pb-6">
-        <p className="text-mono text-xs font-semibold uppercase tracking-[0.16em] text-brand-strong">
-          Rio Grande do Sul · Inmet
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-mono text-xs font-semibold uppercase tracking-[0.16em] text-brand-strong">
+            Rio Grande do Sul · Inmet
+          </p>
+          <span className="rounded-full border border-orange-300 bg-orange-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-orange-800">
+            Serviço experimental
+          </span>
+        </div>
         <h1 className="text-display mt-1 text-3xl font-medium leading-tight text-ink sm:mt-2 sm:text-5xl">
           Alertas RS
         </h1>
@@ -243,12 +275,14 @@ function AlertasRsPage() {
         aria-label="Aviso importante"
         className="mt-3 rounded-xl border-2 border-brand-strong bg-orange-50 px-3 py-2.5 text-xs leading-[1.4] text-ink sm:mt-5 sm:px-4 sm:py-3 sm:text-sm sm:leading-relaxed"
       >
-        Este serviço é informativo e não substitui os avisos oficiais da Defesa Civil. Em caso de
-        risco, siga as orientações da Defesa Civil do seu município. Emergência: 199 (Defesa Civil) e
-        193 (Bombeiros). Para receber alertas oficiais por SMS, envie seu CEP para 40199.
+        <strong>Serviço experimental e informativo:</strong> não substitui os avisos oficiais da
+        Defesa Civil. Em caso de risco severo, abrigue-se em local seguro e{" "}
+        <strong>não deixe animais acorrentados ou presos ao ar livre</strong> (solte-os e coloque-os
+        em abrigo seguro). Emergência: 199 (Defesa Civil) e 193 (Bombeiros). Alertas oficiais por
+        SMS: envie seu CEP para 40199.
       </aside>
 
-      <section className="mt-4 grid gap-5 lg:mt-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
+      <section className="mt-4 grid gap-5 lg:mt-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
         <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
           <div className="flex items-center gap-2 text-brand-strong">
             <Search aria-hidden="true" className="size-5" />
@@ -289,6 +323,7 @@ function AlertasRsPage() {
             <Bell aria-hidden="true" className="size-5" />
             <h2 className="text-display text-xl font-medium text-ink">Receber alertas</h2>
           </div>
+
           {canalDaRegiao ? (
             <a
               href={canalDaRegiao}
@@ -304,10 +339,100 @@ function AlertasRsPage() {
               Selecione um município para ver o canal da sua região.
             </p>
           )}
-          <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-            O aviso no celular depende do Telegram. Este site não envia notificações push.
-          </p>
-          <p className="mt-2 text-xs leading-relaxed text-ink-faint">
+
+          {/* Bloco ntfy - Alarme sonoro prioritário */}
+          <div className="mt-5 border-t border-line pt-4">
+            <div className="flex items-center gap-2 text-brand-strong">
+              <Volume2 aria-hidden="true" className="size-4 shrink-0" />
+              <h3 className="text-sm font-semibold text-ink">
+                Alarme sonoro de tempestade (app ntfy · teste)
+              </h3>
+            </div>
+            <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">
+              O Telegram não toca como alarme de madrugada. Para receber um toque alto quando houver
+              vento forte se aproximando a oeste, use o app gratuito <strong>ntfy</strong>.
+            </p>
+
+            {topicoNtfy ? (
+              <div className="mt-3 rounded-xl border border-line bg-surface-soft p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                  Código do tópico para {municipio}
+                </p>
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <code className="truncate rounded bg-background px-2 py-1 text-xs font-semibold text-ink">
+                    {topicoNtfy}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => void copiarTopico(topicoNtfy)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-brand-strong transition-colors hover:bg-background"
+                  >
+                    {copiado ? (
+                      <>
+                        <Check aria-hidden="true" className="size-3.5" />
+                        Copiado
+                      </>
+                    ) : (
+                      <>
+                        <Copy aria-hidden="true" className="size-3.5" />
+                        Copiar
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-2.5 rounded-xl border border-dashed border-line bg-surface-soft/70 p-2.5 text-xs text-ink-soft">
+                Alarme sonoro em fase de testes para <strong>Porto Alegre</strong> e{" "}
+                <strong>Tupanciretã</strong>. Selecione uma dessas cidades para ver o código do
+                tópico.
+              </p>
+            )}
+
+            <details className="mt-3 rounded-xl border border-line bg-background/60 p-3 text-xs text-ink-soft">
+              <summary className="cursor-pointer font-semibold text-brand-strong">
+                Como baixar e configurar o ntfy em 3 passos
+              </summary>
+              <ol className="mt-2.5 list-decimal space-y-2 pl-4 leading-relaxed">
+                <li>
+                  <strong className="text-ink">Baixe o app gratuito ntfy</strong> no seu celular:{" "}
+                  <a
+                    href="https://play.google.com/store/apps/details?id=io.heckel.ntfy"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-brand-strong underline"
+                  >
+                    Android (Google Play)
+                  </a>{" "}
+                  ou{" "}
+                  <a
+                    href="https://apps.apple.com/app/ntfy/id1625396347"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-brand-strong underline"
+                  >
+                    iPhone (App Store)
+                  </a>
+                  .
+                </li>
+                <li>
+                  <strong className="text-ink">Entre no canal da cidade:</strong> abra o app, toque
+                  no botão <strong>+</strong> (Inscrever-se em tópico), cole o código acima e toque
+                  em <strong>Inscrever-se</strong>.
+                </li>
+                <li>
+                  <strong className="text-ink">Faça tocar alto de madrugada:</strong> dentro do ntfy,
+                  vá em <em>Configurações</em> e ative{" "}
+                  <em>&ldquo;Continuar alertando para prioridade máxima&rdquo;</em>. No{" "}
+                  <strong>Android</strong>, libere <em>Ignorar Não Perturbe</em> nas notificações do
+                  app; no <strong>iPhone</strong>, adicione o ntfy nas exceções do modo{" "}
+                  <em>Não Perturbe</em> (Ajustes &gt; Foco).
+                </li>
+              </ol>
+            </details>
+          </div>
+
+          <p className="mt-3 text-xs leading-relaxed text-ink-faint">
             Não pedimos endereço, nome ou login. O município é opcional e fica somente no seu
             navegador.
           </p>
@@ -355,7 +480,10 @@ function AlertasRsPage() {
         </div>
       )}
       {!resposta?.isStale && resposta?.error && (
-        <p role="status" className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-950">
+        <p
+          role="status"
+          className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-950"
+        >
           {resposta.error}
         </p>
       )}
@@ -370,6 +498,36 @@ function AlertasRsPage() {
           <ListaAlertas titulo="Previstos" alertas={previstos} regiaoSelecionada={regiaoSelecionada} />
         </>
       )}
+
+      <section
+        aria-labelledby="titulo-motivacao"
+        className="mt-10 rounded-2xl border border-line bg-surface p-5 sm:p-6"
+      >
+        <p className="text-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-strong">
+          Sobre a iniciativa
+        </p>
+        <h2 id="titulo-motivacao" className="text-display mt-1 text-xl font-medium text-ink sm:text-2xl">
+          Por que criamos o Alertas RS
+        </h2>
+        <div className="mt-3 space-y-3 text-sm leading-relaxed text-ink-soft">
+          <p>
+            Eventos extremos recentes no Rio Grande do Sul — como a tempestade severa na madrugada
+            de 20 de novembro — mostraram que avisos amplos demais ou atrasados muitas vezes não dão
+            tempo hábil para que as pessoas se protejam e coloquem seus animais em segurança.
+          </p>
+          <p>
+            Esta ferramenta nasceu como uma contribuição independente da EcomindsX para encurtar a
+            distância entre os dados meteorológicos e quem está na ponta, sem anúncios, sem cadastro
+            e sem coletar dados pessoais.
+          </p>
+          <p className="text-xs text-ink-faint">
+            O sistema está em fase experimental e em evolução contínua (incluindo testes de
+            monitoramento de curto prazo a oeste das cidades). Use sempre como uma camada extra de
+            atenção junto aos canais oficiais.
+          </p>
+        </div>
+      </section>
+
       <p className="mt-8 text-xs text-ink-faint">
         Fonte: Inmet. A informação pode ter atraso ou ficar indisponível.
       </p>

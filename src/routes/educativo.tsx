@@ -315,26 +315,24 @@ function NumberControl({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   BARRA FLUTUANTE DE DÚVIDAS PRÁTICAS + GAVETA/MODAL EXPANSÍVEL (MOBILE FIRST)
+   LISTA LIMPA DE ORIENTAÇÕES PRÁTICAS + MODAL EM 2 COLUNAS (ZERO POLUIÇÃO)
 ═══════════════════════════════════════════════════════════════════════════ */
 
 type GuiaPraticoItem = {
   id: string;
-  icone: string;
-  botaoCurto: string;
   selo: string;
+  botaoCurto: string;
   titulo: string;
   resumo: string;
   passos: { titulo: string; detalhe: string }[];
   dicaOuro: string;
-  destaque?: boolean;
 };
 
-function GuiasFlutuantes({
-  tituloBarra,
+function ListaOrientacoesPraticas({
+  tituloSecao,
   itens,
 }: {
-  tituloBarra: string;
+  tituloSecao: string;
   itens: GuiaPraticoItem[];
 }) {
   const [ativoId, setAtivoId] = useState<string | null>(null);
@@ -349,37 +347,46 @@ function GuiasFlutuantes({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [ativoId]);
 
+  const colsClass = itens.length === 4 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3";
+
   return (
     <>
-      {/* Dock flutuante de ação rápida (sempre visível e acessível no celular) */}
-      <div className="sticky bottom-3 z-30 rounded-2xl border border-primary/30 bg-card/95 p-2.5 sm:p-3 shadow-lg backdrop-blur-md print:hidden">
-        <div className="mb-2 flex items-center justify-between gap-2 px-1">
-          <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-primary">
-            {tituloBarra}
-          </span>
-          <span className="text-[10px] text-muted-foreground">Toque para ampliar ↗</span>
-        </div>
+      <div className="mx-auto w-full max-w-[920px] space-y-2 pt-2 print:hidden">
+        <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          {tituloSecao}
+        </span>
 
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+        <div
+          className={`divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid ${colsClass} sm:divide-x sm:divide-y-0`}
+        >
           {itens.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setAtivoId(item.id)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold shadow-xs transition-all hover:-translate-y-0.5 cursor-pointer ${
-                item.destaque
-                  ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "border-border bg-background text-foreground hover:border-primary/50 hover:bg-primary/5"
-              }`}
+              className="group flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:flex-col sm:items-start sm:justify-between cursor-pointer"
             >
-              <span aria-hidden="true">{item.icone}</span>
-              <span>{item.botaoCurto}</span>
+              <div className="min-w-0">
+                <span className="block font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-primary">
+                  {item.selo}
+                </span>
+                <span className="mt-0.5 block text-xs font-semibold leading-snug text-foreground group-hover:text-primary">
+                  {item.botaoCurto}
+                </span>
+              </div>
+              <span
+                aria-hidden="true"
+                className="shrink-0 text-sm text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary sm:mt-2 sm:text-[11px] sm:font-semibold sm:text-primary/85"
+              >
+                <span className="sm:hidden">›</span>
+                <span className="hidden sm:inline">Ler guia →</span>
+              </span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Modal / Bottom-Sheet Expansível */}
+      {/* Modal em 2 colunas (desktop) / empilhado (mobile) — zero scroll horizontal */}
       {itemAtivo && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4 backdrop-blur-xs"
@@ -389,104 +396,107 @@ function GuiasFlutuantes({
           onClick={() => setAtivoId(null)}
         >
           <div
-            className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:rounded-3xl"
+            className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl sm:rounded-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            {/* Alça visual mobile + Cabeçalho */}
-            <div className="border-b border-border bg-muted/30 px-4 pt-3 pb-3 sm:px-6 sm:pt-4">
-              <div className="mx-auto mb-2.5 h-1 w-10 rounded-full bg-border sm:hidden" />
-
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
-                    <span aria-hidden="true">{itemAtivo.icone}</span>
-                    {itemAtivo.selo}
-                  </span>
-                  <h4
-                    id={`guia-titulo-${itemAtivo.id}`}
-                    className="mt-1.5 text-display text-base sm:text-lg font-extrabold leading-snug text-foreground"
-                  >
-                    {itemAtivo.titulo}
-                  </h4>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setAtivoId(null)}
-                  className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-background text-sm font-bold text-muted-foreground hover:border-primary hover:text-foreground cursor-pointer"
-                  aria-label="Fechar explicação"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Abas rápidas para pular entre as dúvidas sem fechar */}
-              <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5">
-                {itens.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setAtivoId(tab.id)}
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
-                      tab.id === itemAtivo.id
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-background text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {tab.icone} {tab.botaoCurto}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Conteúdo ampliado com rolagem confortável */}
-            <div className="space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-              <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                {itemAtivo.resumo}
-              </p>
-
-              <div className="space-y-2.5">
-                {itemAtivo.passos.map((passo, index) => (
-                  <div
-                    key={passo.titulo}
-                    className="rounded-2xl border border-border bg-background/70 p-3.5"
-                  >
-                    <p className="text-xs sm:text-sm font-bold text-foreground">
-                      <span className="mr-1.5 inline-grid size-5 place-items-center rounded-full bg-primary/15 font-mono text-[10px] text-primary">
-                        {index + 1}
-                      </span>
-                      {passo.titulo}
-                    </p>
-                    <p className="mt-1 pl-6 text-xs leading-relaxed text-muted-foreground">
-                      {passo.detalhe}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs leading-relaxed text-foreground">
-                <strong className="font-mono text-[10px] uppercase tracking-wider text-emerald-700 block mb-0.5">
-                  Resumo prático para levar para casa
-                </strong>
-                {itemAtivo.dicaOuro}
-              </div>
-            </div>
-
-            {/* Rodapé fixo no mobile */}
-            <div className="border-t border-border bg-background px-4 py-3 sm:px-6 flex justify-end">
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/25 px-4 py-3 sm:px-6">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                Guia Prático · {itemAtivo.selo}
+              </span>
               <button
                 type="button"
                 onClick={() => setAtivoId(null)}
-                className="w-full sm:w-auto rounded-full bg-primary px-5 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground cursor-pointer"
+                aria-label="Fechar guia"
               >
-                Entendi, voltar ao desenho
+                Fechar ✕
               </button>
+            </div>
+
+            <div className="grid min-h-0 flex-1 overflow-y-auto md:grid-cols-[220px_1fr] md:overflow-hidden">
+              <aside className="border-b border-border bg-muted/20 p-3 md:overflow-y-auto md:border-r md:border-b-0">
+                <p className="mb-2 px-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Tópicos deste tema
+                </p>
+                <div className="grid grid-cols-1 gap-1">
+                  {itens.map((tab) => {
+                    const ativa = tab.id === itemAtivo.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setAtivoId(tab.id)}
+                        className={`rounded-lg px-3 py-2 text-left transition-colors cursor-pointer ${
+                          ativa
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "text-foreground/80 hover:bg-muted/70 hover:text-foreground"
+                        }`}
+                      >
+                        <span
+                          className={`block font-mono text-[9px] uppercase tracking-wider ${
+                            ativa ? "text-primary-foreground/80" : "text-muted-foreground"
+                          }`}
+                        >
+                          {tab.selo}
+                        </span>
+                        <span className="mt-0.5 block text-xs font-semibold leading-snug">
+                          {tab.botaoCurto}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </aside>
+
+              <div className="space-y-4 p-4 sm:p-6 md:overflow-y-auto">
+                <div>
+                  <h4
+                    id={`guia-titulo-${itemAtivo.id}`}
+                    className="text-display text-base sm:text-lg font-extrabold leading-snug text-foreground"
+                  >
+                    {itemAtivo.titulo}
+                  </h4>
+                  <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                    {itemAtivo.resumo}
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  {itemAtivo.passos.map((passo, index) => (
+                    <div
+                      key={passo.titulo}
+                      className="rounded-xl border border-border bg-background/60 p-3.5"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-primary/12 font-mono text-[10px] font-bold text-primary">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs sm:text-sm font-bold text-foreground">
+                            {passo.titulo}
+                          </p>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                            {passo.detalhe}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-xl border border-primary/25 bg-primary/5 p-3.5 text-xs leading-relaxed text-foreground">
+                  <span className="mb-1 block font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-primary">
+                    Síntese prática
+                  </span>
+                  {itemAtivo.dicaOuro}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Fallback discreto apenas para impressão em papel */}
-      <div className="hidden print:grid print:grid-cols-3 print:gap-2">
+      <div className="hidden print:grid print:grid-cols-2 print:gap-2">
         {itens.map((item) => (
           <div key={item.id} className="rounded-xl border border-border p-2.5 text-[10px]">
             <p className="font-bold">{item.titulo}</p>
@@ -499,105 +509,135 @@ function GuiasFlutuantes({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CENAS ANIMADAS INTERATIVAS — FÍSICA REALMENTE DESCOMPLICADA
+   CENAS ANIMADAS INTERATIVAS — FÍSICA DESCOMPLICADA
 ═══════════════════════════════════════════════════════════════════════════ */
 
 const GUIAS_MOFO: GuiaPraticoItem[] = [
   {
-    id: "mofo-sem-obra",
-    icone: "🛠️",
-    botaoCurto: "Não posso fazer obra. O que faço?",
-    selo: "Solução sem quebrar nada",
-    titulo: "Como frear o mofo hoje mesmo sem reforma",
-    destaque: true,
+    id: "mofo-desumidificador",
+    selo: "Solução p/ parede suando",
+    botaoCurto: "Desumidificador resolve a parede suando?",
+    titulo: "Sim! Como o desumidificador elétrico faz a parede parar de 'suar'",
     resumo:
-      "Mesmo sem mexer na parede, você consegue cortar o mofo atacando os dois outros lados do triângulo: excesso de vapor no ar e cantos abafados onde o ar não circula.",
+      "Em semanas frias e chuvosas (muito comuns no Sul do Brasil), abrir a janela deixa entrar ar igualmente úmido. O desumidificador elétrico ataca diretamente a umidade do ar interno e derruba o ponto de orvalho.",
+    passos: [
+      {
+        titulo: "A física simples por trás (abaixa o ponto de orvalho)",
+        detalhe:
+          "Num quarto a 21 °C com 75% de umidade, o vapor vira água em qualquer parede abaixo de 16 °C. Ao ligar o desumidificador e baixar a umidade para 50%, o ponto de orvalho cai para ~10 °C — a parede de 14 °C para de suar na hora, mesmo sem obra!",
+      },
+      {
+        titulo: "Desumidificador elétrico vs. potinho descartável",
+        detalhe:
+          "Os potinhos de mercado (cloreto de cálcio) servem apenas para espaços minúsculos e fechados como dentro de uma gaveta ou sapateira. Para secar um quarto inteiro e evitar mofo nas paredes, é preciso um desumidificador elétrico (com compressor ou dessecante) de 10 a 20 litros/dia.",
+      },
+      {
+        titulo: "Modo 'Dry' do ar-condicionado também ajuda",
+        detalhe:
+          "Se você já tem ar-condicionado split no quarto, a função 'Dry' (desumidificar) retira bastante umidade em dias chuvosos — só cuide para não deixar o quarto gelado demais no inverno.",
+      },
+      {
+        titulo: "Meta ideal de umidade: entre 45% e 55%",
+        detalhe:
+          "Regule o desumidificador para desligar perto de 50% de umidade relativa. Assim você evita mofo e ácaros sem ressecar a garganta e os olhos.",
+      },
+    ],
+    dicaOuro:
+      "Em regiões úmidas e chuvosas no inverno, o desumidificador elétrico é a solução sem obra mais eficaz contra parede 'suando' — retire água do ar antes que ela condense na parede fria.",
+  },
+  {
+    id: "mofo-sem-obra",
+    selo: "Hábitos sem obra",
+    botaoCurto: "Não posso fazer obra. O que faço?",
+    titulo: "Como frear o mofo hoje mesmo sem reforma",
+    resumo:
+      "Mesmo sem mexer na parede, você corta o mofo atacando o excesso de vapor no ar e os cantos abafados onde o ar não circula.",
     passos: [
       {
         titulo: "Afaste guarda-roupas e camas 5 cm da parede externa",
         detalhe:
-          "Quando o móvel fica colado na parede fria, cria-se uma câmara gelada e sem vento. Só desencostar 5 cm (e deixar portas do armário entreabertas de vez em quando) já muda o microclima daquele canto.",
+          "Quando o móvel fica colado na parede fria, cria-se uma câmara gelada e sem vento. Só desencostar 5 cm já muda o microclima daquele canto.",
       },
       {
-        titulo: "Regra dos 15 minutos após banho, cozinha ou acordar",
+        titulo: "Regra dos 15 minutos em dias secos (após banho ou acordar)",
         detalhe:
-          "Um banho quente joga cerca de 1 litro de vapor no ar; duas pessoas dormindo soltam outro tanto pela respiração. Abrir janelas opostas por 10 a 15 minutos renova o ar úmido sem esfriar a casa inteira.",
+          "Um banho quente joga cerca de 1 litro de vapor no ar. Em dias sem chuva, abrir janelas opostas por 10 a 15 minutos troca o ar úmido sem esfriar a casa inteira.",
       },
       {
         titulo: "Não seque roupas em quarto fechado",
         detalhe:
-          "Uma máquina de roupas secando no varal interno libera de 2 a 3 litros de água direto no ar da casa. Se chover, deixe no cômodo mais ventilado ou ligue um ventilador/desumidificador elétrico.",
+          "Uma máquina de roupas secando no varal interno libera de 2 a 3 litros de água direto no ar. Se estiver chovendo, use um desumidificador elétrico junto ao varal.",
       },
       {
         titulo: "Limpeza certa (evite só pintar por cima)",
         detalhe:
-          "Tinta antimofo sozinha não segura parede molhada. Limpe os focos com pano úmido e vinagre branco ou água sanitária diluída (com janela aberta), deixe secar bem e mantenha o ar circulando.",
+          "Tinta antimofo sozinha não segura parede molhada. Limpe os focos com pano úmido e vinagre branco ou água sanitária diluída (com janela aberta) e mantenha a umidade controlada.",
       },
     ],
     dicaOuro:
-      "Mofo precisa de 3 coisas juntas: superfície fria + umidade alta + ar parado. Quebrando 2 dessas (ventilação + móvel afastado), ele para de voltar mesmo sem obra.",
+      "Mofo precisa de 3 fatores juntos: parede fria + umidade alta + ar parado. Controlando a umidade (ventilação em dia seco ou desumidificador na chuva) e afastando móveis, ele para de voltar.",
   },
   {
     id: "mofo-isolar-sem-quebrar",
-    icone: "🧱",
+    selo: "Reforma seca",
     botaoCurto: "Isolar sem quebrar a parede",
-    selo: "Reforma seca e rápida",
-    titulo: "Dá para aquecer a parede fria sem demolir nada?",
+    titulo: "Como aquecer a parede fria sem demolir nada",
     resumo:
-      "Sim! Você não precisa quebrar tijolo nem mexer na fachada do prédio. O objetivo é colocar uma camada isolante fina pelo lado de dentro para que o vapor do quarto não encoste mais no concreto gelado.",
+      "Você não precisa quebrar tijolo nem mexer na fachada do prédio: basta aplicar uma camada isolante fina pelo lado de dentro para que o vapor não encoste no concreto gelado.",
     passos: [
       {
-        titulo: "Placas de EPS (isopor denso) ou XPS coladas por dentro",
+        titulo: "Placas de EPS (isopor técnico) ou XPS coladas por dentro",
         detalhe:
-          "Placas rígidas de 2 a 4 cm são coladas diretamente sobre a parede existente com argamassa própria, recebem tela e acabamento de massa/tinta. O quarto perde só ~4 cm e a parede deixa de 'suar'.",
+          "Placas rígidas de 2 a 4 cm são coladas diretamente sobre a parede existente com argamassa própria, tela e acabamento. O quarto perde só ~4 cm e a parede deixa de suar.",
       },
       {
         titulo: "Parede seca (drywall fino + lã de PET)",
         detalhe:
-          "Monta-se uma estrutura fina colada ou rente à parede fria, preenchida com manta de lã de PET (feita de garrafas recicladas, não solta pó e não coça) e fechada com placa de gesso acartonado.",
+          "Estrutura fina rente à parede fria, preenchida com lã de PET reciclada (não solta pó nem coça) e fechada com placa de gesso acartonado.",
       },
       {
-        titulo: "Revestimento de cortiça ou painel de madeira com respiro",
+        titulo: "Revestimento de cortiça natural",
         detalhe:
-          "A cortiça é um isolante natural cheio de microbolhas de ar. Em paredes frias sem infiltração de chuva, placas de cortiça deixam a superfície bem mais morna ao toque.",
+          "Material isolante cheio de microbolhas de ar. Em paredes frias sem infiltração de chuva, deixa a superfície bem mais morna ao toque.",
       },
     ],
     dicaOuro:
-      "Atenção antes de isolar: confirme se a umidade é condensação (ar interno) e não vazamento de cano ou infiltração de chuva vindo de fora — infiltração precisa ser impermeabilizada primeiro.",
+      "Antes de isolar, confirme se a umidade vem do ar interno (condensação) e não de vazamento ou infiltração externa — infiltração exige impermeabilização primeiro.",
   },
   {
     id: "mofo-exemplos",
-    icone: "🪞",
-    botaoCurto: "Outros exemplos no dia a dia",
-    selo: "Para nunca mais esquecer",
-    titulo: "Você já viu esse fenômeno acontecer dezenas de vezes",
+    selo: "No dia a dia",
+    botaoCurto: "Outros exemplos do mesmo efeito",
+    titulo: "Onde mais você vê o ponto de orvalho acontecer",
     resumo:
-      "Na física isso se chama Ponto de Orvalho — a temperatura em que o vapor invisível do ar não consegue mais ficar gasoso e vira gotinhas de água.",
+      "Ponto de orvalho é a temperatura em que o vapor invisível do ar não consegue mais ficar gasoso e vira gotículas de água.",
     passos: [
       {
-        titulo: "O copo de suco gelado na mesa",
+        titulo: "Copo de bebida gelada na mesa",
         detalhe:
-          "O líquido não atravessou o vidro. O ar quente da cozinha encostou na casca gelada do copo, esfriou de repente e soltou a água que carregava.",
+          "O líquido não vazou. O vapor quente da cozinha encostou no vidro frio e virou água na casca externa.",
       },
       {
-        titulo: "O espelho do banheiro embaçando no banho",
+        titulo: "Espelho do banheiro embaçando no banho",
         detalhe:
-          "O espelho está mais frio que o vapor do chuveiro. Em segundos fica coberto de microgotículas — exatamente o que acontece em câmera lenta na parede fria do quarto.",
+          "O espelho está mais frio que o vapor do chuveiro e fica coberto de microgotículas em segundos — o mesmo que acontece devagar na parede fria.",
       },
       {
-        titulo: "O para-brisa do carro embaçando na chuva",
+        titulo: "Para-brisa do carro embaçando na chuva",
         detalhe:
-          "O vidro esfria com a chuva de fora e a nossa respiração úmida dentro do carro condensa nele. Quando você liga o ar ou abre uma fresta, a umidade cai e o vidro limpa na hora.",
+          "O vidro esfria com a chuva e a umidade da respiração condensa nele. Quando você liga o ar-condicionado do carro (que desumidifica o ar), o vidro limpa na hora.",
       },
     ],
     dicaOuro:
-      "Sempre que você notar gotículas no vidro da janela pela manhã no inverno, é sinal claro de que a umidade dentro de casa está alta demais e precisa ventilar.",
+      "Gotículas nos vidros das janelas pela manhã no inverno são aviso direto de que a umidade interna está alta — hora de ventilar ou ligar o desumidificador.",
   },
 ];
 
 function CenaMofoAnimada() {
   const uid = useId().replace(/:/g, "");
-  const [modo, setModo] = useState<"problema" | "sem_obra" | "isolado">("problema");
+  const [modo, setModo] = useState<"problema" | "sem_obra" | "desumidificador" | "isolado">(
+    "problema",
+  );
 
   const statusBanner =
     modo === "problema"
@@ -605,84 +645,76 @@ function CenaMofoAnimada() {
           bg: "#fef2f2",
           border: "#ef4444",
           titleColor: "#b91c1c",
-          title: "Parede por dentro: ~14 °C (muito fria!)",
-          sub: "O vapor vira gotículas e o ar parado cria mofo.",
+          title: "Parede: 14 °C · Ar úmido (75% UR)",
+          sub: "Orvalho a 16 °C: vapor encosta na parede e vira água.",
         }
       : modo === "sem_obra"
         ? {
             bg: "#eff6ff",
             border: "#3b82f6",
             titleColor: "#1d4ed8",
-            title: "Sem obra: ar circulando + janela aberta",
-            sub: "A parede segue fria, mas o vapor sai antes de molhar.",
+            title: "Dia seco: móvel afastado + janela aberta",
+            sub: "A parede segue fria, mas o vento leva o vapor embora.",
           }
-        : {
-            bg: "#ecfdf5",
-            border: "#10b981",
-            titleColor: "#047857",
-            title: "Parede por dentro: ~19,5 °C (seca!)",
-            sub: "Isolante por dentro barra o frio — sem condensação.",
-          };
+        : modo === "desumidificador"
+          ? {
+              bg: "#f0fdfa",
+              border: "#0d9488",
+              titleColor: "#0f766e",
+              title: "Desumidificador: ar cai para 50% UR",
+              sub: "Orvalho cai p/ 10 °C — parede (14 °C) para de suar!",
+            }
+          : {
+              bg: "#ecfdf5",
+              border: "#10b981",
+              titleColor: "#047857",
+              title: "Isolante interno: parede sobe p/ ~19,5 °C",
+              sub: "Superfície morna fica acima do orvalho — seca!",
+            };
 
   return (
-    <div className="space-y-3">
-      {/* Seletor com 3 situações reais */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-background/70 p-2.5">
-        <span className="px-2 text-xs font-semibold text-foreground">
-          Teste os 3 cenários no desenho:
-        </span>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Cenário de umidade e mofo">
+    <div className="space-y-3.5">
+      {/* Grade 2x2 limpa no mobile / 4 colunas no desktop */}
+      <div
+        className="mx-auto grid w-full max-w-[920px] grid-cols-2 gap-1 rounded-xl border border-border bg-muted/50 p-1 sm:grid-cols-4"
+        role="group"
+        aria-label="Cenário de umidade e mofo"
+      >
+        {[
+          { id: "problema" as const, label: "1. Sem cuidados", dot: "bg-red-500" },
+          { id: "sem_obra" as const, label: "2. Ventilar (dia seco)", dot: "bg-sky-500" },
+          { id: "desumidificador" as const, label: "3. Desumidificador", dot: "bg-teal-600" },
+          { id: "isolado" as const, label: "4. Isolante interno", dot: "bg-emerald-600" },
+        ].map((opt) => (
           <button
+            key={opt.id}
             type="button"
-            onClick={() => setModo("problema")}
-            aria-pressed={modo === "problema"}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-              modo === "problema"
-                ? "bg-red-600 text-white shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
+            onClick={() => setModo(opt.id)}
+            aria-pressed={modo === opt.id}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
+              modo === opt.id
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/70"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            1. Sem cuidados (dá mofo)
+            <span className={`size-2 shrink-0 rounded-full ${opt.dot}`} aria-hidden="true" />
+            <span className="truncate">{opt.label}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setModo("sem_obra")}
-            aria-pressed={modo === "sem_obra"}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-              modo === "sem_obra"
-                ? "bg-sky-600 text-white shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            2. Sem obra (afastar móvel + ventilar)
-          </button>
-          <button
-            type="button"
-            onClick={() => setModo("isolado")}
-            aria-pressed={modo === "isolado"}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-              modo === "isolado"
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            3. Isolante por dentro (sem quebrar)
-          </button>
-        </div>
+        ))}
       </div>
 
-      {/* Ilustração Arquitetônica Clara e Animada */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2.5 sm:p-4 shadow-inner print:print-color-adjust-exact">
+      {/* Ilustração Arquitetônica 100% desobstruída */}
+      <div className="mx-auto w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:p-3.5 shadow-inner print:print-color-adjust-exact">
         <svg
           viewBox="0 0 800 360"
-          className="h-auto w-full"
+          className="block h-auto w-full"
           role="img"
-          aria-label="Ilustração animada comparando um copo gelado suando com a parede de um quarto em três situações: sem cuidados, ventilando sem obra e com placa isolante colada por dentro"
+          aria-label="Ilustração animada comparando um copo gelado suando com a parede de um quarto em quatro situações: sem cuidados, ventilando, com desumidificador elétrico e com placa isolante interna"
         >
           <defs>
             <linearGradient id={`${uid}-skyCold`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#bae6fd" />
-              <stop offset="100%" stopColor="#e0f2fe" />
+              <stop offset="0%" stopColor={modo === "desumidificador" ? "#94a3b8" : "#bae6fd"} />
+              <stop offset="100%" stopColor={modo === "desumidificador" ? "#cbd5e1" : "#e0f2fe"} />
             </linearGradient>
             <linearGradient id={`${uid}-roomWall`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#ffffff" />
@@ -699,7 +731,7 @@ function CenaMofoAnimada() {
             </radialGradient>
           </defs>
 
-          {/* ── BLOCO ESQUERDO: ANALOGIA DO COPO GELADO ── */}
+          {/* BLOCO ESQUERDO: ANALOGIA DO COPO GELADO */}
           <g transform="translate(14, 14)">
             <rect
               width="210"
@@ -732,11 +764,9 @@ function CenaMofoAnimada() {
               O copo gelado "suando"
             </text>
 
-            {/* Mesa de madeira */}
             <rect x="24" y="226" width="162" height="10" rx="4" fill="#d6b48e" />
             <ellipse cx="105" cy="226" rx="46" ry="5" fill="#7dd3fc" opacity="0.55" />
 
-            {/* Vapor do ar indo até o copo */}
             {[0, 1, 2].map((i) => (
               <path
                 key={`cup-vap-${i}`}
@@ -757,7 +787,6 @@ function CenaMofoAnimada() {
               </path>
             ))}
 
-            {/* Canudo */}
             <line
               x1="118"
               y1="80"
@@ -767,8 +796,6 @@ function CenaMofoAnimada() {
               strokeWidth="5"
               strokeLinecap="round"
             />
-
-            {/* Corpo do copo */}
             <polygon
               points="66,104 144,104 134,224 76,224"
               fill="#f0f9ff"
@@ -777,7 +804,6 @@ function CenaMofoAnimada() {
             />
             <polygon points="70,126 140,126 131,221 79,221" fill={`url(#${uid}-drink)`} />
 
-            {/* Cubos de gelo */}
             <rect
               x="80"
               y="132"
@@ -801,7 +827,6 @@ function CenaMofoAnimada() {
               transform="rotate(15 114 146)"
             />
 
-            {/* Gotículas animadas */}
             {[
               { x: 64, y1: 126, y2: 214, dur: "2.2s", begin: "0s" },
               { x: 145, y1: 134, y2: 216, dur: "2.6s", begin: "0.7s" },
@@ -833,7 +858,7 @@ function CenaMofoAnimada() {
               fontSize="11.5"
               fontWeight="bold"
             >
-              O copo não tem vazamento!
+              O copo não tem vazamento
             </text>
             <text x="105" y="279" textAnchor="middle" fill="#475569" fontSize="10.2">
               O vapor invisível do ar encosta
@@ -853,7 +878,7 @@ function CenaMofoAnimada() {
             </text>
           </g>
 
-          {/* ── BLOCO DIREITO: CORTE REAL DO QUARTO ── */}
+          {/* BLOCO DIREITO: CORTE REAL DO QUARTO */}
           <g transform="translate(238, 14)">
             <rect
               width="548"
@@ -863,8 +888,6 @@ function CenaMofoAnimada() {
               stroke="#cbd5e1"
               strokeWidth="1.5"
             />
-
-            {/* Lado Externo (Rua Fria) */}
             <path
               d="M 16 1 H 124 V 331 H 16 A 15 15 0 0 1 1 316 V 16 A 15 15 0 0 1 16 1 Z"
               fill={`url(#${uid}-skyCold)`}
@@ -873,15 +896,14 @@ function CenaMofoAnimada() {
               x="62"
               y="28"
               textAnchor="middle"
-              fill="#0369a1"
-              fontSize="10"
+              fill={modo === "desumidificador" ? "#1e293b" : "#0369a1"}
+              fontSize="9.5"
               fontFamily="monospace"
               fontWeight="bold"
             >
-              RUA FRIA (SUL)
+              {modo === "desumidificador" ? "CHUVA FORA (90%)" : "RUA FRIA (SUL)"}
             </text>
 
-            {/* Termômetro externo */}
             <g transform="translate(32, 42)">
               <rect width="60" height="28" rx="8" fill="#ffffff" stroke="#7dd3fc" strokeWidth="1.5" />
               <text
@@ -897,13 +919,36 @@ function CenaMofoAnimada() {
               </text>
             </g>
 
-            {/* Nuvem e vento frio batendo na parede */}
-            <g fill="#ffffff" opacity="0.9">
+            {/* Nuvem externa + gotas de chuva no modo desumidificador */}
+            <g fill={modo === "desumidificador" ? "#64748b" : "#ffffff"} opacity="0.9">
               <circle cx="42" cy="108" r="14" />
               <circle cx="58" cy="102" r="17" />
               <circle cx="76" cy="108" r="13" />
             </g>
-            {[152, 198, 244].map((y, idx) => (
+            {modo === "desumidificador" &&
+              [34, 54, 74].map((rx, idx) => (
+                <line
+                  key={`rain-${idx}`}
+                  x1={rx}
+                  y1="126"
+                  x2={rx - 6}
+                  y2="146"
+                  stroke="#0284c7"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeDasharray="6 8"
+                >
+                  <animate
+                    attributeName="stroke-dashoffset"
+                    from="14"
+                    to="0"
+                    dur="0.8s"
+                    repeatCount="indefinite"
+                  />
+                </line>
+              ))}
+
+            {[164, 206, 248].map((y, idx) => (
               <g key={`wind-cold-${idx}`}>
                 <line
                   x1="18"
@@ -929,9 +974,7 @@ function CenaMofoAnimada() {
               </g>
             ))}
 
-            {/* Interior do Quarto */}
             <rect x="124" y="2" width="422" height="284" fill={`url(#${uid}-roomWall)`} />
-            {/* Piso de madeira */}
             <path
               d="M 124 286 H 546 V 316 A 15 15 0 0 1 531 331 H 124 Z"
               fill="#e7d5be"
@@ -940,7 +983,7 @@ function CenaMofoAnimada() {
             />
             <line x1="124" y1="286" x2="546" y2="286" stroke="#b08968" strokeWidth="2.5" />
 
-            {/* PAREDE EXISTENTE (Concreto 12 cm) */}
+            {/* PAREDE 12 CM */}
             <rect
               x="124"
               y="22"
@@ -955,17 +998,10 @@ function CenaMofoAnimada() {
             <circle cx="134" cy="215" r="2" fill="#64748b" />
 
             {modo !== "isolado" && (
-              <rect x="153" y="24" width="5" height="260" fill="#0284c7" opacity="0.8">
-                <animate
-                  attributeName="opacity"
-                  values="0.45;0.9;0.45"
-                  dur="2.2s"
-                  repeatCount="indefinite"
-                />
-              </rect>
+              <rect x="153" y="24" width="5" height="260" fill="#0284c7" opacity="0.75" />
             )}
 
-            {/* CAMADA ISOLANTE COLADA POR DENTRO (Modo 3) */}
+            {/* CAMADA ISOLANTE INTERNA (Modo 4) */}
             {modo === "isolado" && (
               <g>
                 <rect
@@ -1001,7 +1037,6 @@ function CenaMofoAnimada() {
               </g>
             )}
 
-            {/* Rótulo da parede embaixo */}
             <text
               x={modo === "isolado" ? "157" : "141"}
               y="314"
@@ -1014,7 +1049,7 @@ function CenaMofoAnimada() {
               {modo === "isolado" ? "Parede + placa" : "Parede 12 cm"}
             </text>
 
-            {/* CAIXA DE STATUS NO TOPO DO QUARTO — FOLGA TOTAL (332px) */}
+            {/* BANNER SUPERIOR */}
             <g transform="translate(202, 14)">
               <rect
                 width="332"
@@ -1032,46 +1067,51 @@ function CenaMofoAnimada() {
               </text>
             </g>
 
-            {/* GUARDA-ROUPA DESENHADO */}
+            {/* GUARDA-ROUPA */}
             <g
-              transform={`translate(${modo === "problema" ? 160 : modo === "sem_obra" ? 194 : 206}, 152)`}
+              transform={`translate(${
+                modo === "problema"
+                  ? 160
+                  : modo === "sem_obra" || modo === "desumidificador"
+                    ? 192
+                    : 206
+              }, 152)`}
             >
               <rect
                 x="0"
                 y="0"
-                width="98"
+                width="94"
                 height="126"
                 rx="5"
                 fill="#b08968"
                 stroke="#6f4e37"
                 strokeWidth="2"
               />
-              <line x1="49" y1="4" x2="49" y2="122" stroke="#6f4e37" strokeWidth="1.5" />
-              <rect x="41" y="54" width="4" height="16" rx="2" fill="#4a3525" />
-              <rect x="53" y="54" width="4" height="16" rx="2" fill="#4a3525" />
+              <line x1="47" y1="4" x2="47" y2="122" stroke="#6f4e37" strokeWidth="1.5" />
+              <rect x="39" y="54" width="4" height="16" rx="2" fill="#4a3525" />
+              <rect x="51" y="54" width="4" height="16" rx="2" fill="#4a3525" />
               <rect x="8" y="126" width="8" height="8" fill="#6f4e37" />
-              <rect x="82" y="126" width="8" height="8" fill="#6f4e37" />
-              <rect x="10" y="14" width="78" height="22" rx="6" fill="#ffffff" fillOpacity="0.9" />
+              <rect x="78" y="126" width="8" height="8" fill="#6f4e37" />
+              <rect x="10" y="14" width="74" height="22" rx="6" fill="#ffffff" fillOpacity="0.9" />
               <text
-                x="49"
+                x="47"
                 y="29"
                 textAnchor="middle"
                 fill="#4a3525"
-                fontSize="10.5"
+                fontSize="10.2"
                 fontWeight="bold"
               >
                 Armário
               </text>
             </g>
 
-            {/* Cota de 5 cm de respiro no modo sem_obra */}
             {modo === "sem_obra" && (
               <g>
-                <line x1="160" y1="142" x2="192" y2="142" stroke="#0284c7" strokeWidth="1.8" />
+                <line x1="160" y1="142" x2="190" y2="142" stroke="#0284c7" strokeWidth="1.8" />
                 <line x1="160" y1="137" x2="160" y2="147" stroke="#0284c7" strokeWidth="1.8" />
-                <line x1="192" y1="137" x2="192" y2="147" stroke="#0284c7" strokeWidth="1.8" />
+                <line x1="190" y1="137" x2="190" y2="147" stroke="#0284c7" strokeWidth="1.8" />
                 <text
-                  x="176"
+                  x="175"
                   y="132"
                   textAnchor="middle"
                   fill="#0369a1"
@@ -1084,35 +1124,91 @@ function CenaMofoAnimada() {
               </g>
             )}
 
-            {/* FONTE DE VAPOR INTERNO */}
-            <g transform="translate(334, 218)">
-              <rect
-                width="164"
-                height="56"
-                rx="12"
-                fill="#f1f5f9"
-                stroke="#cbd5e1"
-                strokeWidth="1.5"
-              />
-              <text
-                x="82"
-                y="20"
-                textAnchor="middle"
-                fill="#0f172a"
-                fontSize="10.8"
-                fontWeight="bold"
-              >
-                Vapor do dia a dia
-              </text>
-              <text x="82" y="36" textAnchor="middle" fill="#475569" fontSize="9.5">
-                Banho, respiração, cozinha
-              </text>
-              <text x="82" y="49" textAnchor="middle" fill="#475569" fontSize="9.5">
-                e roupa secando dentro
-              </text>
-            </g>
+            {/* DESUMIDIFICADOR ELÉTRICO (Modo 3) OU CAIXA DE VAPOR (demais modos) */}
+            {modo === "desumidificador" ? (
+              <g transform="translate(334, 178)">
+                {/* Corpo do aparelho desumidificador */}
+                <rect
+                  x="12"
+                  y="0"
+                  width="92"
+                  height="104"
+                  rx="10"
+                  fill="#ffffff"
+                  stroke="#0f766e"
+                  strokeWidth="2"
+                />
+                {/* Grade de saída de ar seco no topo */}
+                <rect x="24" y="10" width="68" height="10" rx="4" fill="#ccfbf1" stroke="#14b8a6" />
+                {/* Visor digital 50% UR */}
+                <rect x="30" y="28" width="56" height="24" rx="5" fill="#0f172a" />
+                <text
+                  x="58"
+                  y="44"
+                  textAnchor="middle"
+                  fill="#2dd4bf"
+                  fontSize="11.5"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  50% UR
+                </text>
+                {/* Reservatório de água coletada embaixo */}
+                <rect x="22" y="62" width="72" height="32" rx="5" fill="#e0f2fe" stroke="#38bdf8" />
+                <rect x="24" y="76" width="68" height="16" rx="3" fill="#0ea5e9" opacity="0.7" />
+                <text
+                  x="58"
+                  y="88"
+                  textAnchor="middle"
+                  fill="#ffffff"
+                  fontSize="8.5"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  Água no tanque
+                </text>
+                <text
+                  x="58"
+                  y="120"
+                  textAnchor="middle"
+                  fill="#0f766e"
+                  fontSize="9.5"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  Desumidificador
+                </text>
+              </g>
+            ) : (
+              <g transform="translate(334, 218)">
+                <rect
+                  width="164"
+                  height="56"
+                  rx="12"
+                  fill="#f1f5f9"
+                  stroke="#cbd5e1"
+                  strokeWidth="1.5"
+                />
+                <text
+                  x="82"
+                  y="20"
+                  textAnchor="middle"
+                  fill="#0f172a"
+                  fontSize="10.8"
+                  fontWeight="bold"
+                >
+                  Vapor do dia a dia
+                </text>
+                <text x="82" y="36" textAnchor="middle" fill="#475569" fontSize="9.5">
+                  Banho, respiração, cozinha
+                </text>
+                <text x="82" y="49" textAnchor="middle" fill="#475569" fontSize="9.5">
+                  e roupa secando dentro
+                </text>
+              </g>
+            )}
 
-            {/* JANELA NA PAREDE DIREITA — POSICIONADA SEM COLIDIR COM PÍLULA */}
+            {/* JANELA NA PAREDE DIREITA */}
             <g transform="translate(518, 122)">
               <rect
                 x="0"
@@ -1120,21 +1216,18 @@ function CenaMofoAnimada() {
                 width="26"
                 height="86"
                 rx="4"
-                fill={modo === "problema" ? "#e2e8f0" : "#d1fae5"}
-                stroke={modo === "problema" ? "#64748b" : "#10b981"}
+                fill={modo === "sem_obra" || modo === "isolado" ? "#d1fae5" : "#e2e8f0"}
+                stroke={modo === "sem_obra" || modo === "isolado" ? "#10b981" : "#64748b"}
                 strokeWidth="2"
               />
-              {modo === "problema" ? (
-                <g fill="#64748b" fontSize="9.5" fontFamily="monospace" fontWeight="bold" textAnchor="end">
-                  <text x="-8" y="38">
-                    Janela
-                  </text>
-                  <text x="-8" y="51">
-                    fechada
-                  </text>
-                </g>
-              ) : (
-                <g fill="#047857" fontSize="9.5" fontFamily="monospace" fontWeight="bold" textAnchor="end">
+              {modo === "sem_obra" || modo === "isolado" ? (
+                <g
+                  fill="#047857"
+                  fontSize="9.5"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                  textAnchor="end"
+                >
                   <text x="-8" y="36">
                     Janela aberta
                   </text>
@@ -1142,10 +1235,25 @@ function CenaMofoAnimada() {
                     15 min →
                   </text>
                 </g>
+              ) : (
+                <g
+                  fill="#64748b"
+                  fontSize="9.5"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                  textAnchor="end"
+                >
+                  <text x="-8" y="38">
+                    Janela
+                  </text>
+                  <text x="-8" y="51">
+                    {modo === "desumidificador" ? "fechada (chuva)" : "fechada"}
+                  </text>
+                </g>
               )}
             </g>
 
-            {/* ANIMAÇÕES E PÍLULA (y=78..104 — BEM ACIMA DA JANELA EM y=122) */}
+            {/* ANIMAÇÕES ESPECÍFICAS */}
             {modo === "problema" && (
               <g>
                 {[0, 1, 2, 3].map((i) => (
@@ -1195,7 +1303,14 @@ function CenaMofoAnimada() {
                 <circle cx="163" cy="242" r="4" fill="#4d7c0f" />
 
                 <g transform="translate(202, 78)">
-                  <rect width="212" height="26" rx="13" fill="#fee2e2" stroke="#ef4444" strokeWidth="1.2" />
+                  <rect
+                    width="212"
+                    height="26"
+                    rx="13"
+                    fill="#fee2e2"
+                    stroke="#ef4444"
+                    strokeWidth="1.2"
+                  />
                   <text
                     x="106"
                     y="17"
@@ -1232,7 +1347,14 @@ function CenaMofoAnimada() {
                 ))}
 
                 <g transform="translate(202, 78)">
-                  <rect width="242" height="26" rx="13" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1.2" />
+                  <rect
+                    width="242"
+                    height="26"
+                    rx="13"
+                    fill="#dbeafe"
+                    stroke="#3b82f6"
+                    strokeWidth="1.2"
+                  />
                   <text
                     x="121"
                     y="17"
@@ -1241,7 +1363,71 @@ function CenaMofoAnimada() {
                     fontSize="10.2"
                     fontWeight="bold"
                   >
-                    ✓ Ar circula atrás e seca o canto
+                    Ar circula atrás e seca o canto
+                  </text>
+                </g>
+              </g>
+            )}
+
+            {modo === "desumidificador" && (
+              <g>
+                {/* Vapor do quarto sendo puxado para dentro do desumidificador */}
+                {[0, 1].map((i) => (
+                  <path
+                    key={`dehum-pull-l-${i}`}
+                    d={`M 294 ${194 + i * 28} Q 320 ${192 + i * 24} 344 ${206 + i * 18}`}
+                    fill="none"
+                    stroke="#0ea5e9"
+                    strokeWidth="2.2"
+                    strokeDasharray="5 5"
+                  >
+                    <animate
+                      attributeName="stroke-dashoffset"
+                      from="20"
+                      to="0"
+                      dur="1.4s"
+                      repeatCount="indefinite"
+                    />
+                  </path>
+                ))}
+                {/* Ar seco saindo por cima do desumidificador */}
+                {[0, 1].map((i) => (
+                  <path
+                    key={`dehum-out-${i}`}
+                    d={`M ${376 + i * 32} 174 Q ${370 + i * 44} 134, ${332 + i * 96} 122`}
+                    fill="none"
+                    stroke="#0d9488"
+                    strokeWidth="2.2"
+                    strokeDasharray="6 5"
+                  >
+                    <animate
+                      attributeName="stroke-dashoffset"
+                      from="22"
+                      to="0"
+                      dur="1.5s"
+                      repeatCount="indefinite"
+                    />
+                  </path>
+                ))}
+
+                <g transform="translate(202, 78)">
+                  <rect
+                    width="268"
+                    height="26"
+                    rx="13"
+                    fill="#ccfbf1"
+                    stroke="#0d9488"
+                    strokeWidth="1.2"
+                  />
+                  <text
+                    x="134"
+                    y="17"
+                    textAnchor="middle"
+                    fill="#0f766e"
+                    fontSize="10"
+                    fontWeight="bold"
+                  >
+                    Mesmo fria (14 °C), a parede fica seca
                   </text>
                 </g>
               </g>
@@ -1269,7 +1455,14 @@ function CenaMofoAnimada() {
                 ))}
 
                 <g transform="translate(202, 78)">
-                  <rect width="242" height="26" rx="13" fill="#d1fae5" stroke="#10b981" strokeWidth="1.2" />
+                  <rect
+                    width="242"
+                    height="26"
+                    rx="13"
+                    fill="#d1fae5"
+                    stroke="#10b981"
+                    strokeWidth="1.2"
+                  />
                   <text
                     x="121"
                     y="17"
@@ -1278,7 +1471,7 @@ function CenaMofoAnimada() {
                     fontSize="10.2"
                     fontWeight="bold"
                   >
-                    ✓ Face morna: não cria gotas!
+                    Face morna: não cria gotas
                   </text>
                 </g>
               </g>
@@ -1287,8 +1480,10 @@ function CenaMofoAnimada() {
         </svg>
       </div>
 
-      {/* Botões flutuantes com explicações ampliadas */}
-      <GuiasFlutuantes tituloBarra="Dúvidas práticas sobre mofo" itens={GUIAS_MOFO} />
+      <ListaOrientacoesPraticas
+        tituloSecao="Dúvidas práticas sobre mofo e desumidificador (toque para ler)"
+        itens={GUIAS_MOFO}
+      />
     </div>
   );
 }
@@ -1296,88 +1491,84 @@ function CenaMofoAnimada() {
 const GUIAS_PAREDE: GuiaPraticoItem[] = [
   {
     id: "parede-o-que-e-isolante",
-    icone: "🧊",
-    botaoCurto: "O que é isolante térmico?",
-    selo: "Entenda sem jargão",
-    titulo: "O que realmente é um isolante térmico na construção?",
-    destaque: true,
+    selo: "Sem jargão",
+    botaoCurto: "O que é isolante térmico na prática?",
+    titulo: "O que realmente é um isolante térmico na construção",
     resumo:
-      "Muita gente imagina um material 'mágico' ou super pesado, mas o segredo do isolamento é exatamente o contrário: prender ar parado em milhares de microbolhas, igual a uma caixa de isopor na praia.",
+      "O segredo do isolamento não é peso — é prender ar parado em milhares de microbolhas, igual a uma caixa térmica na praia.",
     passos: [
       {
         titulo: "EPS (isopor técnico para obra)",
         detalhe:
-          "É leve, barato e ótimo isolante. Diferente do isopor de embalagem, o EPS de construção tem maior densidade e aditivo antichamas. Pode ser colado na parede e receber reboco ou gesso.",
+          "Leve, acessível e com aditivo antichamas. Pode ser colado sobre a parede existente e receber reboco ou gesso.",
       },
       {
         titulo: "Lã de PET (feita de garrafas recicladas)",
         detalhe:
-          "Muito usada em reformas internas com drywall: não solta poeira, não causa coceira na pele, resiste bem à umidade e ainda melhora muito o isolamento acústico (barulho da rua).",
+          "Muito usada em reformas internas com drywall: não solta poeira, não causa coceira e ainda melhora o isolamento acústico.",
       },
       {
         titulo: "Lã de rocha / lã de vidro e cortiça",
         detalhe:
-          "A lã de rocha aguenta altas temperaturas e é excelente contra ruído. Já a cortiça natural pode ficar até aparente como revestimento decorativo, deixando a parede morna no inverno e fresca no verão.",
+          "A lã de rocha entrega ótimo conforto térmico e acústico; a cortiça natural pode ficar até aparente como revestimento decorativo.",
       },
     ],
     dicaOuro:
-      "Não confunda peso com isolamento: concreto é pesadíssimo, mas conduz calor rápido (como metal). Já 5 cm de isolante leve seguram mais calor que 25 cm de concreto maciço.",
+      "Concreto é pesado mas conduz calor rápido. Apenas 5 cm de isolante leve seguram mais calor que 25 cm de concreto maciço.",
   },
   {
     id: "parede-fora-ou-dentro",
-    icone: "🏠",
-    botaoCurto: "Por fora ou por dentro?",
-    selo: "Casa vs. Apartamento",
-    titulo: "Preciso quebrar a parede? Posso colocar isolante por dentro?",
+    selo: "Casa vs. Prédio",
+    botaoCurto: "Preciso quebrar? Por fora ou por dentro?",
+    titulo: "Por fora ou por dentro: como isolar sem demolir",
     resumo:
-      "Não precisa quebrar parede nenhuma! O lado onde você coloca o isolante depende basicamente se você mora em casa (pode mexer na fachada) ou em apartamento (só pode mexer por dentro).",
+      "Não precisa quebrar tijolo. O lado da instalação depende se você pode alterar a fachada (casa) ou apenas o interior (apartamento).",
     passos: [
       {
-        titulo: "Pelo lado de FORA (ideal para casas e construções novas)",
+        titulo: "Pelo lado de fora (ideal para casas e obra nova)",
         detalhe:
-          "É tecnicamente o melhor cenário (sistema EIFS / fachada ventilada): barra o sol antes mesmo de esquentar o tijolo, evita que a parede acumule calor para a noite e não tira espaço interno.",
+          "Barra o sol antes de aquecer a alvenaria, evita acúmulo de calor para a noite e não reduz área interna.",
       },
       {
-        titulo: "Pelo lado de DENTRO (ideal para apartamentos e reformas secas)",
+        titulo: "Pelo lado de dentro (ideal para apartamentos)",
         detalhe:
-          "Como condomínios não deixam alterar a fachada, aplica-se a camada isolante por dentro da parede que pega sol da tarde (placa colada ou drywall fino de 4–5 cm). Em 1 ou 2 dias está pronto, sem entulho de quebra-quebra.",
+          "Aplica-se placa isolante colada ou drywall fino (4–5 cm) com lã de PET direto sobre a parede atual — reforma seca, rápida e sem alterar a fachada.",
       },
       {
-        titulo: "Qual parede priorizar para gastar menos?",
+        titulo: "Por qual parede começar?",
         detalhe:
-          "Comece sempre pela parede voltada para o OESTE (sol da tarde) ou pela laje/teto do último andar — são os pontos que despejam mais calor à noite.",
+          "Priorize a parede Oeste (sol da tarde) ou a laje do último andar — são os pontos que mais irradiam calor à noite.",
       },
     ],
     dicaOuro:
-      "Perder 5 cm numa parede de 4 metros custa apenas 0,2 m² de piso — praticamente imperceptível — e derruba drasticamente a temperatura do quarto à noite.",
+      "Perder 5 cm numa parede de 4 metros custa apenas 0,2 m² de piso e transforma o conforto térmico na hora de dormir.",
   },
   {
     id: "parede-sem-obra",
-    icone: "🚫",
+    selo: "Sem reforma",
     botaoCurto: "Não posso fazer obra nenhuma!",
-    selo: "Soluções rápidas",
-    titulo: "O que fazer na parede quente sem gastar com reforma?",
+    titulo: "Atalhos físicos para aliviar a parede quente sem obra",
     resumo:
-      "Se o imóvel é alugado ou você não quer obra agora, existem 3 atalhos físicos simples que reduzem muito o calor que entra pela parede.",
+      "Em imóveis alugados ou sem orçamento para reforma, três ações simples já trazem alívio real:",
     passos: [
       {
         titulo: "Pintar a face externa de branco (se tiver acesso)",
         detalhe:
-          "É a medida mais barata que existe: a parede grafite no sol passa de 54 °C; pintada de branco, cai para perto de 39 °C — quase 15 °C a menos na casca!",
+          "Uma parede grafite ao sol passa de 54 °C; pintada de branco cai para perto de 39 °C — cerca de 15 °C a menos na casca externa.",
       },
       {
-        titulo: "Fazer sombra antes do sol tocar a parede",
+        titulo: "Fazer sombra antes do sol tocar o tijolo",
         detalhe:
-          "Vasos altos, trepadeiras em treliça, toldo retrátil ou pergolado na parede do sol da tarde impedem o tijolo de virar uma 'bateria de calor' para a noite.",
+          "Vasos altos, trepadeiras em treliça ou toldo na face Oeste impedem a parede de acumular calor para a noite.",
       },
       {
         titulo: "Barreira inteligente pelo lado de dentro",
         detalhe:
-          "Encostar uma estante cheia de livros, painel ripado de madeira ou cabeceira estofada na parede que pega sol forte (Norte/Oeste) atua como uma camada extra segurando o calor irradiado — o inverso do que fazemos na parede fria do Sul!",
+          "Estante cheia de livros ou painel ripado na parede que pega sol forte funcionam como camada extra de atraso térmico.",
       },
     ],
     dicaOuro:
-      "À noite, assim que o ar lá fora ficar mais fresco que dentro de casa (geralmente após 20h), abra duas janelas em lados opostos para 'lavar' o calor acumulado das paredes.",
+      "Assim que o ar externo refrescar à noite (após 20h), abra duas janelas opostas para lavar o calor acumulado das paredes.",
   },
 ];
 
@@ -1436,84 +1627,92 @@ function CenaParedeAnimada() {
       larguraPx: 112,
       tipo: "termica" as const,
       tardeStatus: "Isolante segura o calor antes de entrar",
-      noiteStatus: "Interior estável e fresco para dormir ✓",
+      noiteStatus: "Interior estável e fresco para dormir",
       velocidade: "4.8s",
       particulas: 1,
     },
   ];
 
   return (
-    <div className="space-y-3">
-      {/* Controles duplos: Horário + Cor da Tinta */}
-      <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Horário do dia">
-          <span className="mr-1 text-xs font-semibold text-foreground">Horário:</span>
+    <div className="space-y-3.5">
+      <div className="mx-auto flex w-full max-w-[920px] flex-wrap items-center justify-between gap-2">
+        <div
+          className="inline-flex w-full sm:w-auto rounded-xl border border-border bg-muted/50 p-1"
+          role="group"
+          aria-label="Horário do dia"
+        >
           <button
             type="button"
             onClick={() => setHorario("tarde")}
             aria-pressed={horario === "tarde"}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
               horario === "tarde"
-                ? "bg-amber-500 text-slate-950 shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/70"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            ☀ 14h — Sol forte (34 °C)
+            <span className="size-2 rounded-full bg-amber-500" aria-hidden="true" />
+            <span>14h · Sol forte (34 °C)</span>
           </button>
           <button
             type="button"
             onClick={() => setHorario("noite")}
             aria-pressed={horario === "noite"}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
               horario === "noite"
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/70"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            🌙 22h — Noite fresca (22 °C)
+            <span className="size-2 rounded-full bg-indigo-500" aria-hidden="true" />
+            <span>22h · Noite (22 °C)</span>
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Cor externa">
-          <span className="mr-1 text-xs font-semibold text-foreground">Tinta externa:</span>
+        <div
+          className="inline-flex w-full sm:w-auto rounded-xl border border-border bg-muted/50 p-1"
+          role="group"
+          aria-label="Cor da tinta externa"
+        >
           <button
             type="button"
             onClick={() => setCorExterna("escura")}
             aria-pressed={corExterna === "escura"}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
               corExterna === "escura"
-                ? "bg-slate-800 text-white shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/70"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <span className="size-2.5 rounded-full bg-slate-600 border border-white/40" />
-            Grafite (85%)
+            <span className="size-2.5 rounded-full bg-slate-700" aria-hidden="true" />
+            <span>Tinta grafite</span>
           </button>
           <button
             type="button"
             onClick={() => setCorExterna("clara")}
             aria-pressed={corExterna === "clara"}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
               corExterna === "clara"
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/70"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <span className="size-2.5 rounded-full bg-white border border-slate-400" />
-            Branco (20%)
+            <span
+              className="size-2.5 rounded-full border border-slate-400 bg-white"
+              aria-hidden="true"
+            />
+            <span>Tinta branca</span>
           </button>
         </div>
       </div>
 
-      {/* Ilustração Arquitetônica Clara e Animada */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2.5 sm:p-4 shadow-inner print:print-color-adjust-exact">
+      <div className="mx-auto w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:p-3.5 shadow-inner print:print-color-adjust-exact">
         <svg
           viewBox="0 0 800 365"
-          className="h-auto w-full"
+          className="block h-auto w-full"
           role="img"
           aria-label="Comparação animada da passagem de calor em três paredes com espessuras reais de 12 cm, 18 cm e 23 cm"
         >
-          {/* Coluna externa (Sol ou Noite) */}
           <rect
             x="12"
             y="12"
@@ -1561,7 +1760,7 @@ function CenaParedeAnimada() {
                 {tempSuperficieTarde}
               </text>
               <text x="0" y="160" textAnchor="middle" fill="#78350f" fontSize="9.5">
-                {corExterna === "escura" ? "Camiseta preta no sol!" : "Camiseta branca no sol!"}
+                {corExterna === "escura" ? "Camiseta preta no sol" : "Camiseta branca no sol"}
               </text>
             </g>
           ) : (
@@ -1589,13 +1788,19 @@ function CenaParedeAnimada() {
               <text x="0" y="121" textAnchor="middle" fill="#cbd5e1" fontSize="9.5">
                 quente depois que
               </text>
-              <text x="0" y="135" textAnchor="middle" fill="#fbbf24" fontSize="9.5" fontWeight="bold">
-                o sol já se pôs!
+              <text
+                x="0"
+                y="135"
+                textAnchor="middle"
+                fill="#fbbf24"
+                fontSize="9.5"
+                fontWeight="bold"
+              >
+                o sol já se pôs
               </text>
             </g>
           )}
 
-          {/* Cabeçalho das colunas */}
           <text
             x="248"
             y="26"
@@ -1619,7 +1824,6 @@ function CenaParedeAnimada() {
             O QUE ACONTECE DENTRO DE CASA
           </text>
 
-          {/* 3 faixas comparativas */}
           {paredes.map((p, idx) => {
             const yBase = 40 + idx * 106;
             const wallX = 186;
@@ -1715,20 +1919,13 @@ function CenaParedeAnimada() {
                         );
                       })
                     ) : (
-                      <text
-                        x={wallEnd + 8}
-                        y="50"
-                        fill="#059669"
-                        fontSize="10"
-                        fontWeight="bold"
-                      >
-                        ✓ Calor retido
+                      <text x={wallEnd + 8} y="50" fill="#059669" fontSize="10" fontWeight="bold">
+                        Calor retido fora
                       </text>
                     )}
                   </g>
                 )}
 
-                {/* Faixa da tinta externa */}
                 <rect
                   x={wallX - 5}
                   y="14"
@@ -1837,7 +2034,6 @@ function CenaParedeAnimada() {
                   </g>
                 )}
 
-                {/* Cota da espessura embaixo */}
                 <line x1={wallX} y1="79" x2={wallEnd} y2="79" stroke={p.cor} strokeWidth="1.5" />
                 <text
                   x={wallX + p.larguraPx / 2}
@@ -1851,7 +2047,6 @@ function CenaParedeAnimada() {
                   {p.tipo === "concreto" ? "12 cm" : p.tipo === "ceramica" ? "18 cm" : "23 cm"}
                 </text>
 
-                {/* Textos explicativos à direita — FOLGA TOTAL (372px) */}
                 <g transform="translate(402, 14)">
                   <text x="0" y="13" fill="#0f172a" fontSize="12" fontWeight="bold">
                     {p.titulo}
@@ -1868,11 +2063,9 @@ function CenaParedeAnimada() {
                   >
                     {p.uLabel}
                   </text>
-
                   <text x="0" y="32" fill="#475569" fontSize="9.8">
                     {p.analogia}
                   </text>
-
                   <rect
                     x="0"
                     y="42"
@@ -1894,8 +2087,10 @@ function CenaParedeAnimada() {
         </svg>
       </div>
 
-      {/* Botões flutuantes com explicações ampliadas */}
-      <GuiasFlutuantes tituloBarra="Dúvidas práticas sobre paredes e isolantes" itens={GUIAS_PAREDE} />
+      <ListaOrientacoesPraticas
+        tituloSecao="Dúvidas práticas sobre paredes e isolantes (toque para ler)"
+        itens={GUIAS_PAREDE}
+      />
     </div>
   );
 }
@@ -1903,88 +2098,84 @@ function CenaParedeAnimada() {
 const GUIAS_VIDRO: GuiaPraticoItem[] = [
   {
     id: "vidro-apartamento",
-    icone: "🏢",
-    botaoCurto: "Moro em prédio e não posso pôr brise!",
     selo: "Sem alterar fachada",
-    titulo: "Como reduzir o efeito estufa em apartamentos ou imóveis alugados",
-    destaque: true,
+    botaoCurto: "Moro em prédio e não posso pôr brise",
+    titulo: "Como reduzir o efeito estufa em apartamentos ou aluguel",
     resumo:
-      "Na maioria dos condomínios você não pode instalar toldo ou brise pelo lado de fora. A saída é combinar duas barreiras logo atrás do vidro para devolver o máximo de luz antes que ela vire calor.",
+      "Quando o condomínio não permite instalar toldo ou brise externo, combine duas barreiras internas para devolver o máximo de radiação antes de virar calor.",
     passos: [
       {
         titulo: "Película térmica de controle solar (nanocerâmica)",
         detalhe:
-          "Diferente do insulfilm escuro antigo que deixa a sala sombria, películas nanocerâmicas claras barram grande parte do infravermelho (calor) mantendo a visão da rua e sem mudar a cor da fachada do prédio.",
+          "Películas nanocerâmicas claras barram grande parte do infravermelho (calor) mantendo a visão da rua e sem mudar a cor da fachada.",
       },
       {
-        titulo: "Cortina ou persiana com face externa BRANCA",
+        titulo: "Cortina ou persiana com face externa branca",
         detalhe:
-          "Cortina escura absorve o sol e vira um aquecedor atrás do vidro. Uma cortina blackout ou tela solar com lado branco voltado para a rua reflete parte da radiação de volta pelo vidro.",
+          "Cortina escura absorve o sol e vira um aquecedor atrás do vidro. Face branca voltada para a rua reflete parte da radiação de volta.",
       },
       {
-        titulo: "Feche a cortina ANTES do sol bater",
+        titulo: "Feche a cortina antes do sol bater",
         detalhe:
-          "De nada adianta fechar a cortina às 16h quando o piso e o sofá já estão quentes. Em janelas Oeste, feche por volta das 13h e abra de novo quando o sol baixar.",
+          "Em janelas Oeste, feche por volta das 13h antes que piso e móveis aqueçam, e reabra quando o sol baixar.",
       },
     ],
     dicaOuro:
-      "Teste rápido com a mão: num dia de sol, coloque a palma entre o vidro e uma cortina escura. Você vai sentir na hora o 'forno' de ar quente preso ali atrás.",
+      "Teste rápido: num dia de sol, ponha a mão entre o vidro e uma cortina escura — você sente imediatamente o bolsão de ar quente preso ali.",
   },
   {
     id: "vidro-sombrinha",
-    icone: "🕶️",
+    selo: "Analogia",
     botaoCurto: "Sombrinha vs. Óculos escuros",
-    selo: "Analogia rápida",
-    titulo: "Por que barrar o sol fora funciona muito melhor que fechar a cortina?",
+    titulo: "Por que barrar o sol fora funciona muito melhor que cortina",
     resumo:
-      "A luz solar carrega energia em ondas curtas que passam fácil pelo vidro. Quando bate no sofá ou na cortina, essa energia vira calor (ondas longas) — e o vidro não deixa esse calor sair com facilidade.",
+      "A luz solar atravessa o vidro comum facilmente. Ao aquecer sofá ou cortina, vira calor em ondas longas que o vidro dificulta sair.",
     passos: [
       {
         titulo: "Cortina interna = Óculos escuros no sol",
         detalhe:
-          "Alivia o incômodo nos olhos e protege o piso de desbotar, mas o sol já entrou no ambiente. O calor gerado na cortina sobe e esquenta o teto e o ar da sala inteira.",
+          "Alivia o incômodo nos olhos, mas o calor já entrou no ambiente e sobe aquecendo o ar da sala inteira.",
       },
       {
         titulo: "Brise, beiral ou toldo externo = Sombrinha",
         detalhe:
-          "Intercepta o raio solar do lado de fora. O calor fica no ar aberto da rua e vai embora com o vento, sem nunca atravessar o vidro.",
+          "Intercepta o raio solar fora do vidro — o calor se dissipa no ar aberto com o vento sem entrar em casa.",
       },
       {
-        titulo: "E a luz natural não some?",
+        titulo: "Luz natural preservada",
         detalhe:
-          "Não! Um brise bem inclinado bloqueia o sol direto (que gera calor e ofuscamento), mas deixa a claridade difusa do céu entrar normalmente.",
+          "Brises bem angulados bloqueiam o sol direto (calor e ofuscamento) deixando a claridade difusa do céu entrar.",
       },
     ],
     dicaOuro:
-      "Em termos de conforto térmico, 1 m² de janela pegando sol direto da tarde pode jogar para dentro tanto calor quanto 6 a 8 m² de parede de alvenaria.",
+      "1 m² de janela pegando sol direto da tarde pode jogar para dentro tanto calor quanto 6 a 8 m² de parede de alvenaria.",
   },
   {
     id: "vidro-fator-solar",
-    icone: "🪟",
-    botaoCurto: "O que olhar ao comprar vidro (FS)?",
     selo: "Guia de compra",
-    titulo: "Como escolher o vidro certo sem cair em papo de vendedor",
+    botaoCurto: "O que olhar ao comprar vidro (FS)?",
+    titulo: "Como escolher o vidro certo na obra ou reforma",
     resumo:
-      "Na vidraçaria ou na obra, não pergunte apenas a espessura em milímetros — um vidro comum de 8 mm deixa entrar quase o mesmo calor de um de 4 mm. Olhe dois números:",
+      "Espessura em milímetros quase não muda o calor solar. Olhe estes dois números na especificação:",
     passos: [
       {
-        titulo: "Fator Solar (FS) — quanto MENOR, mais fresco",
+        titulo: "Fator Solar (FS) — quanto menor, mais fresco",
         detalhe:
-          "Mostra o percentual do calor do sol que atravessa o vidro. Vidro comum incolor tem FS = 0,87 (87% do calor entra). Vidros de controle solar (habitat/refletivos neutros) caem para FS = 0,35 a 0,45.",
+          "Vidro comum incolor tem FS = 0,87 (87% do calor entra). Vidros de controle solar caem para FS = 0,35 a 0,45.",
       },
       {
-        titulo: "Transmissão Luminosa (Tv) — quanto MAIOR, mais claro",
+        titulo: "Transmissão Luminosa (Tv) — quanto maior, mais claro",
         detalhe:
-          "Evita deixar a sala parecendo caverna. Um bom vidro seletivo entrega FS baixo (~0,40) com Tv alta (~0,65 a 0,70): entra luz bonita, mas metade do calor fica fora.",
+          "Um bom vidro seletivo combina FS baixo (~0,40) com Tv alta (~0,65–0,70): entra luz natural sem metade do calor.",
       },
       {
         titulo: "Vidro duplo (insulado)",
         detalhe:
-          "São duas chapas de vidro com uma câmara de ar selada no meio. Reduz muito tanto a passagem de calor/frio do ar externo quanto o barulho da rua.",
+          "Duas chapas com câmara de ar selada reduzem trocas de calor por condução e melhoram muito o isolamento acústico.",
       },
     ],
     dicaOuro:
-      "Se o orçamento for curto, invista em vidro de controle solar ou sombreamento externo primeiro nas janelas Oeste (sol da tarde) e Norte.",
+      "Com orçamento enxuto, priorize sombreamento externo ou vidro de controle solar nas faces Oeste e Norte.",
   },
 ];
 
@@ -1997,13 +2188,13 @@ function CenaVidroAnimada() {
       tempSala: "36 °C",
       tempColor: "#dc2626",
       calorBarPct: 87,
-      calorLabel: "~87% (Forno!)",
+      calorLabel: "~87% (Forno)",
       sofaCor: "#b91c1c",
       sofaTexto: "Sofá/piso fervendo",
       boxBg: "#fef2f2",
       boxBorder: "#ef4444",
       boxTitleColor: "#b91c1c",
-      boxTitle: "Igual a um carro fechado no sol!",
+      boxTitle: "Igual a um carro fechado no sol",
       boxL1: "1. A luz atravessa o vidro comum fácil.",
       boxL2: "2. Piso e móveis absorvem e viram calor.",
       boxL3: "3. O calor fica preso dentro da sala.",
@@ -2018,9 +2209,9 @@ function CenaVidroAnimada() {
       boxBg: "#fffbeb",
       boxBorder: "#f59e0b",
       boxTitleColor: "#b45309",
-      boxTitle: "Tira o brilho, mas não o calor!",
+      boxTitle: "Tira o brilho, mas não o calor",
       boxL1: "O sol já atravessou o vidro para dentro.",
-      boxL2: "A cortina esquenta (ponha a mão atrás!)",
+      boxL2: "A cortina esquenta (ponha a mão atrás)",
       boxL3: "e joga ar quente por cima para a sala.",
     },
     pelicula: {
@@ -2042,13 +2233,13 @@ function CenaVidroAnimada() {
       tempSala: "25 °C",
       tempColor: "#059669",
       calorBarPct: 15,
-      calorLabel: "~15% (Ideal ✓)",
+      calorLabel: "~15% (Ideal)",
       sofaCor: "#334155",
-      sofaTexto: "Sala clara e fresca ✓",
+      sofaTexto: "Sala clara e fresca",
       boxBg: "#ecfdf5",
       boxBorder: "#10b981",
       boxTitleColor: "#047857",
-      boxTitle: "Luz entra, calor fica lá fora ✓",
+      boxTitle: "Luz entra, calor fica lá fora",
       boxL1: "Brise ou toldo barra o sol ANTES do vidro.",
       boxL2: "O vidro de controle solar filtra o resto,",
       boxL3: "mantendo claridade natural sem estufa.",
@@ -2056,68 +2247,39 @@ function CenaVidroAnimada() {
   }[protecao];
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-background/70 p-2.5">
-        <span className="px-2 text-xs font-semibold text-foreground">
-          Compare 4 cenários reais na sua janela:
-        </span>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tipo de proteção solar">
+    <div className="space-y-3.5">
+      <div
+        className="mx-auto grid w-full max-w-[920px] grid-cols-2 gap-1 rounded-xl border border-border bg-muted/50 p-1 sm:grid-cols-4"
+        role="group"
+        aria-label="Tipo de proteção solar na janela"
+      >
+        {[
+          { id: "sem" as const, label: "1. Vidro comum", dot: "bg-red-500" },
+          { id: "cortina" as const, label: "2. Só cortina", dot: "bg-amber-500" },
+          { id: "pelicula" as const, label: "3. Película (prédio)", dot: "bg-sky-500" },
+          { id: "brise" as const, label: "4. Brise externo", dot: "bg-emerald-600" },
+        ].map((opt) => (
           <button
+            key={opt.id}
             type="button"
-            onClick={() => setProtecao("sem")}
-            aria-pressed={protecao === "sem"}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-              protecao === "sem"
-                ? "bg-red-600 text-white shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
+            onClick={() => setProtecao(opt.id)}
+            aria-pressed={protecao === opt.id}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
+              protecao === opt.id
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/70"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            1. Vidro comum
+            <span className={`size-2 shrink-0 rounded-full ${opt.dot}`} aria-hidden="true" />
+            <span className="truncate">{opt.label}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setProtecao("cortina")}
-            aria-pressed={protecao === "cortina"}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-              protecao === "cortina"
-                ? "bg-amber-500 text-slate-950 shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            2. Só cortina interna
-          </button>
-          <button
-            type="button"
-            onClick={() => setProtecao("pelicula")}
-            aria-pressed={protecao === "pelicula"}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-              protecao === "pelicula"
-                ? "bg-sky-600 text-white shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            3. Prédio (película + cortina clara)
-          </button>
-          <button
-            type="button"
-            onClick={() => setProtecao("brise")}
-            aria-pressed={protecao === "brise"}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-              protecao === "brise"
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            4. Brise externo + vidro solar
-          </button>
-        </div>
+        ))}
       </div>
 
-      {/* Ilustração Arquitetônica Clara e Animada */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2.5 sm:p-4 shadow-inner print:print-color-adjust-exact">
+      <div className="mx-auto w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:p-3.5 shadow-inner print:print-color-adjust-exact">
         <svg
           viewBox="0 0 800 340"
-          className="h-auto w-full"
+          className="block h-auto w-full"
           role="img"
           aria-label="Animação interativa comparando vidro comum, cortina interna, película para apartamento e brise externo"
         >
@@ -2143,7 +2305,6 @@ function CenaVidroAnimada() {
             </linearGradient>
           </defs>
 
-          {/* Lado Externo (Rua ensolarada) */}
           <rect
             x="12"
             y="12"
@@ -2156,7 +2317,6 @@ function CenaVidroAnimada() {
           />
           <rect x="13" y="280" width="232" height="47" rx="12" fill="#86efac" opacity="0.6" />
 
-          {/* Lado Interno (Sala) */}
           <rect
             x="246"
             y="12"
@@ -2170,7 +2330,6 @@ function CenaVidroAnimada() {
           <rect x="247" y="276" width="540" height="51" rx="12" fill="#e7d5be" />
           <line x1="247" y1="276" x2="787" y2="276" stroke="#b08968" strokeWidth="2.5" />
 
-          {/* Sol externo */}
           <g transform="translate(76, 74)">
             <circle r="34" fill="#f59e0b" opacity="0.22" />
             <circle r="23" fill="#f59e0b">
@@ -2189,11 +2348,9 @@ function CenaVidroAnimada() {
             </text>
           </g>
 
-          {/* Parede superior e inferior da janela */}
           <rect x="234" y="12" width="24" height="58" fill="#64748b" stroke="#475569" />
           <rect x="234" y="230" width="24" height="98" fill="#64748b" stroke="#475569" />
 
-          {/* Vidro / Película / Brise */}
           {protecao === "brise" ? (
             <g>
               <rect x="240" y="70" width="5" height="160" fill="#0284c7" opacity="0.7" />
@@ -2288,12 +2445,11 @@ function CenaVidroAnimada() {
                 fontFamily="monospace"
                 fontWeight="bold"
               >
-                Cortina interna (esquenta!)
+                Cortina interna (esquenta)
               </text>
             </g>
           )}
 
-          {/* Sofá na sala — mais largo para o texto ficar folgado */}
           <g transform="translate(464, 212)">
             <rect x="12" y="0" width="144" height="26" rx="7" fill={config.sofaCor} />
             <rect
@@ -2313,7 +2469,6 @@ function CenaVidroAnimada() {
             </text>
           </g>
 
-          {/* Termômetro interno da sala */}
           <g transform="translate(664, 166)">
             <rect
               width="104"
@@ -2347,7 +2502,6 @@ function CenaVidroAnimada() {
             </text>
           </g>
 
-          {/* RAIOS ANIMADOS */}
           {protecao === "sem" && (
             <g>
               {[94, 134, 174].map((y, idx) => (
@@ -2521,7 +2675,6 @@ function CenaVidroAnimada() {
             </g>
           )}
 
-          {/* Caixa explicativa superior direita — FOLGA TOTAL (298px) */}
           <g transform="translate(474, 26)">
             <rect
               width="298"
@@ -2545,7 +2698,6 @@ function CenaVidroAnimada() {
             </text>
           </g>
 
-          {/* Barra inferior comparativa — ALINHADA COM SOBRA DENTRO DO PISO */}
           <g transform="translate(262, 292)">
             <text x="0" y="14" fill="#475569" fontSize="9.8" fontWeight="bold">
               CALOR SOLAR QUE ENTRA:
@@ -2559,31 +2711,63 @@ function CenaVidroAnimada() {
               rx="6.5"
               fill={config.tempColor}
             />
-            <text
-              x="342"
-              y="14"
-              fill={config.tempColor}
-              fontSize="10.5"
-              fontWeight="bold"
-            >
+            <text x="342" y="14" fill={config.tempColor} fontSize="10.5" fontWeight="bold">
               {config.calorLabel}
             </text>
           </g>
         </svg>
       </div>
 
-      {/* Botões flutuantes com explicações ampliadas */}
-      <GuiasFlutuantes tituloBarra="Dúvidas práticas sobre janelas e sol" itens={GUIAS_VIDRO} />
+      <ListaOrientacoesPraticas
+        tituloSecao="Dúvidas práticas sobre janelas e sol (toque para ler)"
+        itens={GUIAS_VIDRO}
+      />
     </div>
   );
 }
 
-/* ── Componente Principal: Simulador Explicativo + Física Descomplicada + Wellness ── */
+/* ── Metadados dos 3 cards da Trilha 02 (Navegação Progressiva) ── */
+const TEMAS_FISICA = [
+  {
+    id: "mofo" as const,
+    numero: "01",
+    etiqueta: "Condensação",
+    titulo: "Por que dá mofo?",
+    resumoCard: "Parede 'suando', desumidificador elétrico e como evitar sem reforma.",
+    headline: 'A parede não precisa ter vazamento para mofar — ela "sua" igual a um copo gelado.',
+    intro:
+      "Vapor do banho, da respiração e da cozinha condensa na parede fria. Teste abaixo a diferença entre ventilar, usar desumidificador elétrico ou isolar por dentro.",
+  },
+  {
+    id: "parede" as const,
+    numero: "02",
+    etiqueta: "Isolamento e cor",
+    titulo: "Parede quente à noite",
+    resumoCard: "Por que a casa segue abafada às 22h, o que é isolante e como aplicar.",
+    headline: "Por que o quarto continua abafado às 22h se lá fora já esfriou?",
+    intro:
+      "Concreto fino (12 cm) aquece rápido; bloco furado (18 cm) freia quase metade; parede isolada (23 cm) age como caixa térmica.",
+  },
+  {
+    id: "estufa" as const,
+    numero: "03",
+    etiqueta: "Janelas e sol",
+    titulo: "Efeito estufa no vidro",
+    resumoCard: "Por que fechar a cortina por dentro não resolve e o que fazer em prédio.",
+    headline: "Por que fechar a cortina por dentro não resolve o calor da janela?",
+    intro:
+      "O vidro deixa o sol entrar e prende o calor lá dentro — igual a um carro fechado no sol. O segredo é barrar o sol antes do vidro.",
+  },
+];
+
+/* ── Componente Principal: Simulador Mobile-First + Física Progressiva + Wellness ── */
 function LaboratorioInterativo() {
   const [hora, setHora] = useState(16);
   const [trilhaAtiva, setTrilhaAtiva] = useState<"inicio" | "simulador" | "fisica" | "wellness">(
     "inicio",
   );
+  const [fenomenoAtivo, setFenomenoAtivo] = useState<"mofo" | "parede" | "estufa" | null>(null);
+
   useEffect(() => {
     if (window.location.hash !== "#laboratorio-3d") return;
     setTrilhaAtiva("simulador");
@@ -2597,7 +2781,7 @@ function LaboratorioInterativo() {
   }, []);
 
   const [abaAjusteAtiva, setAbaAjusteAtiva] = useState<
-    "dimensoes" | "envoltoria" | "hvac" | "memoria" | null
+    "dimensoes" | "envoltoria" | "hvac" | "memoria"
   >("envoltoria");
 
   const [tipoComodo, setTipoComodo] = useState<TipoComodoKey>("sala");
@@ -2635,7 +2819,6 @@ function LaboratorioInterativo() {
   const [horasOperacaoDia, setHorasOperacaoDia] = useState(TIPOS_COMODO.sala.horasOperacaoPadrao);
   const [cop, setCop] = useState(3.2);
   const [fatorCarga, setFatorCarga] = useState(FATOR_CARGA_PADRAO);
-  const [fenomenoAtivo, setFenomenoAtivo] = useState<"mofo" | "parede" | "estufa">("mofo");
   const [cenarioBase, setCenarioBase] = useState<{
     cargaW: number;
     energiaKwh: number;
@@ -2813,135 +2996,125 @@ function LaboratorioInterativo() {
     }
   }
 
-  const pill = (ativo: boolean) =>
-    `rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-      ativo
-        ? "border-primary bg-primary text-primary-foreground"
-        : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
-    }`;
+  const temaFisicaSelecionado = TEMAS_FISICA.find((t) => t.id === fenomenoAtivo) ?? null;
+  const indiceTemaFisica = temaFisicaSelecionado
+    ? TEMAS_FISICA.findIndex((t) => t.id === temaFisicaSelecionado.id)
+    : -1;
+  const proximoTemaFisica =
+    indiceTemaFisica >= 0 ? TEMAS_FISICA[(indiceTemaFisica + 1) % TEMAS_FISICA.length] : null;
 
   return (
     <section id="laboratorio-3d" className="mb-16 sm:mb-24 scroll-mt-24">
       {trilhaAtiva !== "inicio" && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-4">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-3">
           <button
             type="button"
-            onClick={() => setTrilhaAtiva("inicio")}
-            className="inline-flex items-center gap-2.5 rounded-full border-2 border-primary/40 bg-primary/10 px-4 py-2 text-xs sm:text-sm font-bold text-primary shadow-sm transition-all hover:-translate-x-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground cursor-pointer"
+            onClick={() => {
+              setTrilhaAtiva("inicio");
+              setFenomenoAtivo(null);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/50 hover:text-primary cursor-pointer"
           >
-            <span aria-hidden="true" className="text-base leading-none">
-              ←
-            </span>
-            Todos os temas
+            <span aria-hidden="true">←</span>
+            <span>Todos os temas</span>
           </button>
 
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {trilhaAtiva === "simulador"
-              ? "Trilha 01 · Simulador Bioclimático"
+              ? "01 · Simulador Bioclimático"
               : trilhaAtiva === "fisica"
-                ? "Trilha 02 · Física Descomplicada"
-                : "Trilha 03 · Wellness e Ambientes"}
+                ? "02 · Física Descomplicada"
+                : "03 · Wellness"}
           </span>
         </div>
       )}
 
       {trilhaAtiva === "inicio" && (
-        <div className="mb-2 flex items-center gap-3">
-          <span className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-primary">
-            Espaço educativo · arquitetura e bem-estar
-          </span>
-          <span className="hidden sm:inline-block h-px w-16 bg-border" />
-        </div>
-      )}
+        <>
+          <div className="mb-2 flex items-center gap-3">
+            <span className="text-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-primary">
+              Espaço educativo · arquitetura e bem-estar
+            </span>
+            <span className="hidden sm:inline-block h-px w-16 bg-border" />
+          </div>
+          <h2 className="mb-3 max-w-3xl text-display text-2xl sm:text-3xl md:text-4xl font-extrabold leading-tight">
+            Aprenda, explore e entenda os ambientes.
+          </h2>
+          <p className="mb-6 max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
+            Escolha uma trilha abaixo para começar. Um assunto de cada vez, com animações e
+            simuladores práticos.
+          </p>
 
-      <h2
-        className={`mb-3 max-w-3xl text-display font-extrabold leading-tight ${
-          trilhaAtiva === "inicio" ? "text-2xl sm:text-3xl md:text-4xl" : "text-xl sm:text-2xl"
-        }`}
-      >
-        {trilhaAtiva === "inicio"
-          ? "Aprenda, explore e entenda os ambientes."
-          : trilhaAtiva === "simulador"
-            ? "Simulador bioclimático de cômodos"
-            : trilhaAtiva === "fisica"
-              ? "Física descomplicada"
-              : "Wellness e qualidade dos ambientes"}
-      </h2>
-      {trilhaAtiva === "inicio" && (
-        <p className="mb-6 max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
-          Escolha um tema para começar. Teste na prática de onde vem o calor no cômodo, veja
-          animações dos fenômenos físicos na parede e no vidro ou explore qualidade do ar e
-          iluminação.
-        </p>
-      )}
-
-      {trilhaAtiva === "inicio" && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            {
-              id: "simulador" as const,
-              number: "01",
-              title: "Simulador bioclimático de cômodos",
-              description:
-                "Escolha sala, quarto, escritório ou banheiro, teste paredes com espessuras reais, cor, vidro e brise e descubra na hora o maior vilão do calor.",
-              status: "Interativo",
-              color: "#0f8a5f",
-            },
-            {
-              id: "fisica" as const,
-              number: "02",
-              title: "Física descomplicada",
-              description:
-                "Entenda com animações e exemplos do dia a dia o mofo, a parede quente à noite, o efeito estufa no vidro e o que fazer com ou sem obra.",
-              status: "3 animações",
-              color: "#2563eb",
-            },
-            {
-              id: "wellness" as const,
-              number: "03",
-              title: "Wellness e qualidade dos ambientes",
-              description:
-                "Explore acúmulo de CO₂ por balanço de massa, diluição relativa de VOCs e iluminação natural e artificial no mesmo cômodo.",
-              status: "3 temas",
-              color: "#7c3aed",
-            },
-          ].map((card) => (
-            <button
-              key={card.id}
-              type="button"
-              onClick={() => setTrilhaAtiva(card.id)}
-              className="group flex min-h-48 flex-col rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
-            >
-              <span className="flex w-full items-center justify-between">
-                <span
-                  className="grid size-10 place-items-center rounded-xl font-mono text-xs font-bold"
-                  style={{ color: card.color, backgroundColor: `${card.color}15` }}
-                >
-                  {card.number}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                id: "simulador" as const,
+                number: "01",
+                title: "Simulador bioclimático de cômodos",
+                description:
+                  "Teste paredes com espessuras reais, cor, vidro e brise e descubra na hora o maior vilão do calor.",
+                status: "Interativo",
+                color: "#0f8a5f",
+              },
+              {
+                id: "fisica" as const,
+                number: "02",
+                title: "Física descomplicada",
+                description:
+                  "Entenda com animações o mofo (e o papel do desumidificador), a parede quente à noite e o efeito estufa no vidro.",
+                status: "3 temas",
+                color: "#2563eb",
+              },
+              {
+                id: "wellness" as const,
+                number: "03",
+                title: "Wellness e qualidade dos ambientes",
+                description:
+                  "Explore ar parado (CO₂), cheiro de reforma (VOCs) e iluminação (relógio biológico e ergonomia da mesa).",
+                status: "3 temas",
+                color: "#7c3aed",
+              },
+            ].map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => {
+                  setTrilhaAtiva(card.id);
+                  if (card.id === "fisica") setFenomenoAtivo(null);
+                }}
+                className="group flex min-h-44 flex-col rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+              >
+                <span className="flex w-full items-center justify-between">
+                  <span
+                    className="grid size-10 place-items-center rounded-xl font-mono text-xs font-bold"
+                    style={{ color: card.color, backgroundColor: `${card.color}15` }}
+                  >
+                    {card.number}
+                  </span>
+                  <span
+                    className="rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wide"
+                    style={{ color: card.color, borderColor: `${card.color}40` }}
+                  >
+                    {card.status}
+                  </span>
                 </span>
-                <span
-                  className="rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wide"
-                  style={{ color: card.color, borderColor: `${card.color}40` }}
-                >
-                  {card.status}
+                <span className="mt-4 block text-base font-bold text-foreground">{card.title}</span>
+                <span className="mt-1.5 block flex-1 text-xs leading-relaxed text-muted-foreground">
+                  {card.description}
                 </span>
-              </span>
-              <span className="mt-4 block text-base font-bold text-foreground">{card.title}</span>
-              <span className="mt-1.5 block flex-1 text-xs leading-relaxed text-muted-foreground">
-                {card.description}
-              </span>
-              <span className="mt-4 text-xs font-semibold text-primary">
-                Abrir conteúdo <span aria-hidden="true">→</span>
-              </span>
-            </button>
-          ))}
-        </div>
+                <span className="mt-4 text-xs font-semibold text-primary">
+                  Abrir trilha <span aria-hidden="true">→</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {trilhaAtiva === "wellness" && (
         <Suspense
           fallback={
-            <div className="mt-6 rounded-3xl border border-border bg-card p-6 text-xs text-muted-foreground">
+            <div className="mt-4 rounded-3xl border border-border bg-card p-6 text-xs text-muted-foreground">
               Carregando trilha Wellness e simuladores...
             </div>
           }
@@ -2974,28 +3147,27 @@ function LaboratorioInterativo() {
         </Suspense>
       )}
 
+      {/* ══════════════════════════════════════════════════════════════════
+          TRILHA 01: SIMULADOR BIOCLIMÁTICO (ZERO SOBREPOSIÇÃO NO CELULAR)
+      ══════════════════════════════════════════════════════════════════ */}
       {trilhaAtiva === "simulador" && (
-        <div className="space-y-5">
-          {/* Faixa compacta de cômodo e modo de simulação */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Cômodo">
-              {(Object.keys(TIPOS_COMODO) as TipoComodoKey[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => selecionarTipoComodo(key)}
-                  aria-pressed={tipoComodo === key}
-                  className={pill(tipoComodo === key)}
-                >
-                  {TIPOS_COMODO[key].nome}
-                </button>
-              ))}
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-display text-xl sm:text-2xl font-extrabold text-foreground">
+                Simulador bioclimático de cômodos
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {comprimentoM.toFixed(1).replace(".", ",")} ×{" "}
+                {larguraM.toFixed(1).replace(".", ",")} m ({areaPisoM2.toFixed(1).replace(".", ",")}{" "}
+                m²) · parede {dadosEnv.espessuraLabel}
+              </p>
             </div>
 
             <div
-              className="inline-flex gap-0.5 rounded-full border border-border bg-card p-0.5"
+              className="inline-flex w-fit rounded-xl border border-border bg-muted/50 p-1"
               role="group"
-              aria-label="Modo"
+              aria-label="Modo do simulador"
             >
               {[
                 { k: "simples" as const, l: "Guiado" },
@@ -3006,26 +3178,45 @@ function LaboratorioInterativo() {
                   type="button"
                   onClick={() => trocarModo(modo.k)}
                   aria-pressed={modoSimulador === modo.k}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold cursor-pointer ${
+                  className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all cursor-pointer ${
                     modoSimulador === modo.k
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground"
+                      ? "bg-card text-foreground shadow-xs ring-1 ring-border/70"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {modo.l}
                 </button>
               ))}
             </div>
-
-            <span className="text-xs text-muted-foreground">
-              {comprimentoM.toFixed(1).replace(".", ",")} × {larguraM.toFixed(1).replace(".", ",")}{" "}
-              m · {areaPisoM2.toFixed(1).replace(".", ",")} m² · parede {dadosEnv.espessuraLabel}
-            </span>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,430px)_minmax(0,1fr)] lg:items-start">
-            <div className="sticky top-20 z-20 self-start">
-              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-md">
+          {/* Seletor de cômodo em grade 2x2 no celular / linha no desktop */}
+          <div
+            className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-muted/50 p-1 sm:inline-grid sm:grid-cols-4"
+            role="group"
+            aria-label="Tipo de cômodo"
+          >
+            {(Object.keys(TIPOS_COMODO) as TipoComodoKey[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => selecionarTipoComodo(key)}
+                aria-pressed={tipoComodo === key}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  tipoComodo === key
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {TIPOS_COMODO[key].nome}
+              </button>
+            ))}
+          </div>
+
+          {/* IMPORTANTE: sticky APENAS no desktop (lg:sticky). No celular rola livre sem nunca cobrir o formulário! */}
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start">
+            <div id="simulador-preview" className="scroll-mt-24 lg:sticky lg:top-20 lg:self-start">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 <CenaBioclimatica
                   hora={hora}
                   orientacao={orientacao}
@@ -3038,23 +3229,42 @@ function LaboratorioInterativo() {
                   calor={Math.min(1, Math.max(0, (densidadeCargaWm2 - 40) / 120))}
                 />
 
-                <div className="space-y-3 p-3.5">
-                  <div>
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800">
-                      Resultado ao vivo · {dadosComodo.nome} (
-                      {areaPisoM2.toFixed(1).replace(".", ",")} m²)
-                    </p>
-                    <p className="text-[11px] text-slate-600">
-                      {`${horarioConsiderado} · Rua ${temperaturaModelo.toFixed(1).replace(".", ",")} °C · Meta interna ${setpointC} °C · Parede ao sol ~${temperaturaSolArC.toFixed(0)} °C`}
-                    </p>
+                <div className="space-y-3 p-3.5 sm:p-4">
+                  {/* Cabeçalho do resultado + atalho no mobile para ir editar */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+                        Resultado ao vivo · {dadosComodo.nome}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {`${horarioConsiderado} · Rua ${temperaturaModelo.toFixed(1).replace(".", ",")} °C · Meta ${setpointC} °C · Casca ~${temperaturaSolArC.toFixed(0)} °C`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        document.getElementById("simulador-controles")?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        })
+                      }
+                      className="shrink-0 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-[11px] font-bold text-primary lg:hidden cursor-pointer"
+                    >
+                      Alterar dados ↓
+                    </button>
                   </div>
 
-                  <label className="space-y-1 block">
-                    <span className="flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Arraste para mudar a hora do dia</span>
-                      <span className="font-mono font-bold text-slate-900">
-                        {String(Math.floor(hora)).padStart(2, "0")}h · Sol na fachada:{" "}
-                        {irradianciaModelo} W/m²
+                  {/* Slider de hora em 1 linha limpa (sem quebra esquisita no celular) */}
+                  <label className="block space-y-1">
+                    <span className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-foreground">
+                        Hora do dia:{" "}
+                        <span className="font-mono text-primary">
+                          {String(Math.floor(hora)).padStart(2, "0")}h
+                        </span>
+                      </span>
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        Sol na fachada: {irradianciaModelo} W/m²
                       </span>
                     </span>
                     <input
@@ -3069,45 +3279,55 @@ function LaboratorioInterativo() {
                     />
                   </label>
 
-                  <div className="grid grid-cols-2 gap-1.5">
+                  {/* 4 indicadores limpos */}
+                  <div className="grid grid-cols-2 gap-2">
                     {[
                       {
                         label: "Calor total a remover",
-                        value: simulacao
-                          ? `${Math.round(cargaSensibleTotalW)} W (${Math.round(capacidadeTermicaBtuH).toLocaleString("pt-BR")} BTU/h)`
-                          : "—",
+                        value: simulacao ? `${Math.round(cargaSensibleTotalW)} W` : "—",
+                        sub: simulacao
+                          ? `${Math.round(capacidadeTermicaBtuH).toLocaleString("pt-BR")} BTU/h`
+                          : "",
                         color: "text-orange-600",
                       },
                       {
-                        label: "Calor por m² do piso",
+                        label: "Densidade no piso",
                         value: simulacao
                           ? `${densidadeCargaWm2.toFixed(1).replace(".", ",")} W/m²`
                           : "—",
+                        sub: `${areaPisoM2.toFixed(1).replace(".", ",")} m²`,
                         color: "text-emerald-700",
                       },
                       {
                         label: "Calor vindo só do sol",
                         value: simulacao ? `${Math.round(ganhoSolarTotalW)} W` : "—",
+                        sub: `Fachada ${dadosOri.nome}`,
                         color: "text-amber-600",
                       },
                       {
                         label: "Energia estimada (AC)",
                         value: simulacao ? `${consumoMensalEstimadoKwh.toFixed(0)} kWh/mês` : "—",
+                        sub: `${horasOperacaoDia}h/dia`,
                         color: "text-sky-700",
                       },
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2"
+                        className="rounded-xl border border-border bg-background/60 px-2.5 py-2"
                       >
-                        <span className="block text-[10px] font-medium text-slate-500">
+                        <span className="block text-[10px] text-muted-foreground">
                           {item.label}
                         </span>
                         <span
-                          className={`mt-0.5 block font-mono text-xs font-bold tabular-nums ${item.color}`}
+                          className={`mt-0.5 block font-mono text-sm font-bold tabular-nums ${item.color}`}
                         >
                           {item.value}
                         </span>
+                        {item.sub && (
+                          <span className="block font-mono text-[9.5px] text-muted-foreground">
+                            {item.sub}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -3133,11 +3353,11 @@ function LaboratorioInterativo() {
                     </div>
                   )}
 
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => selecionarTipoComodo(tipoComodo)}
-                      className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 hover:border-emerald-600 cursor-pointer"
+                      className="flex-1 rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground hover:border-primary/50 cursor-pointer"
                     >
                       Restaurar padrão
                     </button>
@@ -3153,7 +3373,7 @@ function LaboratorioInterativo() {
                           });
                         }
                       }}
-                      className="flex-1 rounded-lg bg-emerald-700 px-2 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 disabled:opacity-50 cursor-pointer"
+                      className="flex-1 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
                     >
                       {cenarioBase ? "Atualizar base" : "Fixar p/ comparar"}
                     </button>
@@ -3161,7 +3381,7 @@ function LaboratorioInterativo() {
                       <button
                         type="button"
                         onClick={() => setCenarioBase(null)}
-                        className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 cursor-pointer"
+                        className="rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
                       >
                         Limpar
                       </button>
@@ -3169,14 +3389,14 @@ function LaboratorioInterativo() {
                   </div>
 
                   {cenarioBase && simulacao && (
-                    <p className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] text-slate-700">
+                    <p className="rounded-lg bg-muted/60 px-2.5 py-1.5 text-[11px] text-foreground">
                       Comparado a <strong>{cenarioBase.descricao}</strong>:{" "}
-                      <strong className="font-mono text-slate-950">
+                      <strong className="font-mono">
                         {simulacao.cargaSensibleTotalW - cenarioBase.cargaW > 0 ? "+" : ""}
                         {(simulacao.cargaSensibleTotalW - cenarioBase.cargaW).toFixed(0)} W
                       </strong>
                       {" · "}
-                      <strong className="font-mono text-slate-950">
+                      <strong className="font-mono">
                         {simulacao.consumoMensalEstimadoKwh - cenarioBase.energiaKwh > 0 ? "+" : ""}
                         {(simulacao.consumoMensalEstimadoKwh - cenarioBase.energiaKwh).toFixed(
                           1,
@@ -3186,8 +3406,8 @@ function LaboratorioInterativo() {
                     </p>
                   )}
 
-                  <details className="border-t border-slate-200 pt-2 text-[10.5px] text-slate-600">
-                    <summary className="cursor-pointer font-semibold text-slate-700 hover:text-emerald-800">
+                  <details className="border-t border-border pt-2 text-[11px] text-muted-foreground">
+                    <summary className="cursor-pointer font-semibold text-foreground hover:text-primary">
                       Entender os valores técnicos (U, α, FS e T_sol-ar)
                     </summary>
                     <div className="mt-2 space-y-1.5 leading-relaxed">
@@ -3210,32 +3430,70 @@ function LaboratorioInterativo() {
                         <strong>
                           T_sol-ar ({temperaturaSolArC.toFixed(1).replace(".", ",")} °C):
                         </strong>{" "}
-                        temperatura equivalente sentida pela face externa da parede ao somar o calor
-                        do ar + o sol batendo na tinta.
+                        temperatura equivalente na face externa ao somar ar quente + sol na tinta.
                       </p>
-                      <p className="pt-1 text-slate-500">{dadosComodo.notaTecnica}</p>
+                      <p className="pt-1 opacity-80">{dadosComodo.notaTecnica}</p>
                     </div>
                   </details>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-1.5">
+            {/* COLUNA DE CONTROLES — SEMPRE 100% VISÍVEL E ACESSÍVEL */}
+            <div id="simulador-controles" className="scroll-mt-24 space-y-3">
+              {/* Resumo inline exclusivo do celular: você vê os Watts reagirem enquanto mexe nos botões! */}
+              {simulacao && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 lg:hidden">
+                  <div className="min-w-0">
+                    <span className="block font-mono text-[9.5px] font-bold uppercase tracking-wider text-primary">
+                      Resultado enquanto você edita
+                    </span>
+                    <span className="block font-mono text-xs font-bold text-foreground">
+                      {Math.round(cargaSensibleTotalW)} W ·{" "}
+                      {Math.round(capacidadeTermicaBtuH).toLocaleString("pt-BR")} BTU/h ·{" "}
+                      {consumoMensalEstimadoKwh.toFixed(0)} kWh/mês
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      document.getElementById("simulador-preview")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      })
+                    }
+                    className="shrink-0 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold text-foreground cursor-pointer"
+                  >
+                    ↑ Ver casa
+                  </button>
+                </div>
+              )}
+
+              {/* Abas segmentadas limpas */}
+              <div
+                className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-muted/50 p-1 sm:flex sm:flex-wrap"
+                role="tablist"
+                aria-label="Seções de ajuste do simulador"
+              >
                 {[
                   { id: "envoltoria" as const, titulo: "Parede e janelas" },
                   { id: "dimensoes" as const, titulo: "Medidas e clima" },
                   ...(modoSimulador === "especialista"
                     ? [{ id: "hvac" as const, titulo: "Ar e energia" }]
                     : []),
-                  { id: "memoria" as const, titulo: "De onde vem cada watt" },
+                  { id: "memoria" as const, titulo: "De onde vem o calor" },
                 ].map((aba) => (
                   <button
                     key={aba.id}
                     type="button"
+                    role="tab"
+                    aria-selected={abaAjusteAtiva === aba.id}
                     onClick={() => setAbaAjusteAtiva(aba.id)}
-                    aria-pressed={abaAjusteAtiva === aba.id}
-                    className={pill(abaAjusteAtiva === aba.id)}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
+                      abaAjusteAtiva === aba.id
+                        ? "bg-card text-foreground shadow-xs ring-1 ring-border/70"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
                     {aba.titulo}
                   </button>
@@ -3244,13 +3502,13 @@ function LaboratorioInterativo() {
 
               {/* Painel 1: Dimensões, Orientação e Clima */}
               {abaAjusteAtiva === "dimensoes" && (
-                <section className="space-y-4 rounded-2xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm">
-                  <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+                <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                     <h3 className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-primary">
-                      Dimensões do cômodo, orientação solar e clima
+                      Medidas, orientação solar e clima
                     </h3>
                     <span className="font-mono text-xs text-muted-foreground">
-                      Área: {areaPisoM2.toFixed(1).replace(".", ",")} m² · Vol.:{" "}
+                      {areaPisoM2.toFixed(1).replace(".", ",")} m² ·{" "}
                       {(areaPisoM2 * peDireitoM).toFixed(1).replace(".", ",")} m³
                     </span>
                   </div>
@@ -3287,10 +3545,10 @@ function LaboratorioInterativo() {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <p className="mb-2 text-xs text-muted-foreground">
-                        Qual parede dá para a rua (recebe sol e tem as janelas)?
+                      <p className="mb-2 text-xs font-medium text-foreground">
+                        Qual parede dá para a rua?
                       </p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-2 gap-1.5">
                         {[
                           {
                             key: "largura" as const,
@@ -3309,7 +3567,7 @@ function LaboratorioInterativo() {
                             className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${
                               ladoFachada === item.key
                                 ? "border-primary bg-primary/10 text-primary"
-                                : "border-border text-muted-foreground hover:border-primary/40"
+                                : "border-border bg-background text-muted-foreground hover:border-primary/40"
                             }`}
                           >
                             {item.label}
@@ -3319,8 +3577,8 @@ function LaboratorioInterativo() {
                     </div>
 
                     <div>
-                      <p className="mb-2 text-xs text-muted-foreground">
-                        Para onde essa fachada está virada?
+                      <p className="mb-2 text-xs font-medium text-foreground">
+                        Orientação solar da fachada
                       </p>
                       <div className="grid grid-cols-4 gap-1.5">
                         {(Object.keys(ORIENTACOES) as OrientacaoKey[]).map((key) => (
@@ -3335,10 +3593,10 @@ function LaboratorioInterativo() {
                             className={`rounded-lg border px-2 py-2 text-xs font-semibold transition-colors cursor-pointer ${
                               orientacao === key
                                 ? "border-primary bg-primary/10 text-primary"
-                                : "border-border text-muted-foreground hover:border-primary/40"
+                                : "border-border bg-background text-muted-foreground hover:border-primary/40"
                             }`}
                           >
-                            {key} · {ORIENTACOES[key].nome}
+                            {key}
                           </button>
                         ))}
                       </div>
@@ -3350,7 +3608,7 @@ function LaboratorioInterativo() {
                   </div>
 
                   {modoSimulador === "simples" ? (
-                    <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                    <div className="grid gap-4 sm:grid-cols-2 pt-1">
                       <div>
                         <p className="mb-2 text-xs font-medium text-foreground">
                           Como está o dia lá fora?
@@ -3359,12 +3617,12 @@ function LaboratorioInterativo() {
                           {[
                             {
                               key: "amena" as const,
-                              label: "Dia ameno (máx. 29 °C)",
+                              label: "Dia ameno (29 °C)",
                               detail: `Pico ~${temperaturaArNaHora(dadosOri.horaPico, 21, 29).toFixed(1).replace(".", ",")} °C`,
                             },
                             {
                               key: "quente" as const,
-                              label: "Dia quente (máx. 34 °C)",
+                              label: "Dia quente (34 °C)",
                               detail: `Pico ~${temperaturaArNaHora(dadosOri.horaPico, 24, 34).toFixed(1).replace(".", ",")} °C`,
                             },
                           ].map((item) => (
@@ -3376,7 +3634,7 @@ function LaboratorioInterativo() {
                               className={`rounded-xl border p-2.5 text-left cursor-pointer ${
                                 condicaoClimatica === item.key
                                   ? "border-primary bg-primary/10"
-                                  : "border-border hover:border-primary/40"
+                                  : "border-border bg-background hover:border-primary/40"
                               }`}
                             >
                               <span className="block text-xs font-semibold text-foreground">
@@ -3398,23 +3656,23 @@ function LaboratorioInterativo() {
                           max={30}
                           step={1}
                           unit="pessoas"
-                          hint="Cada pessoa libera ~75 W de calor."
+                          hint="~75 W por pessoa."
                           onChange={setOcupantes}
                         />
                         <NumberControl
-                          label="Uso do ar-condicionado"
+                          label="Uso do ar (h/dia)"
                           value={horasOperacaoDia}
                           min={0}
                           max={24}
                           step={1}
                           unit="h/dia"
-                          hint="Usado para estimar kWh/mês."
+                          hint="Para kWh/mês."
                           onChange={setHorasOperacaoDia}
                         />
                       </div>
                     </div>
                   ) : (
-                    <div className="grid gap-3 sm:grid-cols-2 pt-2">
+                    <div className="grid gap-3 sm:grid-cols-2 pt-1">
                       <NumberControl
                         label="Temperatura externa do ar"
                         value={temperaturaExternaC}
@@ -3440,10 +3698,10 @@ function LaboratorioInterativo() {
 
               {/* Painel 2: Parede, Cor e Janelas */}
               {abaAjusteAtiva === "envoltoria" && (
-                <section className="space-y-4 rounded-2xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm">
-                  <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+                <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                     <h3 className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-primary">
-                      Parede externa (tipo e espessura), cor e janelas
+                      Parede externa, cor e janelas
                     </h3>
                     <span className="font-mono text-xs text-muted-foreground">
                       Vidro: {areaVidroM2.toFixed(1).replace(".", ",")} m² (
@@ -3451,7 +3709,7 @@ function LaboratorioInterativo() {
                     </span>
                   </div>
 
-                  <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="grid gap-5 lg:grid-cols-2">
                     <div className="space-y-3">
                       <div>
                         <p className="text-xs font-semibold text-foreground">
@@ -3479,7 +3737,7 @@ function LaboratorioInterativo() {
                               className={`rounded-xl border px-3 py-2.5 text-left transition-colors cursor-pointer ${
                                 ativo
                                   ? "border-primary bg-primary/10"
-                                  : "border-border hover:border-primary/40"
+                                  : "border-border bg-background hover:border-primary/40"
                               }`}
                             >
                               <div className="flex items-center justify-between gap-2">
@@ -3518,7 +3776,7 @@ function LaboratorioInterativo() {
                                 className={`flex min-w-0 items-center gap-2 rounded-lg border p-2 text-left cursor-pointer ${
                                   ativo
                                     ? "border-primary bg-primary/10"
-                                    : "border-border hover:border-primary/40"
+                                    : "border-border bg-background hover:border-primary/40"
                                 }`}
                               >
                                 <span
@@ -3530,7 +3788,7 @@ function LaboratorioInterativo() {
                                     {item.nome}
                                   </span>
                                   <span className="block font-mono text-[9px] text-muted-foreground">
-                                    absorve {Math.round(item.alpha * 100)}%
+                                    {Math.round(item.alpha * 100)}% sol
                                   </span>
                                 </span>
                               </button>
@@ -3550,8 +3808,8 @@ function LaboratorioInterativo() {
                             3. Janelas, proteção solar e vidro
                           </p>
                           <p className="mt-0.5 text-[11px] text-muted-foreground">
-                            Janelas deixam entrar luz natural, mas sem sombra externa costumam ser a
-                            principal porta de entrada do calor.
+                            Sem sombra externa, janelas costumam ser a maior porta de entrada do
+                            calor.
                           </p>
                         </div>
 
@@ -3596,13 +3854,13 @@ function LaboratorioInterativo() {
 
                         <div>
                           <p className="mb-1.5 text-xs text-muted-foreground">
-                            Proteção solar do lado de fora (barra o sol antes do vidro)
+                            Proteção solar do lado de fora
                           </p>
                           <div className="grid grid-cols-3 gap-2">
                             {[
-                              { label: "Sem sombra", sub: "0% bloqueio", value: 0 },
+                              { label: "Sem sombra", sub: "0%", value: 0 },
                               { label: "Beiral", sub: "-40% sol", value: 40 },
-                              { label: "Brise externo", sub: "-70% sol", value: 70 },
+                              { label: "Brise", sub: "-70% sol", value: 70 },
                             ].map((item) => (
                               <button
                                 key={item.label}
@@ -3612,7 +3870,7 @@ function LaboratorioInterativo() {
                                 className={`rounded-lg border px-2 py-2 text-center cursor-pointer ${
                                   reducaoSolarBrise === item.value
                                     ? "border-primary bg-primary/10 text-primary"
-                                    : "border-border text-muted-foreground hover:border-primary/40"
+                                    : "border-border bg-background text-muted-foreground hover:border-primary/40"
                                 }`}
                               >
                                 <span className="block text-xs font-bold">{item.label}</span>
@@ -3626,7 +3884,7 @@ function LaboratorioInterativo() {
 
                         <div>
                           <p className="mb-1.5 text-xs text-muted-foreground">
-                            Tipo de vidro (quanto menor o FS, menos calor solar atravessa)
+                            Tipo de vidro (quanto menor o FS, menos calor solar entra)
                           </p>
                           <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
                             {(Object.keys(VIDROS) as TipoVidroKey[]).map((tipo) => {
@@ -3641,13 +3899,12 @@ function LaboratorioInterativo() {
                                   className={`rounded-lg border px-2.5 py-2 text-left text-xs cursor-pointer ${
                                     ativo
                                       ? "border-primary bg-primary/10 text-primary"
-                                      : "border-border text-muted-foreground hover:border-primary/40"
+                                      : "border-border bg-background text-muted-foreground hover:border-primary/40"
                                   }`}
                                 >
                                   <span className="block font-bold">{vidro.nome}</span>
                                   <span className="mt-0.5 block text-[10px]">
-                                    Deixa entrar <strong>{Math.round(vidro.fs * 100)}%</strong> do
-                                    calor solar
+                                    Entra <strong>{Math.round(vidro.fs * 100)}%</strong> do sol
                                   </span>
                                   <span className="mt-0.5 block font-mono text-[9.5px] opacity-75">
                                     U={vidro.u} · FS={vidro.fs}
@@ -3729,9 +3986,9 @@ function LaboratorioInterativo() {
                 </section>
               )}
 
-              {/* Painel 3: Parâmetros Avançados de HVAC (Modo Engenharia) */}
+              {/* Painel 3: HVAC (Modo Engenharia) */}
               {abaAjusteAtiva === "hvac" && modoSimulador === "especialista" && (
-                <section className="space-y-3 rounded-2xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm">
+                <section className="space-y-3 rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
                   <h3 className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-primary">
                     Renovação de ar, cargas internas e eficiência do HVAC
                   </h3>
@@ -3742,7 +3999,7 @@ function LaboratorioInterativo() {
                       min={0}
                       max={15}
                       step={0.1}
-                      unit="ACH (trocas/h)"
+                      unit="ACH"
                       onChange={setRenovacoesArHora}
                     />
                     <NumberControl
@@ -3804,16 +4061,16 @@ function LaboratorioInterativo() {
                 </section>
               )}
 
-              {/* Painel 4: Memória Física de Cálculo Auditável */}
+              {/* Painel 4: De onde vem cada watt */}
               {abaAjusteAtiva === "memoria" && (
-                <section className="rounded-2xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm">
+                <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
                   <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
                     <div>
                       <p className="text-mono text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
                         Decomposição térmica · Regime estacionário
                       </p>
                       <h3 className="mt-1 text-display text-lg font-bold text-foreground">
-                        De onde vem cada watt de calor no cômodo ({dadosComodo.nome})
+                        De onde vem cada watt no cômodo ({dadosComodo.nome})
                       </h3>
                     </div>
                     <p className="font-mono text-xs text-muted-foreground">
@@ -3913,138 +4170,109 @@ function LaboratorioInterativo() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
-          TRILHA 02: FÍSICA DESCOMPLICADA (ANIMAÇÕES + BOTÕES FLUTUANTES)
+          TRILHA 02: FÍSICA DESCOMPLICADA — NAVEGAÇÃO PROGRESSIVA (1 POR VEZ)
       ══════════════════════════════════════════════════════════════════ */}
       {trilhaAtiva === "fisica" && (
-        <div className="mt-6 rounded-3xl border border-border bg-card p-4 sm:p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
-          <div className="flex flex-col gap-4 border-b border-border/70 pb-5 print:hidden">
-            <div>
-              <span className="text-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-                Física da Construção na Prática
-              </span>
-              <h3 className="mt-1 text-display text-xl sm:text-2xl font-extrabold text-foreground">
-                Entenda em segundos o que acontece invisivelmente na sua casa
-              </h3>
-              <p className="mt-1 max-w-3xl text-xs sm:text-sm text-muted-foreground">
-                Escolha um tema, teste os cenários no desenho e toque nos botões práticos para abrir
-                o guia completo (com ou sem obra).
-              </p>
-            </div>
+        <div className="space-y-5">
+          {!temaFisicaSelecionado ? (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-display text-xl sm:text-2xl font-extrabold text-foreground">
+                  Física descomplicada
+                </h2>
+                <p className="mt-1 max-w-2xl text-xs sm:text-sm text-muted-foreground">
+                  Escolha um assunto abaixo para abrir a animação interativa e ver o que fazer na
+                  prática.
+                </p>
+              </div>
 
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-              {[
-                { id: "mofo", label: "1. Por que dá mofo?" },
-                { id: "parede", label: "2. Parede quente à noite" },
-                { id: "estufa", label: "3. Efeito estufa no vidro" },
-              ].map((item) => {
-                const ativo = fenomenoAtivo === item.id;
-                return (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {TEMAS_FISICA.map((tema) => (
                   <button
-                    key={item.id}
+                    key={tema.id}
                     type="button"
-                    onClick={() => setFenomenoAtivo(item.id as typeof fenomenoAtivo)}
-                    aria-pressed={ativo}
-                    className={`min-h-10 rounded-xl border px-2 py-2 text-center text-mono text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.04em] transition-all cursor-pointer ${
-                      ativo
-                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                        : "border-border bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                    }`}
+                    onClick={() => setFenomenoAtivo(tema.id)}
+                    className="group flex flex-col justify-between rounded-2xl border border-border bg-card p-5 text-left shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
                   >
-                    {item.label}
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="grid size-8 place-items-center rounded-lg bg-primary/10 font-mono text-xs font-bold text-primary">
+                          {tema.numero}
+                        </span>
+                        <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {tema.etiqueta}
+                        </span>
+                      </div>
+                      <h3 className="mt-4 text-base font-bold text-foreground group-hover:text-primary">
+                        {tema.titulo}
+                      </h3>
+                      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                        {tema.resumoCard}
+                      </p>
+                    </div>
+                    <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                      <span>Explorar tema</span>
+                      <span
+                        aria-hidden="true"
+                        className="transition-transform group-hover:translate-x-0.5"
+                      >
+                        →
+                      </span>
+                    </span>
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* ── FENÔMENO 1: MOFO E CONDENSAÇÃO ── */}
-          <div
-            className={
-              fenomenoAtivo === "mofo"
-                ? "mt-6 space-y-4 print:break-inside-avoid"
-                : "hidden print:block print:mt-6 print:space-y-4 print:break-inside-avoid"
-            }
-          >
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-sky-700">
-                  Fenômeno 1 de 3 · Mofo e condensação
-                </p>
-                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-mono text-[9px] font-bold uppercase tracking-wider text-sky-700">
-                  Efeito Copo Gelado (Ponto de Orvalho)
+          ) : (
+            <div className="rounded-3xl border border-border bg-card p-4 sm:p-6 shadow-sm space-y-4">
+              <div className="mx-auto flex w-full max-w-[920px] items-center justify-between gap-2 border-b border-border/70 pb-3">
+                <button
+                  type="button"
+                  onClick={() => setFenomenoAtivo(null)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/50 hover:text-primary cursor-pointer"
+                >
+                  <span aria-hidden="true">←</span>
+                  <span>Outros temas de Física</span>
+                </button>
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {temaFisicaSelecionado.numero} de 03 · {temaFisicaSelecionado.etiqueta}
                 </span>
               </div>
-              <h4 className="max-w-3xl text-display text-lg sm:text-xl font-extrabold text-foreground">
-                A parede não precisa ter vazamento para mofar — ela "sua" igual a um copo gelado.
-              </h4>
-              <p className="max-w-3xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                Vapor do banho, da respiração e da cozinha encosta na parede fria e vira gotículas de
-                água. Se o ar não circula (como atrás de um armário encostado), nasce o mofo.
-              </p>
-            </div>
 
-            <CenaMofoAnimada />
-          </div>
-
-          {/* ── FENÔMENO 2: CALOR NA PAREDE ── */}
-          <div
-            className={
-              fenomenoAtivo === "parede"
-                ? "mt-6 space-y-4 print:break-inside-avoid"
-                : "hidden print:block print:mt-6 print:space-y-4 print:break-inside-avoid"
-            }
-          >
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
-                  Fenômeno 2 de 3 · Calor atravessando a parede
+              <div className="mx-auto w-full max-w-[920px]">
+                <h3 className="text-display text-lg sm:text-xl font-extrabold leading-snug text-foreground">
+                  {temaFisicaSelecionado.headline}
+                </h3>
+                <p className="mt-1.5 max-w-3xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                  {temaFisicaSelecionado.intro}
                 </p>
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-mono text-[9px] font-bold uppercase tracking-wider text-amber-700">
-                  Espessura · Cor · Isolamento
-                </span>
               </div>
-              <h4 className="max-w-3xl text-display text-lg sm:text-xl font-extrabold text-foreground">
-                Por que o quarto continua abafado às 22h mesmo quando a noite lá fora já está fresca?
-              </h4>
-              <p className="max-w-3xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                O concreto fino (12 cm) deixa o calor entrar rápido; o bloco furado (18 cm) freia
-                quase metade; e uma camada isolante (5 cm) age como uma caixa térmica. Teste mudar o
-                horário e a cor da tinta abaixo.
-              </p>
+
+              {fenomenoAtivo === "mofo" && <CenaMofoAnimada />}
+              {fenomenoAtivo === "parede" && <CenaParedeAnimada />}
+              {fenomenoAtivo === "estufa" && <CenaVidroAnimada />}
+
+              {proximoTemaFisica && (
+                <div className="mx-auto flex w-full max-w-[920px] items-center justify-between gap-3 border-t border-border/70 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setFenomenoAtivo(null)}
+                    className="text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    Ver todos os 3 temas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFenomenoAtivo(proximoTemaFisica.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3.5 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground cursor-pointer"
+                  >
+                    <span>Próximo: {proximoTemaFisica.titulo}</span>
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+              )}
             </div>
-
-            <CenaParedeAnimada />
-          </div>
-
-          {/* ── FENÔMENO 3: EFEITO ESTUFA NO VIDRO ── */}
-          <div
-            className={
-              fenomenoAtivo === "estufa"
-                ? "mt-6 space-y-4 print:break-inside-avoid"
-                : "hidden print:block print:mt-6 print:space-y-4 print:break-inside-avoid"
-            }
-          >
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-mono text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">
-                  Fenômeno 3 de 3 · Efeito estufa no vidro
-                </p>
-                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-mono text-[9px] font-bold uppercase tracking-wider text-primary">
-                  Efeito Carro no Sol · Fator Solar (FS)
-                </span>
-              </div>
-              <h4 className="max-w-3xl text-display text-lg sm:text-xl font-extrabold text-foreground">
-                Por que fechar a cortina por dentro não resolve o calor da janela?
-              </h4>
-              <p className="max-w-3xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                O vidro comum deixa a luz solar entrar livremente, mas prende o calor lá dentro —
-                igual a um carro fechado no sol. O segredo é barrar o sol <strong>antes</strong> de
-                tocar o vidro (ou, em apartamentos, usar película + cortina clara).
-              </p>
-            </div>
-
-            <CenaVidroAnimada />
-          </div>
+          )}
         </div>
       )}
     </section>

@@ -11,6 +11,16 @@ export const CANAIS_TELEGRAM_RS = {
   "Sudeste Rio-grandense": "https://t.me/alertasrs_sudeste",
 } as const;
 
+export const TOPICOS_NTFY_RS: Record<keyof typeof CANAIS_TELEGRAM_RS, string> = {
+  "Noroeste Rio-grandense": "alerta-rs-noroeste-ecomindsx",
+  "Nordeste Rio-grandense": "alerta-rs-nordeste-ecomindsx",
+  "Centro Ocidental Rio-grandense": "alerta-rs-centroocidental-ecomindsx",
+  "Centro Oriental Rio-grandense": "alerta-rs-centrooriental-ecomindsx",
+  "Metropolitana de Porto Alegre": "alerta-rs-metropoa-ecomindsx",
+  "Sudoeste Rio-grandense": "alerta-rs-sudoeste-ecomindsx",
+  "Sudeste Rio-grandense": "alerta-rs-sudeste-ecomindsx",
+};
+
 const CANAIS_POR_REGIAO = new Map(
   Object.entries(CANAIS_TELEGRAM_RS).map(([regiao, url]) => [
     chaveArea(regiao),
@@ -152,7 +162,9 @@ export function formatarMensagemAlerta(
     "",
     "O Inmet emite o aviso para a região inteira, não para um ponto exato.",
     "Procure abrigo em construção sólida. Evite janelas, árvores, postes e áreas alagáveis.",
+    "ANIMAIS: não deixe animais acorrentados ou presos ao ar livre — solte-os e coloque-os em abrigo seguro.",
     "Emergência: Defesa Civil 199 · Bombeiros 193.",
+    "Serviço informativo e experimental: não substitui a Defesa Civil (SMS 40199).",
     link,
   ]
     .filter((linha) => linha !== "")

@@ -1,0 +1,65 @@
+{
+  "cidades": [
+    {
+      "nome": "Porto Alegre",
+      "lat": -30.03,
+      "lon": -51.23,
+      "ntfy_topic": "alerta-rs-metropoa-ecomindsx",
+      "telegram_canal": ""
+    },
+    {
+      "nome": "Caxias do Sul",
+      "lat": -29.17,
+      "lon": -51.18,
+      "ntfy_topic": "alerta-rs-nordeste-ecomindsx",
+      "telegram_canal": ""
+    },
+    {
+      "nome": "Passo Fundo",
+      "lat": -28.26,
+      "lon": -52.41,
+      "ntfy_topic": "alerta-rs-noroeste-ecomindsx",
+      "telegram_canal": ""
+    },
+    {
+      "nome": "Santa Maria",
+      "lat": -29.68,
+      "lon": -53.81,
+      "ntfy_topic": "alerta-rs-centroocidental-ecomindsx",
+      "telegram_canal": ""
+    },
+    {
+      "nome": "Santa Cruz do Sul",
+      "lat": -29.72,
+      "lon": -52.43,
+      "ntfy_topic": "alerta-rs-centrooriental-ecomindsx",
+      "telegram_canal": ""
+    },
+    {
+      "nome": "Pelotas",
+      "lat": -31.77,
+      "lon": -52.34,
+      "ntfy_topic": "alerta-rs-sudeste-ecomindsx",
+      "telegram_canal": ""
+    },
+    {
+      "nome": "Uruguaiana",
+      "lat": -29.75,
+      "lon": -57.09,
+      "ntfy_topic": "alerta-rs-sudoeste-ecomindsx",
+      "telegram_canal": ""
+    }
+  ],
+  "dist_min_km": 15,
+  "dist_max_km": 150,
+  "azimute_min": 225,
+  "azimute_max": 345,
+  "max_estacoes_por_cidade": 6,
+  "rajada_atencao_kmh": 70,
+  "rajada_severa_kmh": 90,
+  "queda_pressao_hpa": 3.0,
+  "dados_max_idade_min": 150,
+  "intervalo_segundos": 300,
+  "cooldown_minutos": 90,
+  "severidade_gate": "perigo"
+}
