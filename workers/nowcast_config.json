@@ -61,5 +61,6 @@
   "dados_max_idade_min": 150,
   "intervalo_segundos": 300,
   "cooldown_minutos": 90,
-  "severidade_gate": "perigo"
+  "severidade_gate": "perigo",
+  "ntfy_auditoria": "alerta-rs-auditoria-ecomindsx"
 }

@@ -598,12 +598,6 @@ export default function Home() {
 
       <main className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-32">
         <section className="pt-10 sm:pt-14 md:pt-20 pb-10 sm:pb-14">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono uppercase tracking-wider mb-4">
-            <span>EcomindsX · Vector-X</span>
-            <span>•</span>
-            <span>Engenharia ambiental aplicada</span>
-          </div>
-
           <h1 className="text-display text-3xl sm:text-5xl font-medium tracking-tight text-foreground leading-[1.08] max-w-4xl">
             Transformamos dados do lugar em{" "}
             <span className="text-primary">decisões melhores para imóveis e projetos.</span>

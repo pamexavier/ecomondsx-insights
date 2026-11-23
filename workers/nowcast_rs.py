@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import inmet_alertas as L1
+import requests
 
 BASE_DIR = Path(__file__).resolve().parent
 CFG_PATH = BASE_DIR / "nowcast_config.json"
@@ -265,6 +266,31 @@ def enviar_ntfy(titulo, msg, prioridade, tags, topico=None):
         return r.status == 200
 
 
+def enviar_auditoria_ntfy(
+    cfg: dict,
+    cidade_nome: str,
+    topico_origem: str,
+    titulo: str,
+    mensagem: str,
+) -> None:
+    topico_auditoria = (cfg.get("ntfy_auditoria") or "").strip()
+    if not topico_auditoria:
+        return
+    try:
+        requests.post(
+            f"https://ntfy.sh/{topico_auditoria}",
+            data=f"[{cidade_nome} -> {topico_origem}]\n\n{mensagem}".encode("utf-8"),
+            headers={
+                "Title": f"[AUDITORIA · {cidade_nome}] {titulo}".encode("latin-1", "ignore"),
+                "Priority": "low",
+                "Tags": "clipboard",
+            },
+            timeout=10,
+        )
+    except Exception as exc:
+        print(f"Aviso: falha ao enviar copia de auditoria: {exc}")
+
+
 def montar(cidade, est, res, aviso, urgente):
     if urgente:
         cab = f"ABRIGUE-SE AGORA: tempestade severa se aproximando de {cidade['nome']}"
@@ -343,10 +369,12 @@ def checar(cfg, estado, simular=False):
             titulo = ("ALERTA URGENTE: " if urgente else "ATENCAO: ") + cidade["nome"]
             prioridade = "urgent" if urgente else "high"
             tags = "rotating_light,warning" if urgente else "warning"
+            topico = cidade.get("ntfy_topic") or os.environ.get("NTFY_TOPIC")
 
             try:
-                if enviar_ntfy(titulo, msg, prioridade, tags, topico=cidade.get("ntfy_topic")):
-                    print(f"(enviado ao ntfy: {cidade.get('ntfy_topic') or 'NTFY_TOPIC'})")
+                if enviar_ntfy(titulo, msg, prioridade, tags, topico=topico):
+                    print(f"(enviado ao ntfy: {topico or 'NTFY_TOPIC'})")
+                    enviar_auditoria_ntfy(cfg, cidade["nome"], topico or "", titulo, msg)
                     enviou_algum = True
             except Exception as e:
                 print(f"(falha no ntfy: {e})", file=sys.stderr)
