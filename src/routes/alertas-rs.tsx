@@ -157,7 +157,7 @@ function ListaAlertas({
         </div>
       ) : (
         <p className="rounded-2xl border border-dashed border-line bg-surface/70 p-5 text-sm text-ink-soft">
-          {regiaoSelecionada ? `Não há alerta ${titulo === "Em vigor" ? "em vigor" : "previsto"} para a região de ${regiaoSelecionada} no momento.` : `Nenhum alerta grave ${titulo === "Em vigor" ? "em vigor" : "previsto"} no Rio Grande do Sul no momento.`}
+          {regiaoSelecionada ? `Não há alerta ${titulo === "Em vigor" ? "em vigor" : "previsto"} para a região de ${regiaoSelecionada} no momento.` : `Nenhum alerta de perigo severo (Laranja ou Vermelho) ativo no Rio Grande do Sul no momento.`}
         </p>
       )}
     </section>
@@ -211,10 +211,11 @@ function AlertasRsPage() {
   );
   const agora = Date.now();
   const alertas = resposta?.alerts ?? [];
-  const emVigor = alertas.filter(
+  const alertasOrdenados = [...alertas].sort((a, b) => b.nivel - a.nivel || (b.inicio ?? "").localeCompare(a.inicio ?? ""));
+  const emVigor = alertasOrdenados.filter(
     (alerta) => !alerta.inicio || new Date(alerta.inicio).getTime() <= agora,
   );
-  const previstos = alertas.filter(
+  const previstos = alertasOrdenados.filter(
     (alerta) => alerta.inicio && new Date(alerta.inicio).getTime() > agora,
   );
   const canalDaRegiao = regiaoSelecionada
@@ -499,7 +500,7 @@ function AlertasRsPage() {
       ) : (
         <>
           <ListaAlertas titulo="Em vigor" alertas={emVigor} regiaoSelecionada={regiaoSelecionada} />
-          <ListaAlertas titulo="Previstos" alertas={previstos} regiaoSelecionada={regiaoSelecionada} />
+          {previstos.length > 0 && <ListaAlertas titulo="Previstos" alertas={previstos} regiaoSelecionada={regiaoSelecionada} />}
         </>
       )}
 
@@ -538,6 +539,7 @@ function AlertasRsPage() {
     </main>
   );
 }
+
 
 
 
