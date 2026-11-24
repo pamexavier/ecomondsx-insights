@@ -87,7 +87,7 @@ export default defineTask({
       console.error("Aviso: falha ao consultar portal da Defesa Civil RS nesta rodada.");
     }
 
-    const alertas = [...alertasInmet, ...alertasDefesaCivil];
+    const alertas = [...new Map([...alertasInmet, ...alertasDefesaCivil].map((a) => [a.id, a])).values()];
 
     if (alertas.length > 0) {
       const linhas = alertas.map((a) => ({ ...a, atualizado_em: agoraIso }));
@@ -161,3 +161,4 @@ export default defineTask({
     return { result: resultado };
   },
 });
+
