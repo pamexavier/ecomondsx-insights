@@ -279,6 +279,7 @@ function classificarSeveridadeDefesaCivil(texto: string): { severidade: string; 
 export function parsearAlertasDefesaCivilRs(html: string, agora = new Date()): AlertaInmet[] {
   const alertas: AlertaInmet[] = [];
   const base = "https://www.defesacivil.rs.gov.br";
+  const inicioPadrao = new Date(agora.getTime() - 5 * 60 * 1000).toISOString();
   const fimPadrao = new Date(agora.getTime() + 12 * 60 * 60 * 1000).toISOString();
 
   const tituloDestaque = /<h1[^>]*class="[^"]*artigo__titulo[^"]*"[^>]*>([\s\S]*?)<\/h1>/i.exec(html)?.[1];
@@ -298,7 +299,7 @@ export function parsearAlertasDefesaCivilRs(html: string, agora = new Date()): A
       evento: `[Defesa Civil RS] ${titulo}`,
       severidade,
       nivel,
-      inicio: agora.toISOString(),
+      inicio: inicioPadrao,
       fim: fimPadrao,
       descricao,
       areas,
@@ -333,7 +334,7 @@ export function parsearAlertasDefesaCivilRs(html: string, agora = new Date()): A
       evento: `[Defesa Civil RS] ${titulo}`,
       severidade,
       nivel,
-      inicio: agora.toISOString(),
+      inicio: inicioPadrao,
       fim: fimPadrao,
       descricao: `${titulo}. Fonte: Defesa Civil Estadual do RS. Emergência ligue 199 ou 193.`,
       areas,
@@ -360,3 +361,4 @@ export function mesorregiaoDoMunicipio(nome: string): string | null {
 export function listarMunicipiosRs(): MunicipioRs[] {
   return MUNICIPIOS_RS;
 }
+
