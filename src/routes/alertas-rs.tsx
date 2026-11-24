@@ -157,7 +157,7 @@ function ListaAlertas({
         </div>
       ) : (
         <p className="rounded-2xl border border-dashed border-line bg-surface/70 p-5 text-sm text-ink-soft">
-          Nenhum aviso {titulo === "Em vigor" ? "em vigor" : "previsto"} para as regiões do Rio Grande do Sul.
+          {regiaoSelecionada ? `Não há alerta ${titulo === "Em vigor" ? "em vigor" : "previsto"} para a região de ${regiaoSelecionada} no momento.` : `Nenhum alerta grave ${titulo === "Em vigor" ? "em vigor" : "previsto"} no Rio Grande do Sul no momento.`}
         </p>
       )}
     </section>
@@ -230,6 +230,7 @@ function AlertasRsPage() {
     );
     setMunicipio(municipioEncontrado?.nome ?? valor);
     setCopiado(false);
+    setMostrarTodos(false);
     if (municipioEncontrado) {
       window.localStorage.setItem(CHAVE_MUNICIPIO, municipioEncontrado.nome);
     } else {
@@ -244,6 +245,7 @@ function AlertasRsPage() {
       window.setTimeout(() => setCopiado(false), 2500);
     } catch {
       setCopiado(false);
+    setMostrarTodos(false);
     }
   }
 
@@ -534,3 +536,4 @@ function AlertasRsPage() {
     </main>
   );
 }
+
