@@ -14,6 +14,12 @@
       "custom_domain": true
     }
   ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
   "no_bundle": true,
   "triggers": {
     "crons": ["* * * * *", "*/5 * * * *"]

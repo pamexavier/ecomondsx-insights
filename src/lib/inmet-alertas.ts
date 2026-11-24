@@ -1,4 +1,4 @@
-import municipiosRsData from "@/data/municipios-rs.json";
+﻿import municipiosRsData from "@/data/municipios-rs.json";
 
 export interface AlertaInmet {
   id: string;
@@ -33,6 +33,16 @@ interface CamposAviso {
 }
 
 const MUNICIPIOS_RS = municipiosRsData as MunicipioRs[];
+
+const TODAS_MESORREGIOES_RS = [
+  "Noroeste Rio-grandense",
+  "Nordeste Rio-grandense",
+  "Centro Ocidental Rio-grandense",
+  "Centro Oriental Rio-grandense",
+  "Metropolitana de Porto Alegre",
+  "Sudoeste Rio-grandense",
+  "Sudeste Rio-grandense",
+];
 
 const MESORREGIOES_RS = new Set([
   "noroeste rio grandense",
@@ -72,6 +82,29 @@ function decodificarEntidades(texto: string): string {
     lt: "<",
     nbsp: " ",
     quot: '"',
+    aacute: "á",
+    agrave: "à",
+    acirc: "â",
+    atilde: "ã",
+    eacute: "é",
+    ecirc: "ê",
+    iacute: "í",
+    oacute: "ó",
+    ocirc: "ô",
+    otilde: "õ",
+    uacute: "ú",
+    ccedil: "ç",
+    Aacute: "Á",
+    Acirc: "Â",
+    Atilde: "Ã",
+    Eacute: "É",
+    Ecirc: "Ê",
+    Iacute: "Í",
+    Oacute: "Ó",
+    Ocirc: "Ô",
+    Otilde: "Õ",
+    Uacute: "Ú",
+    Ccedil: "Ç",
   };
 
   return texto.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entidade, codigo: string) => {
@@ -81,7 +114,7 @@ function decodificarEntidades(texto: string): string {
       return Number.isFinite(ponto) ? String.fromCodePoint(ponto) : entidade;
     }
 
-    return entidades[codigo.toLowerCase()] ?? entidade;
+    return entidades[codigo] ?? entidades[codigo.toLowerCase()] ?? entidade;
   });
 }
 
@@ -219,6 +252,100 @@ export function parsearFeedInmet(xml: string, agora = new Date()): AlertaInmet[]
 
     const { status: _status, ...alertaValido } = alerta;
     alertas.push(alertaValido);
+  }
+
+  return alertas;
+}
+
+function detectarMunicipiosNoTexto(texto: string): MunicipioRs[] {
+  const norm = ` ${chaveArea(texto).replace(/[^a-z0-9\s]/g, " ")} `;
+  return MUNICIPIOS_RS.filter((m) => {
+    const alvo = ` ${chaveArea(m.nome).replace(/[^a-z0-9\s]/g, " ")} `;
+    return alvo.length > 4 && norm.includes(alvo);
+  });
+}
+
+function classificarSeveridadeDefesaCivil(texto: string): { severidade: string; nivel: number } {
+  const norm = chaveArea(texto);
+  if (/\b(muito alto|extremo|severo|vermelho)\b/.test(norm)) {
+    return { severidade: "Grande Perigo", nivel: 3 };
+  }
+  if (/\b(alto|laranja|chuva pontualmente forte|granizo|vendaval)\b/.test(norm)) {
+    return { severidade: "Perigo", nivel: 2 };
+  }
+  return { severidade: "Perigo Potencial", nivel: 1 };
+}
+
+export function parsearAlertasDefesaCivilRs(html: string, agora = new Date()): AlertaInmet[] {
+  const alertas: AlertaInmet[] = [];
+  const base = "https://www.defesacivil.rs.gov.br";
+  const fimPadrao = new Date(agora.getTime() + 12 * 60 * 60 * 1000).toISOString();
+
+  const tituloDestaque = /<h1[^>]*class="[^"]*artigo__titulo[^"]*"[^>]*>([\s\S]*?)<\/h1>/i.exec(html)?.[1];
+  const descDestaque = /<meta\s+name="description"\s+content="([^"]*)"/i.exec(html)?.[1];
+  if (tituloDestaque) {
+    const titulo = textoHtml(tituloDestaque);
+    const descricao = textoHtml(descDestaque ?? titulo);
+    const encontrados = detectarMunicipiosNoTexto(`${titulo} ${descricao}`);
+    const areas = encontrados.length
+      ? [...new Set(encontrados.map((m) => m.mesorregiao))]
+      : TODAS_MESORREGIOES_RS;
+    const { severidade, nivel } = classificarSeveridadeDefesaCivil(`${titulo} ${descricao}`);
+    const idSlug = chaveArea(titulo).replace(/\s+/g, "-").slice(0, 70);
+
+    alertas.push({
+      id: `dcrs-destaque-${idSlug}`,
+      evento: `[Defesa Civil RS] ${titulo}`,
+      severidade,
+      nivel,
+      inicio: agora.toISOString(),
+      fim: fimPadrao,
+      descricao,
+      areas,
+      link: `${base}/alertas`,
+      payload_bruto: {
+        titulo,
+        link: `${base}/alertas`,
+        guid: `dcrs-destaque-${idSlug}`,
+        descricao,
+        status: "Ativo",
+      },
+    });
+  }
+
+  for (const bloco of html.matchAll(/<h3[^>]*class="[^"]*media-heading[^"]*"[^>]*>([\s\S]*?)<\/h3>/gi)) {
+    const linkMatch = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i.exec(bloco[1]);
+    if (!linkMatch) continue;
+
+    const href = linkMatch[1].startsWith("http") ? linkMatch[1] : `${base}${linkMatch[1]}`;
+    const titulo = textoHtml(linkMatch[2]);
+    if (!titulo) continue;
+
+    const encontrados = detectarMunicipiosNoTexto(titulo);
+    const areas = encontrados.length
+      ? [...new Set(encontrados.map((m) => m.mesorregiao))]
+      : TODAS_MESORREGIOES_RS;
+    const { severidade, nivel } = classificarSeveridadeDefesaCivil(titulo);
+    const slug = linkMatch[1].replace(/^\/+/, "").slice(0, 90);
+
+    alertas.push({
+      id: `dcrs-${slug}`,
+      evento: `[Defesa Civil RS] ${titulo}`,
+      severidade,
+      nivel,
+      inicio: agora.toISOString(),
+      fim: fimPadrao,
+      descricao: `${titulo}. Fonte: Defesa Civil Estadual do RS. Emergência ligue 199 ou 193.`,
+      areas,
+      link: href,
+      payload_bruto: {
+        titulo,
+        link: href,
+        guid: `dcrs-${slug}`,
+        descricao: titulo,
+        status: "Ativo",
+      },
+    });
   }
 
   return alertas;
