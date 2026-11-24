@@ -1,10 +1,12 @@
-import { createClient } from "@supabase/supabase-js";
+﻿import { createClient } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AlertaInmet } from "@/lib/inmet-alertas";
 
 const TEMPO_LIMITE_DADOS_MINUTOS = 30;
+const SUPABASE_URL_FALLBACK = "https://grcayroeyqsmoahaagbh.supabase.co";
 
 interface RuntimeEnv {
+  VITE_SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 }
 
@@ -32,11 +34,13 @@ function jsonResponse(body: object, status = 200): Response {
   });
 }
 
-function criarClienteSupabase(serviceRoleKey: string) {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  if (!url) throw new Error("VITE_SUPABASE_URL não está configurada.");
+function criarClienteSupabase(env: RuntimeEnv) {
+  const url = import.meta.env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL || SUPABASE_URL_FALLBACK;
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY não está configurada.");
+  }
 
-  return createClient(url, serviceRoleKey, {
+  return createClient(url, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
@@ -76,9 +80,8 @@ export const Route = createFileRoute("/api/alertas-rs")({
     handlers: {
       GET: async () => {
         const env = runtimeEnv();
-        const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
-        if (!serviceRoleKey) {
+        if (!env.SUPABASE_SERVICE_ROLE_KEY) {
           return jsonResponse(
             {
               alerts: [],
@@ -92,7 +95,7 @@ export const Route = createFileRoute("/api/alertas-rs")({
         }
 
         try {
-          const database = criarClienteSupabase(serviceRoleKey);
+          const database = criarClienteSupabase(env);
           const snapshot = await lerSnapshot(database);
           return jsonResponse({
             ...snapshot,

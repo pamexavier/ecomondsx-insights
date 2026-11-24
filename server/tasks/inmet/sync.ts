@@ -13,9 +13,11 @@ import {
 
 const FEED_URL = "https://apiprevmet3.inmet.gov.br/avisos/rss";
 const DEFESA_CIVIL_RS_URL = "https://www.defesacivil.rs.gov.br/alertas";
+const SUPABASE_URL_FALLBACK = "https://grcayroeyqsmoahaagbh.supabase.co";
 const LOCK_TTL_SECONDS = 15 * 60;
 
 interface WorkerSecrets {
+  VITE_SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   TELEGRAM_BOT_TOKEN?: string;
 }
@@ -28,11 +30,13 @@ function secrets(): WorkerSecrets {
   ).process?.env ?? {};
 }
 
-function criarClienteSupabase(serviceRoleKey: string) {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  if (!url) throw new Error("VITE_SUPABASE_URL não está configurada.");
+function criarClienteSupabase(env: WorkerSecrets) {
+  const url = import.meta.env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL || SUPABASE_URL_FALLBACK;
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("Configure SUPABASE_SERVICE_ROLE_KEY como segredo do Worker.");
+  }
 
-  return createClient(url, serviceRoleKey, {
+  return createClient(url, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
@@ -44,13 +48,7 @@ export default defineTask({
   },
   async run() {
     const env = secrets();
-    if (!env.SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error("Configure SUPABASE_SERVICE_ROLE_KEY como segredo do Worker.");
-    }
-    if (!env.TELEGRAM_BOT_TOKEN) {
-      throw new Error("Configure TELEGRAM_BOT_TOKEN como segredo do Worker.");
-    }
-    const botToken = env.TELEGRAM_BOT_TOKEN;
+    const database = criarClienteSupabase(env);
     const agora = new Date();
 
     const [inmetRes, dcRes] = await Promise.allSettled([
@@ -66,26 +64,39 @@ export default defineTask({
 
     let alertasInmet: AlertaInmet[] = [];
     if (inmetRes.status === "fulfilled" && inmetRes.value.ok) {
-      const xml = await inmetRes.value.text();
-      alertasInmet = parsearFeedInmet(xml, agora);
+      try {
+        const xml = await inmetRes.value.text();
+        alertasInmet = parsearFeedInmet(xml, agora);
+      } catch (err) {
+        console.error("Aviso: falha ao interpretar XML do Inmet:", err);
+      }
     } else {
       console.error("Aviso: falha ao consultar feed do Inmet nesta rodada.");
     }
 
     let alertasDefesaCivil: AlertaInmet[] = [];
     if (dcRes.status === "fulfilled" && dcRes.value.ok) {
-      const html = await dcRes.value.text();
-      alertasDefesaCivil = parsearAlertasDefesaCivilRs(html, agora);
+      try {
+        const html = await dcRes.value.text();
+        alertasDefesaCivil = parsearAlertasDefesaCivilRs(html, agora);
+      } catch (err) {
+        console.error("Aviso: falha ao interpretar HTML da Defesa Civil RS:", err);
+      }
     } else {
       console.error("Aviso: falha ao consultar portal da Defesa Civil RS nesta rodada.");
     }
 
     const alertas = [...alertasInmet, ...alertasDefesaCivil];
-    const database = criarClienteSupabase(env.SUPABASE_SERVICE_ROLE_KEY);
     const { error: syncError } = await database.rpc("sincronizar_alertas_inmet", {
       p_alertas: alertas,
     });
     if (syncError) throw new Error(`Falha ao salvar alertas no Supabase: ${syncError.message}`);
+
+    const botToken = env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      console.warn("TELEGRAM_BOT_TOKEN não configurado; alertas salvos no banco sem envio ao Telegram.");
+      return { result: { publicados: 0, falhas: 0, total: alertas.length } };
+    }
 
     const armazenamento: ArmazenamentoPublicacoes = {
       async reservar(alertaId, regiao, canal) {
