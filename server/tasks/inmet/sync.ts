@@ -50,6 +50,7 @@ export default defineTask({
     const env = secrets();
     const database = criarClienteSupabase(env);
     const agora = new Date();
+    const agoraIso = agora.toISOString();
 
     const [inmetRes, dcRes] = await Promise.allSettled([
       fetch(FEED_URL, {
@@ -87,10 +88,28 @@ export default defineTask({
     }
 
     const alertas = [...alertasInmet, ...alertasDefesaCivil];
-    const { error: syncError } = await database.rpc("sincronizar_alertas_inmet", {
-      p_alertas: alertas,
-    });
-    if (syncError) throw new Error(`Falha ao salvar alertas no Supabase: ${syncError.message}`);
+
+    if (alertas.length > 0) {
+      const linhas = alertas.map((a) => ({ ...a, atualizado_em: agoraIso }));
+      const { error: upsertError } = await database
+        .from("alertas_inmet")
+        .upsert(linhas, { onConflict: "id" });
+      if (upsertError) {
+        throw new Error(`Falha ao gravar alertas no Supabase: ${upsertError.message}`);
+      }
+
+      const idsAtivos = alertas.map((a) => `"${a.id.replace(/"/g, '\\"')}"`).join(",");
+      await database.from("alertas_inmet").delete().not("id", "in", `(${idsAtivos})`);
+    } else {
+      await database.from("alertas_inmet").delete().neq("id", "__nenhum__");
+    }
+
+    const { error: statusError } = await database
+      .from("inmet_sync_status")
+      .upsert({ id: "rs", atualizado_em: agoraIso }, { onConflict: "id" });
+    if (statusError) {
+      throw new Error(`Falha ao atualizar status no Supabase: ${statusError.message}`);
+    }
 
     const botToken = env.TELEGRAM_BOT_TOKEN;
     if (!botToken) {
