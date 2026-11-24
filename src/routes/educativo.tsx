@@ -3190,27 +3190,68 @@ function LaboratorioInterativo() {
             </div>
           </div>
 
-          {/* Seletor de cômodo em grade 2x2 no celular / linha no desktop */}
-          <div
-            className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-muted/50 p-1 sm:inline-grid sm:grid-cols-4"
-            role="group"
-            aria-label="Tipo de cômodo"
-          >
-            {(Object.keys(TIPOS_COMODO) as TipoComodoKey[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => selecionarTipoComodo(key)}
-                aria-pressed={tipoComodo === key}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  tipoComodo === key
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+          {/* Barra principal sempre visível: Cômodo + Orientação da fachada */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                1. Cômodo
+              </span>
+              <div
+                className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-muted/50 p-1 sm:grid-cols-4"
+                role="group"
+                aria-label="Tipo de cômodo"
               >
-                {TIPOS_COMODO[key].nome}
-              </button>
-            ))}
+                {(Object.keys(TIPOS_COMODO) as TipoComodoKey[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => selecionarTipoComodo(key)}
+                    aria-pressed={tipoComodo === key}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                      tipoComodo === key
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {TIPOS_COMODO[key].nome}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                2. Fachada (para onde a janela está virada)
+              </span>
+              <div
+                className="grid grid-cols-4 gap-1 rounded-xl border border-border bg-muted/50 p-1"
+                role="group"
+                aria-label="Orientação solar da fachada"
+              >
+                {(Object.keys(ORIENTACOES) as OrientacaoKey[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setOrientacao(key);
+                      setIrradianciaVerticalWm2(ORIENTACOES[key].irradianciaReferenciaWm2);
+                    }}
+                    aria-pressed={orientacao === key}
+                    className={`rounded-lg px-2 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                      orientacao === key
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {ORIENTACOES[key].nome}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                <strong className="text-foreground">{dadosOri.nome}:</strong>{" "}
+                {dadosOri.dicaPratica}
+              </p>
+            </div>
           </div>
 
           {/* IMPORTANTE: sticky APENAS no desktop (lg:sticky). No celular rola livre sem nunca cobrir o formulário! */}
@@ -3576,35 +3617,6 @@ function LaboratorioInterativo() {
                       </div>
                     </div>
 
-                    <div>
-                      <p className="mb-2 text-xs font-medium text-foreground">
-                        Orientação solar da fachada
-                      </p>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {(Object.keys(ORIENTACOES) as OrientacaoKey[]).map((key) => (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => {
-                              setOrientacao(key);
-                              setIrradianciaVerticalWm2(ORIENTACOES[key].irradianciaReferenciaWm2);
-                            }}
-                            aria-pressed={orientacao === key}
-                            className={`rounded-lg border px-2 py-2 text-xs font-semibold transition-colors cursor-pointer ${
-                              orientacao === key
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border bg-background text-muted-foreground hover:border-primary/40"
-                            }`}
-                          >
-                            {key}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="mt-2 rounded-lg bg-muted/60 px-2.5 py-1.5 text-[11px] text-muted-foreground">
-                        <strong className="text-foreground">{dadosOri.nome}:</strong>{" "}
-                        {dadosOri.dicaPratica}
-                      </p>
-                    </div>
                   </div>
 
                   {modoSimulador === "simples" ? (
