@@ -231,6 +231,7 @@ function AlertasRsPage() {
     setMunicipio(municipioEncontrado?.nome ?? valor);
     setCopiado(false);
     setMostrarTodos(false);
+    setMostrarTodos(false);
     if (municipioEncontrado) {
       window.localStorage.setItem(CHAVE_MUNICIPIO, municipioEncontrado.nome);
     } else {
@@ -245,6 +246,7 @@ function AlertasRsPage() {
       window.setTimeout(() => setCopiado(false), 2500);
     } catch {
       setCopiado(false);
+    setMostrarTodos(false);
     setMostrarTodos(false);
     }
   }
@@ -536,4 +538,5 @@ function AlertasRsPage() {
     </main>
   );
 }
+
 
