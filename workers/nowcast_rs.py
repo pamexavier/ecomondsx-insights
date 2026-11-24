@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-nowcast_rs.py (v0.3) - Camada 2 do alerta meteorologico RS.
+nowcast_rs.py (v0.4) - Camada 2 do alerta meteorologico RS.
 
 Monitora estacoes a OESTE/NOROESTE de cada cidade e dispara alertas separados
-por cidade (ntfy + Telegram). Usa Open-Meteo por padrao e troca automaticamente
-para estacoes fisicas do INMET se INMET_TOKEN estiver definido.
+por cidade (ntfy + Telegram). Usa estacoes fisicas do INMET quando INMET_TOKEN
+esta ativo e alterna automaticamente para Open-Meteo em caso de falha ou dado vazio.
 """
 import argparse
 import json
@@ -132,46 +132,63 @@ def _num(v):
         return None
 
 
+def _leituras_open_meteo(est, agora_utc):
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={est['lat']}&longitude={est['lon']}"
+        "&hourly=wind_gusts_10m,surface_pressure"
+        "&wind_speed_unit=ms&past_hours=6&forecast_hours=1&timezone=GMT"
+    )
+    h = get_json(url).get("hourly", {})
+    out = []
+    for t, raj, pres in zip(
+        h.get("time", []),
+        h.get("wind_gusts_10m", []),
+        h.get("surface_pressure", []),
+    ):
+        dt = datetime.strptime(t, "%Y-%m-%dT%H:%M").replace(tzinfo=UTC)
+        if dt <= agora_utc:
+            out.append({
+                "dt": dt,
+                "rajada_ms": _num(raj),
+                "pressao": _num(pres),
+                "chuva": None,
+            })
+    return out
+
+
 def leituras(est, agora_utc):
     token = os.environ.get("INMET_TOKEN")
     out = []
 
     if token:
-        ini = (agora_utc - timedelta(days=1)).strftime("%Y-%m-%d")
-        fim = agora_utc.strftime("%Y-%m-%d")
-        dados = get_json(f"{API}/token/estacao/{ini}/{fim}/{est['codigo']}/{token}")
-        for d in dados or []:
-            try:
-                dt = datetime.strptime(f"{d['DT_MEDICAO']} {str(d['HR_MEDICAO']).zfill(4)}", "%Y-%m-%d %H%M")
-            except (KeyError, ValueError):
-                continue
-            out.append({
-                "dt": dt.replace(tzinfo=UTC),
-                "rajada_ms": _num(d.get("VEN_RAJ")),
-                "pressao": _num(d.get("PRE_INS")),
-                "chuva": _num(d.get("CHUVA")),
-            })
-    else:
-        url = (
-            "https://api.open-meteo.com/v1/forecast"
-            f"?latitude={est['lat']}&longitude={est['lon']}"
-            "&hourly=wind_gusts_10m,surface_pressure"
-            "&wind_speed_unit=ms&past_hours=6&forecast_hours=1&timezone=GMT"
-        )
-        h = get_json(url).get("hourly", {})
-        for t, raj, pres in zip(
-            h.get("time", []),
-            h.get("wind_gusts_10m", []),
-            h.get("surface_pressure", []),
-        ):
-            dt = datetime.strptime(t, "%Y-%m-%dT%H:%M").replace(tzinfo=UTC)
-            if dt <= agora_utc:
+        try:
+            ini = (agora_utc - timedelta(days=1)).strftime("%Y-%m-%d")
+            fim = agora_utc.strftime("%Y-%m-%d")
+            dados = get_json(f"{API}/token/estacao/{ini}/{fim}/{est['codigo']}/{token}")
+            for d in dados or []:
+                try:
+                    dt = datetime.strptime(
+                        f"{d['DT_MEDICAO']} {str(d['HR_MEDICAO']).zfill(4)}",
+                        "%Y-%m-%d %H%M",
+                    )
+                except (KeyError, ValueError):
+                    continue
                 out.append({
-                    "dt": dt,
-                    "rajada_ms": _num(raj),
-                    "pressao": _num(pres),
-                    "chuva": None,
+                    "dt": dt.replace(tzinfo=UTC),
+                    "rajada_ms": _num(d.get("VEN_RAJ")),
+                    "pressao": _num(d.get("PRE_INS")),
+                    "chuva": _num(d.get("CHUVA")),
                 })
+        except Exception as exc:
+            print(
+                f"  (INMET indisponivel para {est['codigo']}: {exc}; usando Open-Meteo)",
+                file=sys.stderr,
+            )
+            out = []
+
+    if not out:
+        out = _leituras_open_meteo(est, agora_utc)
 
     out.sort(key=lambda x: x["dt"])
     return out
@@ -237,7 +254,11 @@ def aviso_inmet_vigente(cidade, cfg, agora_brt, itens, mapa):
             ini = ini.replace(tzinfo=BRT)
         if ini and ini > agora_brt:
             continue
-        if L1.deve_avisar(aviso, cfg1, agora_brt if (ini and ini.tzinfo) else agora_brt.replace(tzinfo=None)) and L1.local_afetado(aviso, cfg1, mapa):
+        if L1.deve_avisar(
+            aviso,
+            cfg1,
+            agora_brt if (ini and ini.tzinfo) else agora_brt.replace(tzinfo=None),
+        ) and L1.local_afetado(aviso, cfg1, mapa):
             return aviso
     return None
 

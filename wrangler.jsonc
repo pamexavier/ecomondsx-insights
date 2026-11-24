@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tanstack-start-app",
   "compatibility_date": "2025-09-24",
@@ -8,9 +8,15 @@
     "binding": "ASSETS",
     "directory": "./dist/client"
   },
+  "routes": [
+    {
+      "pattern": "ecomindsx.com.br",
+      "custom_domain": true
+    }
+  ],
   "no_bundle": true,
   "triggers": {
-    "crons": ["* * * * *"]
+    "crons": ["* * * * *", "*/5 * * * *"]
   },
   "rules": [
     {
