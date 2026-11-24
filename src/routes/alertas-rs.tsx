@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -14,7 +14,7 @@ import {
 import {
   chaveArea,
   listarMunicipiosRs,
-  mesorregiaoDoMunicipio,
+  mesorregiaoDaArea, mesorregiaoDoMunicipio,
   type AlertaInmet,
 } from "@/lib/inmet-alertas";
 import { CANAIS_TELEGRAM_RS, TOPICOS_NTFY_RS } from "@/lib/alertas-rs-telegram";
@@ -103,7 +103,7 @@ function AlertCard({
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-brand-strong transition-colors hover:bg-surface-soft"
           >
-            Ver gráfico do Inmet
+            {alerta.id.startsWith("dcrs-") ? "Ver aviso na Defesa Civil RS" : "Ver mapa no Inmet"}
             <ExternalLink aria-hidden="true" className="size-4" />
           </a>
         )}
@@ -115,7 +115,7 @@ function AlertCard({
           {formatarData(alerta.inicio)} até {formatarData(alerta.fim)}
         </p>
         <p>
-          <span className="font-semibold text-ink">Região:</span> {alerta.areas.join(", ")}
+          <span className="font-semibold text-ink">Regiões atingidas no RS:</span> {(alerta.areas.filter(mesorregiaoDaArea).length === 7 ? ["Todo o Rio Grande do Sul"] : alerta.areas.filter(mesorregiaoDaArea)).join(", ") || alerta.areas.join(", ")}
         </p>
       </div>
       {alerta.descricao && (
