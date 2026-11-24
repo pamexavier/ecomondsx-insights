@@ -12,6 +12,10 @@
     {
       "pattern": "ecomindsx.com.br",
       "custom_domain": true
+    },
+    {
+      "pattern": "vector.ecomindsx.com.br",
+      "custom_domain": true
     }
   ],
   "observability": {
