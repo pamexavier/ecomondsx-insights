@@ -299,7 +299,7 @@ export function parsearAlertasDefesaCivilRs(html: string, agora = new Date()): A
       evento: `[Defesa Civil RS] ${titulo}`,
       severidade,
       nivel,
-      inicio: inicioPadrao,
+      inicio: new Date(agora.getTime() - 10 * 60 * 1000).toISOString(),
       fim: fimPadrao,
       descricao,
       areas,
@@ -334,7 +334,7 @@ export function parsearAlertasDefesaCivilRs(html: string, agora = new Date()): A
       evento: `[Defesa Civil RS] ${titulo}`,
       severidade,
       nivel,
-      inicio: inicioPadrao,
+      inicio: new Date(agora.getTime() - 10 * 60 * 1000).toISOString(),
       fim: fimPadrao,
       descricao: `${titulo}. Fonte: Defesa Civil Estadual do RS. Emergência ligue 199 ou 193.`,
       areas,
@@ -361,4 +361,5 @@ export function mesorregiaoDoMunicipio(nome: string): string | null {
 export function listarMunicipiosRs(): MunicipioRs[] {
   return MUNICIPIOS_RS;
 }
+
 
