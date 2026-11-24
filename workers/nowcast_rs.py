@@ -1,10 +1,9 @@
 ﻿#!/usr/bin/env python3
 """
-nowcast_rs.py (v0.4) - Camada 2 do alerta meteorologico RS.
+nowcast_rs.py (v0.5) - Camada 2 do alerta meteorologico RS.
 
-Monitora estacoes a OESTE/NOROESTE de cada cidade e dispara alertas separados
-por cidade (ntfy + Telegram). Usa estacoes fisicas do INMET quando INMET_TOKEN
-esta ativo e alterna automaticamente para Open-Meteo em caso de falha ou dado vazio.
+Monitora estacoes e pontos a OESTE/NOROESTE de cada cidade para vento,
+queda de pressao, chuva torrencial e tempestade com granizo.
 """
 import argparse
 import json
@@ -30,29 +29,16 @@ UTC = timezone.utc
 BRT = timezone(timedelta(hours=-3))
 
 CFG_PADRAO = {
-    "cidades": [
-        {
-            "nome": "Porto Alegre",
-            "lat": -30.03,
-            "lon": -51.23,
-            "ntfy_topic": "",
-            "telegram_canal": "",
-        },
-        {
-            "nome": "Tupanciretã",
-            "lat": -29.08,
-            "lon": -53.84,
-            "ntfy_topic": "",
-            "telegram_canal": "",
-        },
-    ],
+    "cidades": [],
     "dist_min_km": 15,
     "dist_max_km": 150,
-    "azimute_min": 225,   # SW
-    "azimute_max": 345,   # NNW
+    "azimute_min": 225,
+    "azimute_max": 345,
     "max_estacoes_por_cidade": 6,
     "rajada_atencao_kmh": 70,
     "rajada_severa_kmh": 90,
+    "chuva_atencao_mmh": 25.0,
+    "chuva_severa_mmh": 45.0,
     "queda_pressao_hpa": 3.0,
     "dados_max_idade_min": 150,
     "intervalo_segundos": 300,
@@ -72,7 +58,6 @@ def get_json(url, timeout=25):
     return json.loads(L1.http_get(url, timeout=timeout))
 
 
-# ---------- geometria ----------
 def haversine_km(lat1, lon1, lat2, lon2):
     r = 6371.0
     p1, p2 = math.radians(lat1), math.radians(lat2)
@@ -89,7 +74,6 @@ def azimute(lat1, lon1, lat2, lon2):
     return (math.degrees(math.atan2(y, x)) + 360) % 360
 
 
-# ---------- estacoes ----------
 def carregar_estacoes():
     if ESTACOES_CACHE.exists():
         return json.loads(ESTACOES_CACHE.read_text(encoding="utf-8"))
@@ -124,7 +108,6 @@ def estacoes_a_montante(cidade, estacoes, cfg):
     return achadas[: cfg["max_estacoes_por_cidade"]]
 
 
-# ---------- leituras ----------
 def _num(v):
     try:
         return float(str(v).replace(",", "."))
@@ -136,15 +119,17 @@ def _leituras_open_meteo(est, agora_utc):
     url = (
         "https://api.open-meteo.com/v1/forecast"
         f"?latitude={est['lat']}&longitude={est['lon']}"
-        "&hourly=wind_gusts_10m,surface_pressure"
+        "&hourly=wind_gusts_10m,surface_pressure,precipitation,weather_code"
         "&wind_speed_unit=ms&past_hours=6&forecast_hours=1&timezone=GMT"
     )
     h = get_json(url).get("hourly", {})
     out = []
-    for t, raj, pres in zip(
+    for t, raj, pres, chuva, wcode in zip(
         h.get("time", []),
         h.get("wind_gusts_10m", []),
         h.get("surface_pressure", []),
+        h.get("precipitation", []),
+        h.get("weather_code", []),
     ):
         dt = datetime.strptime(t, "%Y-%m-%dT%H:%M").replace(tzinfo=UTC)
         if dt <= agora_utc:
@@ -152,7 +137,8 @@ def _leituras_open_meteo(est, agora_utc):
                 "dt": dt,
                 "rajada_ms": _num(raj),
                 "pressao": _num(pres),
-                "chuva": None,
+                "chuva": _num(chuva),
+                "wcode": int(wcode) if wcode is not None else None,
             })
     return out
 
@@ -179,6 +165,7 @@ def leituras(est, agora_utc):
                     "rajada_ms": _num(d.get("VEN_RAJ")),
                     "pressao": _num(d.get("PRE_INS")),
                     "chuva": _num(d.get("CHUVA")),
+                    "wcode": None,
                 })
         except Exception as exc:
             print(
@@ -196,7 +183,10 @@ def leituras(est, agora_utc):
 
 def avaliar(est, agora_utc, cfg):
     lt = leituras(est, agora_utc)
-    lt = [r for r in lt if r["rajada_ms"] is not None or r["pressao"] is not None]
+    lt = [
+        r for r in lt
+        if r["rajada_ms"] is not None or r["pressao"] is not None or r["chuva"] is not None
+    ]
     if not lt:
         return None
     ult = lt[-1]
@@ -205,17 +195,30 @@ def avaliar(est, agora_utc, cfg):
         return None
 
     motivos, severo = [], False
-    rajadas = [
-        r["rajada_ms"] for r in lt
-        if r["rajada_ms"] is not None
-        and (agora_utc - r["dt"]).total_seconds() / 60 <= cfg["dados_max_idade_min"]
+    recentes = [
+        r for r in lt
+        if (agora_utc - r["dt"]).total_seconds() / 60 <= cfg["dados_max_idade_min"]
     ]
+
+    rajadas = [r["rajada_ms"] for r in recentes if r["rajada_ms"] is not None]
     if rajadas:
         kmh = max(rajadas) * 3.6
         if kmh >= cfg["rajada_atencao_kmh"]:
             motivos.append(f"rajada de {kmh:.0f} km/h")
             if kmh >= cfg["rajada_severa_kmh"]:
                 severo = True
+
+    chuvas = [r["chuva"] for r in recentes if r["chuva"] is not None]
+    if chuvas:
+        mmh = max(chuvas)
+        if mmh >= cfg.get("chuva_atencao_mmh", 25.0):
+            motivos.append(f"chuva intensa de {mmh:.0f} mm/h")
+            if mmh >= cfg.get("chuva_severa_mmh", 45.0):
+                severo = True
+
+    if any(r.get("wcode") in (96, 99) for r in recentes):
+        motivos.append("tempestade severa com risco de granizo")
+        severo = True
 
     lp = [
         r for r in lt
@@ -240,7 +243,6 @@ def avaliar(est, agora_utc, cfg):
     }
 
 
-# ---------- gate (Camada 1) ----------
 def aviso_inmet_vigente(cidade, cfg, agora_brt, itens, mapa):
     cfg1 = {
         **L1.CONFIG_PADRAO,
@@ -263,7 +265,6 @@ def aviso_inmet_vigente(cidade, cfg, agora_brt, itens, mapa):
     return None
 
 
-# ---------- notificacao ----------
 def enviar_ntfy(titulo, msg, prioridade, tags, topico=None):
     topico = topico or os.environ.get("NTFY_TOPIC")
     if not topico:
@@ -287,13 +288,7 @@ def enviar_ntfy(titulo, msg, prioridade, tags, topico=None):
         return r.status == 200
 
 
-def enviar_auditoria_ntfy(
-    cfg: dict,
-    cidade_nome: str,
-    topico_origem: str,
-    titulo: str,
-    mensagem: str,
-) -> None:
+def enviar_auditoria_ntfy(cfg, cidade_nome, topico_origem, titulo, mensagem):
     topico_auditoria = (cfg.get("ntfy_auditoria") or "").strip()
     if not topico_auditoria:
         return
@@ -316,7 +311,7 @@ def montar(cidade, est, res, aviso, urgente):
     if urgente:
         cab = f"ABRIGUE-SE AGORA: tempestade severa se aproximando de {cidade['nome']}"
     else:
-        cab = f"ATENCAO: ventos fortes detectados a oeste de {cidade['nome']}"
+        cab = f"ATENCAO: tempo severo detectado a oeste de {cidade['nome']}"
     linhas = [
         cab, "",
         f"Estacao {est['nome']} ({est['dist_km']} km a montante, leitura das {res['hora_brt']} BRT): "
